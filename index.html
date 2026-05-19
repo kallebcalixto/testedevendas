@@ -167,7 +167,6 @@
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: #000; display: flex; justify-content: center; align-items: center; z-index: 99999;
   }
-  /* Estilo limpo ajustado para o novo painel exclusivo */
   .card-login {
     background: #1b1b1b; padding: 40px 30px; border-radius: 12px;
     border: 1px solid #333; width: 340px; text-align: center;
@@ -187,9 +186,13 @@
     border:1px solid #333; border-radius:8px; 
   }
 
+  /* AJUSTE SOLICITADO: Ocultação total e limpa de controles e rodas de carregamento em trocas ao vivo */
   video::-webkit-media-controls-start-playback-button { display: none !important; }
   video::-internal-media-controls-loading-indicator { display: none !important; }
-  video::-webkit-media-controls-panel { background-color: rgba(0,0,0,0.5) !important; }
+  video::-webkit-media-controls-loading-indicator { display: none !important; }
+  video::-webkit-media-controls { display: none !important; }
+  video::-webkit-media-controls-enclosure { display: none !important; }
+  video::-webkit-media-controls-panel { display: none !important; }
 
   #player { object-fit: contain; display:block; }
   #ytplayer { display:none; }
@@ -288,7 +291,7 @@
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
 
-  // NOVO PAINEL DE LOGIN EXCLUSIVO POR GMAIL
+  // LOGIN REESCRITO EXCLUSIVO POR GMAIL VIA POP-UP COMPATÍVEL
   window.fazerLoginGoogle = () => {
     signInWithPopup(auth, provider)
       .then((result) => {
@@ -310,11 +313,11 @@
       })
       .catch(err => {
         console.error(err);
-        alert("Erro ao conectar com Google. Verifique os bloqueadores ou permissões do seu navegador.");
+        alert("Erro ao conectar com Google. Verifique se as janelas pop-up estão liberadas.");
       });
   };
 
-  // LOGICA DO TESTE GRÁTIS DE 7 DIAS ÚNICO
+  // LOGICA ADICIONADA DO TESTE DE 7 DIAS ÚNICO NO FIREBASE
   window.ativarTeste7Dias = () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -759,7 +762,7 @@ function iniciar(){ sistemaIniciado = true; idxBloco=0; tocarAtual(); }
 function proximoBloco(){ idxBloco=(idxBloco+1)%blocos.length; tocarAtual(); }
 function pausar(){ video.pause(); }
 function retomar(){ video.play(); }
-function startYouTubeNow(b){ ytplayer.style.display='block'; video.style.display='none'; const id = b.ytlink.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-z0-9_-]{11})/); if(id) ytplayer.src=`https://www.youtube.com/embed/${id[1]}?autoplay=1`; }
+function startYouTubeNow(b){ ytplayer.style.display='block'; video.style.display='none'; const id = b.ytlink.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-0-9_-]{11})/); if(id) ytplayer.src=`https://www.youtube.com/embed/${id[1]}?autoplay=1`; }
 function stopYouTube(){ ytplayer.src=''; ytplayer.style.display='none'; }
 
 function startM3UNow(b) {
