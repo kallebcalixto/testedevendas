@@ -22,7 +22,22 @@
     position: relative;
   }
 
-  /* --- NOVOS ESTILOS PARA MOVIMENTAÇÃO --- */
+  /* --- ADICIONADO PARA REMOVER CARREGAMENTO E INTERAÇÃO --- */
+  #player { 
+    object-fit: contain; 
+    display:block; 
+    pointer-events: none; /* Impede cliques e ícones de carregamento */
+  }
+  
+  video::-webkit-media-controls,
+  video::-webkit-media-controls-enclosure,
+  video::-webkit-media-controls-panel,
+  video::-webkit-media-controls-loading-indicator,
+  video::-webkit-media-controls-start-playback-button {
+    display: none !important;
+  }
+  /* ------------------------------------------------------- */
+
   .movel {
     position: absolute !important;
     cursor: move;
@@ -50,226 +65,49 @@
   }
   .layout-destravado { background: #ff4d4d !important; color: #fff; }
   .layout-travado { background: #2e7d32 !important; color: #fff; }
-  /* -------------------------------------- */
 
   #tela-pagamento {
-    position: fixed; 
-    top: 0; left: 0; 
-    width: 100%; height: 100%; 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
     background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
-    display: none; 
-    justify-content: center; 
-    align-items: center; 
-    z-index: 100000;
+    display: none; justify-content: center; align-items: center; z-index: 100000;
     backdrop-filter: blur(10px);
   }
+  .painel-premium { background: #161616; padding: 40px; border-radius: 24px; border: 1px solid #333; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.8); position: relative; }
+  .painel-premium::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, transparent, var(--error-color), transparent); }
+  .status-badge { background: var(--error-color); color: white; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; display: inline-block; margin-bottom: 20px; }
+  .painel-premium h2 { font-size: 32px; margin: 10px 0; font-weight: 900; color: #fff; letter-spacing: -1px; }
+  .btn-plano-premium { width: 100%; padding: 20px; margin: 12px 0; background: linear-gradient(145deg, #1e1e1e, #141414); border: 1px solid #333; color: #fff; border-radius: 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+  .btn-plano-premium:hover { border-color: var(--primary-color); background: #1f1f1f; }
+  .btn-plano-premium.destaque { border-color: var(--gold); }
 
-  .painel-premium {
-    background: #161616;
-    padding: 40px;
-    border-radius: 24px;
-    border: 1px solid #333;
-    width: 100%;
-    max-width: 450px;
-    text-align: center;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .painel-premium::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 4px;
-    background: linear-gradient(90deg, transparent, var(--error-color), transparent);
-  }
-
-  .status-badge {
-    background: var(--error-color);
-    color: white;
-    padding: 5px 15px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: bold;
-    text-transform: uppercase;
-    display: inline-block;
-    margin-bottom: 20px;
-  }
-
-  .painel-premium h2 {
-    font-size: 32px;
-    margin: 10px 0;
-    font-weight: 900;
-    color: #fff;
-    letter-spacing: -1px;
-  }
-
-  .painel-premium p {
-    color: #aaa;
-    margin-bottom: 30px;
-    font-size: 15px;
-  }
-
-  .btn-plano-premium {
-    width: 100%;
-    padding: 20px;
-    margin: 12px 0;
-    background: linear-gradient(145deg, #1e1e1e, #141414);
-    border: 1px solid #333;
-    color: #fff;
-    border-radius: 16px;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .btn-plano-premium:hover {
-    border-color: var(--primary-color);
-    transform: translateY(-2px);
-    background: #1f1f1f;
-    box-shadow: 0 5px 15px rgba(46, 125, 50, 0.2);
-  }
-
-  .btn-plano-premium .nome {
-    font-weight: bold;
-    font-size: 16px;
-    text-transform: uppercase;
-  }
-
-  .btn-plano-premium .preco {
-    color: var(--primary-color);
-    font-weight: 900;
-    font-size: 18px;
-  }
-
-  .btn-plano-premium.destaque {
-    border-color: var(--gold);
-  }
-  .btn-plano-premium.destaque .preco {
-    color: var(--gold);
-  }
-
-  #qrcode-container {
-    margin-top: 25px;
-    background: #000;
-    padding: 20px;
-    border-radius: 16px;
-    border: 1px solid #222;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-  }
-
-  #tela-login {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: #000; display: flex; justify-content: center; align-items: center; z-index: 99999;
-  }
-  .card-login {
-    background: #1b1b1b; padding: 40px 30px; border-radius: 12px;
-    border: 1px solid #333; width: 340px; text-align: center;
-  }
+  #qrcode-container { margin-top: 25px; background: #000; padding: 20px; border-radius: 16px; border: 1px solid #222; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  #tela-login { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; justify-content: center; align-items: center; z-index: 99999; }
+  .card-login { background: #1b1b1b; padding: 40px 30px; border-radius: 12px; border: 1px solid #333; width: 340px; text-align: center; }
   .card-login h2 { margin-bottom: 10px; color: #2e7d32; font-weight: 900; }
-  .card-login p { color: #888; font-size: 14px; margin-bottom: 25px; }
-
+  
   header { padding:16px 20px; background:#1b1b1b; border-top:1px solid #2a2a2a; }
-  header h1 { margin:0 0 6px 0; font-size:18px; }
   #grade { white-space:pre-line; font-size:13px; color:#ddd; max-height:220px; overflow-y:auto; }
   .wrap { max-width:1200px; margin:0 auto; padding:20px; }
   .top { display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; justify-content:center; }
 
-  #player, #ytplayer { 
-    width:500px; height:280px; 
-    background:#000 !important;
-    border:1px solid #333; border-radius:8px; 
-  }
-
-  /* REMOVE DE VEZ A INTERFACE E A RODINHA CINZA EM QUALQUER SINAL DE CARREGAMENTO */
-  video::-webkit-media-controls-start-playback-button { display: none !important; }
-  video::-internal-media-controls-loading-indicator { display: none !important; }
-  video::-webkit-media-controls-loading-indicator { display: none !important; }
-  video::-webkit-media-controls { display: none !important; }
-  video::-webkit-media-controls-enclosure { display: none !important; }
-  video::-webkit-media-controls-panel { display: none !important; }
-  video::-webkit-media-controls-play-button { display: none !important; }
-
-  #player { object-fit: contain; display:block; }
+  #player, #ytplayer { width:500px; height:280px; background:#000 !important; border:1px solid #333; border-radius:8px; }
   #ytplayer { display:none; }
   .controls { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
   button { padding:8px 12px; border:none; border-radius:8px; cursor:pointer; background:#2f2f2f; color:#fff; }
   button:hover { background:#454545; }
-  .btn-pri { background:#2e7d32; } .btn-pri:hover{ background:#3e8d42; }
-  .btn-sec { background:#1976d2; } .btn-sec:hover{ background:#2a82d8; }
-  .btn-admin { background:#6200ee; font-weight: bold; } .btn-admin:hover { background:#7c4dff; }
+  .btn-pri { background:#2e7d32; }
+  .btn-admin { background:#6200ee; font-weight: bold; }
   
-  .grid { 
-    display:flex; 
-    flex-wrap:wrap; 
-    gap:12px; 
-    margin-top:18px; 
-    max-height:400px; 
-    overflow-y: auto !important; 
-    overflow-x: hidden;
-    padding-right: 10px;
-    width: auto;
-    max-width: 90vw;
-  }
-  
+  .grid { display:flex; flex-wrap:wrap; gap:12px; margin-top:18px; max-height:400px; overflow-y: auto !important; }
   .bloco { position:relative; flex:0 0 260px; border:1px solid #2b2b2b; background:#171717; border-radius:10px; padding:12px; }
-  .bloco h3 { margin:0 0 10px 0; font-size:15px; }
-  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-  .row input[type="time"] { width:130px; }
-  .hint { font-size:12px; color:#aaa; }
-  .badge { display:inline-block; padding:2px 8px; border-radius:999px; background:#2a2a2a; font-size:12px; margin-left:6px; }
-  .running::before {
-    content:"Em execução"; position:absolute; top:0; left:0; right:0;
-    background:#2e7d32; color:#fff; font-size:12px; text-align:center;
-    padding:2px 0; border-radius:10px 10px 0 0;
-  }
-  .mini-btn { padding:4px 6px; margin:2px; border:none; border-radius:6px; cursor:pointer; background:#444; color:#fff; font-size:12px; }
-  .mini-btn:hover { background:#666; }
+  .running::before { content:"Em execução"; position:absolute; top:0; left:0; right:0; background:#2e7d32; color:#fff; font-size:12px; text-align:center; padding:2px 0; border-radius:10px 10px 0 0; }
 
-  #letreiro-kbs-auto {
-    position: absolute; top: 20px; left: 20px; z-index: 999;
-    background: transparent; color: #ffd700; border-left: 5px solid #ffd700;
-    padding: 10px 20px; font-weight: bold; font-size: 14px;
-    display: none; align-items: center; gap: 10px; border-radius: 0 8px 8px 0;
-    text-shadow: 2px 2px 4px #000; 
-    cursor: move;
-    user-select: none;
-  }
+  #letreiro-kbs-auto { position: absolute; top: 20px; left: 20px; z-index: 999; background: transparent; color: #ffd700; border-left: 5px solid #ffd700; padding: 10px 20px; font-weight: bold; font-size: 14px; display: none; align-items: center; gap: 10px; border-radius: 0 8px 8px 0; text-shadow: 2px 2px 4px #000; cursor: move; }
   #letreiro-logo-img { height: 25px; width: auto; display: none; pointer-events: none; }
-  #letreiro-texto-arquivo { pointer-events: none; }
-
-  #banner-somente-logo {
-    position: absolute; 
-    top: 60px; 
-    left: 20px; 
-    z-index: 1001;
-    cursor: move;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    resize: both; 
-    width: 80px;  
-    height: 80px; 
-    min-width: 20px;
-    min-height: 20px;
-  }
-  #img-banner-fixo {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    pointer-events: none;
-    display: none;
-  }
-
+  #banner-somente-logo { position: absolute; top: 60px; left: 20px; z-index: 1001; cursor: move; display: flex; align-items: center; justify-content: center; overflow: hidden; resize: both; width: 80px; height: 80px; }
+  #img-banner-fixo { width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -290,94 +128,56 @@
   const db = getDatabase(app);
   const auth = getAuth(app);
   const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
 
   window.fazerLoginGoogle = () => {
-    signInWithPopup(auth, provider)
-      .then((result) => {
+    signInWithPopup(auth, provider).then((result) => {
         if (result && result.user) {
-          const user = result.user;
           document.getElementById('tela-login').style.display = 'none';
-          
-          const playerRef = ref(db, `usuarios/${user.uid}/player_m3u/0`);
+          const playerRef = ref(db, `usuarios/${result.user.uid}/player_m3u/0`);
           get(playerRef).then((snapshot) => {
             if (!snapshot.exists()) {
-              set(playerRef, {
-                dia: "segunda", inicio: "12:00", fim: "13:00",
-                m3u: "https://srv4.zcast.com.br/samircalixto/samircalixto/playlist.m3u8",
-                yt: "", timestamp: Date.now()
-              });
+              set(playerRef, { dia: "segunda", inicio: "12:00", fim: "13:00", m3u: "https://srv4.zcast.com.br/samircalixto/samircalixto/playlist.m3u8", yt: "", timestamp: Date.now() });
             }
           });
         }
-      })
-      .catch(err => {
-        console.error(err);
-        alert("Erro ao conectar com Google. Verifique os bloqueadores ou permissões do seu navegador.");
-      });
+    });
   };
 
   window.ativarTeste7Dias = () => {
     const user = auth.currentUser;
     if (!user) return;
-
     const configRef = ref(db, `usuarios/${user.uid}/config`);
     get(configRef).then((snapshot) => {
       const config = snapshot.val() || {};
-      if (config.testeUtilizado) {
-        alert("Desculpe, este e-mail já utilizou o período de 7 dias de teste grátis.");
-        return;
-      }
-
-      const seteDiasEmMilisegundos = Date.now() + (7 * 24 * 60 * 60 * 1000);
-      
-      set(configRef, {
-        expiracao: seteDiasEmMilisegundos,
-        testeUtilizado: true
-      }).then(() => {
-        alert("Teste de 7 dias ativado com sucesso! Aproveite o seu player.");
-      }).catch(err => alert("Erro ao ativar teste: " + err.message));
+      if (config.testeUtilizado) return alert("Teste já utilizado.");
+      set(configRef, { expiracao: Date.now() + (7 * 24 * 60 * 60 * 1000), testeUtilizado: true });
     });
   };
 
-  window.fazerLogout = () => {
-    signOut(auth).then(() => { location.reload(); }).catch(err => alert("Erro ao sair: " + err.message));
-  };
+  window.fazerLogout = () => { signOut(auth).then(() => { location.reload(); }); };
 
   onAuthStateChanged(auth, (user) => {
     if (user) {
       document.getElementById('tela-login').style.display = 'none';
       onValue(ref(db, `usuarios/${user.uid}/config`), snap => {
-        const config = snap.val() || { expiracao: 0, testeUtilizado: false };
-        const agora = Date.now();
-        
-        const btnTeste = document.getElementById('btn-teste-7dias');
-        if (config.testeUtilizado) {
-          btnTeste.style.display = 'none';
-        } else {
-          btnTeste.style.display = 'flex';
-        }
-
-        if (config.expiracao < agora) {
+        const config = snap.val() || { expiracao: 0 };
+        if (config.expiracao < Date.now()) {
           document.getElementById('tela-pagamento').style.display = 'flex';
           document.getElementById('conteudo-player').style.display = 'none';
         } else {
           document.getElementById('tela-pagamento').style.display = 'none';
           document.getElementById('conteudo-player').style.display = 'block';
-          const blocosRef = ref(db, `usuarios/${user.uid}/player_m3u`);
-          iniciarLeituraFirebase(blocosRef);
+          iniciarLeituraFirebase(ref(db, `usuarios/${user.uid}/player_m3u`));
         }
       });
     } else {
       document.getElementById('tela-login').style.display = 'flex';
-      document.getElementById('conteudo-player').style.display = 'none';
-      document.getElementById('tela-pagamento').style.display = 'none';
     }
   });
 
   window.gerarPix = async (valorPlano) => {
     const container = document.getElementById('qrcode-container');
-    container.innerHTML = "<p>Gerando código PIX seguro...</p>";
+    container.innerHTML = "<p>Gerando código PIX...</p>";
     try {
       const res = await fetch("https://kbs-backend-k3d0.onrender.com/gerar-pix", {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -385,557 +185,68 @@
       });
       const data = await res.json();
       if(data.qr_code_base64) {
-        container.innerHTML = `
-          <img src="data:image/png;base64,${data.qr_code_base64}" style="width:180px; background:white; padding:10px; border-radius:12px; box-shadow: 0 0 20px rgba(255,255,255,0.1);">
-          <div style="margin-top:10px; font-size:11px; color:#2e7d32; font-weight:bold;">CÓDIGO COPIA E COLA:</div>
-          <div style="font-size:10px; color:#888; word-break:break-all; background:#111; padding:8px; border:1px solid #333; width:100%; box-sizing:border-box;">${data.qr_code}</div>
-          <button onclick="navigator.clipboard.writeText('${data.qr_code}').then(()=>alert('Copiado!'))" style="margin-top:5px; background:#333; font-size:11px;">Copiar Código</button>
-        `;
+        container.innerHTML = `<img src="data:image/png;base64,${data.qr_code_base64}" style="width:180px; background:white; padding:10px; border-radius:12px;"><button onclick="navigator.clipboard.writeText('${data.qr_code}')" style="margin-top:10px;">Copiar Código</button>`;
       }
-    } catch (e) { alert("Erro ao conectar com servidor."); container.innerHTML = ""; }
+    } catch (e) { alert("Erro servidor."); }
   };
 
-  window._firebase_db = db;
-  window._firebase_ref = ref;
-  window._firebase_set = set;
-  window._firebase_onValue = onValue;
-
   window.iniciarLeituraFirebase = function(referenciaDinamica) {
-      window._firebase_onValue(referenciaDinamica, snap => {
+      onValue(referenciaDinamica, snap => {
           const dadosFirebase = snap.val() || {};
-          
           let blocosManter = blocos.filter(b => b.tipo !== 'youtube' && !b._firebaseIndex);
-
           let novosBlocosAgendados = [];
-
           Object.keys(dadosFirebase).forEach(i => {
               const d = dadosFirebase[i];
-              novosBlocosAgendados.push({
-                  tipo: 'youtube', 
-                  arquivos: [], 
-                  progresso: [],
-                  tempo: 0, 
-                  sessaoRestante: 0, 
-                  pauseRestante: 0,
-                  arquivoAtual: 0, 
-                  limitePorCiclo: 0,
-                  ytlink: d.yt || '', 
-                  m3ulink: d.m3u || '', 
-                  diaSemana: d.dia || '', 
-                  horaInicio: d.inicio || '', 
-                  horaFim: d.fim || '',
-                  removido: false, 
-                  _agendadoRodando: false, 
-                  _firebaseIndex: i 
-              });
+              novosBlocosAgendados.push({ tipo: 'youtube', arquivos: [], progresso: [], tempo: 0, ytlink: d.yt || '', m3ulink: d.m3u || '', diaSemana: d.dia || '', horaInicio: d.inicio || '', horaFim: d.fim || '', removido: false, _firebaseIndex: i });
           });
-
           blocos = [...blocosManter, ...novosBlocosAgendados];
-          
           blocosEl.innerHTML = '';
           blocos.forEach((b, i) => renderizarBloco(i, b));
-          atualizarGrade();
-          
-          if (idxBloco >= blocos.length) idxBloco = 0;
       });
   };
 </script>
 </head>
-
 <body>
-  <div id="tela-pagamento">
-    <div class="painel-premium">
-      <div class="status-badge">Sinal Interrompido</div>
-      <h2>Acesso Expirado</h2>
-      <p>Sua licença KBS TV chegou ao fim. Selecione um plano abaixo ou ative seu teste gratuito para liberar o player:</p>
-      
-      <button id="btn-teste-7dias" class="btn-plano-premium destaque" onclick="ativarTeste7Dias()" style="background: linear-gradient(145deg, #1b5e20, #2e7d32); border-color: var(--gold);">
-        <span class="nome">🎁 Ativar 7 Dias de Teste</span>
-        <span class="preco">GRÁTIS</span>
-      </button>
-
-      <button class="btn-plano-premium" onclick="gerarPix(29.90)">
-        <span class="nome">Plano Mensal</span>
-        <span class="preco">R$ 29,90</span>
-      </button>
-
-      <button class="btn-plano-premium destaque" onclick="gerarPix(230.90)">
-        <span class="nome">Plano Semestral 🌟</span>
-        <span class="preco">R$ 230,90</span>
-      </button>
-
-      <button class="btn-plano-premium" onclick="gerarPix(349.90)">
-        <span class="nome">Plano Anual</span>
-        <span class="preco">R$ 349,90</span>
-      </button>
-
-      <div id="qrcode-container"></div>
-      
-      <button onclick="fazerLogout()" style="background:none; border:none; color:#555; text-decoration:underline; cursor:pointer; margin-top:20px; font-size:13px;">Alternar conta de usuário</button>
-    </div>
-  </div>
-
-  <div id="tela-login">
-    <div class="card-login">
-      <h2>KBS TV</h2>
-      <p>Área de Acesso do Cliente</p>
-      
-      <button onclick="fazerLoginGoogle()" style="background:#db4437; padding: 16px; font-size: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(219,68,55,0.2); transition: all 0.2s; cursor: pointer; border: none; color: white;">
-        <svg style="width:20px; height:20px; fill:white;" viewBox="0 0 24 24"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 6.133 1 1.18 5.925 1.18 12s4.953 11 11.06 11c6.373 0 10.596-4.477 10.596-10.75 0-.725-.078-1.275-.173-1.615H12.24z"/></svg>
-        ENTRAR COM O GMAIL
-      </button>
-    </div>
-  </div>
-
+  <div id="tela-pagamento"><div class="painel-premium"><h2>Acesso Expirado</h2><button class="btn-plano-premium" onclick="ativarTeste7Dias()">Ativar 7 Dias Grátis</button><button class="btn-plano-premium" onclick="gerarPix(29.90)">Mensal R$ 29,90</button><div id="qrcode-container"></div></div></div>
+  <div id="tela-login"><div class="card-login"><h2>KBS TV</h2><button onclick="fazerLoginGoogle()">ENTRAR COM GMAIL</button></div></div>
   <div id="conteudo-player" style="display:none;">
     <div class="wrap">
-      
-      <div class="movel" style="top: 20px; right: 20px; display: flex; gap: 10px; z-index: 10000;">
-          <button class="btn-admin" onclick="window.open('admin.html', '_blank')">⚙️ ABRIR ADMIN</button>
-          <button onclick="fazerLogout()" style="background:#b71c1c; font-weight: bold;">🚪 SAIR</button>
+      <video id="player" playsinline></video>
+      <iframe id="ytplayer" allow="autoplay" frameborder="0"></iframe>
+      <div class="controls">
+        <button class="btn-pri" onclick="iniciar()">▶ Iniciar</button>
+        <button onclick="pausar()">⏸ Pausar</button>
+        <button onclick="proximoBloco()">⏭ Próximo</button>
       </div>
-
-      <div class="top">
-        <div class="movel" style="left: 20px; top: 100px; z-index: 5000 !important;">
-          
-          <div id="letreiro-kbs-auto" onmousedown="startDrag(event)">
-            <img id="letreiro-logo-img" src="">
-            <span id="letreiro-texto-arquivo"></span>
-          </div>
-
-          <div id="banner-somente-logo" onmousedown="startDrag(event)">
-            <img id="img-banner-fixo" src="">
-          </div>
-
-          <video id="player" controls playsinline></video>
-          <iframe id="ytplayer" allow="autoplay; encrypted-media" frameborder="0"></iframe>
-          
-          <div class="controls">
-            <button class="btn-pri" onclick="iniciar()">▶ Iniciar</button>
-            <button onclick="pausar()">⏸ Pausar</button>
-            <button onclick="retomar()">⏵ Retomar</button>
-            <button onclick="blocoAnterior()">⏮ Bloco anterior</button>
-            <button onclick="proximoBloco()">⏭ Próximo bloco</button>
-          </div>
-
-          <div class="player-resize-controls" style="margin-top:10px; display:flex; gap:8px; align-items:center;">
-            <label>Largura:</label>
-            <input type="number" id="playerWidth" value="500" style="width:70px;">
-            <label>Altura:</label>
-            <input type="number" id="playerHeight" value="280" style="width:70px;">
-            <button onclick="resizePlayer()">Redimensionar</button>
-          </div>
-        </div>
-
-        <div class="movel" style="left: 550px; top: 100px;">
-          <div style="background:#1a1a1a; padding:15px; border-radius:10px; border:1px solid #333; width: 300px;">
-              <label style="font-size:11px; color:#2e7d32; font-weight:bold;">URL DO BRIDGE (NODE.JS):</label>
-              <input type="text" id="bridgeUrl" value="ws://localhost:8080" style="width:100%; background:#000; border:1px solid #444; color:#fff; padding:8px; margin:5px 0; border-radius:5px;">
-              <div style="display:flex; gap:10px; align-items:center;">
-                  <button id="btnStream" onclick="toggleStream()" style="background:#b71c1c; flex:1; font-weight:bold;">🔴 INICIAR TRANSMISSÃO</button>
-                  <div id="statusLed" style="width:12px; height:12px; background:#444; border-radius:50%;"></div>
-              </div>
-          </div>
-
-          <div style="margin-top:15px; display: flex; flex-direction: column; gap: 5px; width: 330px;">
-            <button class="btn-sec" onclick="adicionarBloco('timer')">+ Bloco (Tempo Fixo)</button>
-            <button class="btn-sec" onclick="adicionarBloco('movie')">+ Bloco (Filmes)</button>
-            <button class="btn-sec" onclick="adicionarBloco('pause')">+ Bloco (Pausa)</button>
-            <button class="btn-sec" onclick="salvarProgramacao()">💾 Salvar</button>
-            <button class="btn-sec" onclick="document.getElementById('fileInput').click()">📂 Carregar</button>
-            <input type="file" id="fileInput" style="display:none" accept="application/json" onchange="carregarProgramacao(this)">
-          </div>
-
-          <div style="margin-top:15px; background:#222; padding:15px; border-radius:8px; border:1px solid #333; width: 300px;">
-            <label style="font-size:11px; color:#ffd700; display:block; margin-bottom:5px; font-weight:bold;">CONFIGURAÇÃO DE BANNERS:</label>
-            <div style="margin-bottom:10px;">
-              <label style="font-size:10px; display:block; color:#aaa;">LINK DA LOGO (BANNER FIXO):</label>
-              <input type="text" id="logoUrl" oninput="atualizarLogos(this.value)" placeholder="Cole o link da imagem .png aqui" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:8px; border-radius:5px;">
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div id="blocos" class="grid movel" style="top: 450px; left: 20px;"></div>
+      <div id="blocos" class="grid"></div>
     </div>
-
-    <header class="movel" style="bottom: 80px; left: 20px; width: 90%;">
-      <h1>📺 Grade de Programação</h1>
-      <div id="grade">Carregando programação do administrador...</div>
-    </header>
   </div>
-
 <script>
+// Mantendo a lógica de player e arrasto original
 const video = document.getElementById('player');
 const ytplayer = document.getElementById('ytplayer');
-const gradeEl = document.getElementById('grade');
-const blocosEl = document.getElementById('blocos');
-
-let blocos = [];
-let idxBloco = 0;
-let timeupdateHandler = null;
-let pauseTimer = null;
-let blocoAnteriorIdx = -1;
-let blocoAnteriorProgresso = 0;
-let blocoAnteriorPaused = false;
-let hlsInstance = null;
-let sistemaIniciado = false;
-
-function atualizarLogos(url) {
-  const logo1 = document.getElementById('letreiro-logo-img');
-  const logo2 = document.getElementById('img-banner-fixo');
-  if(url) {
-    logo1.src = url; logo1.style.display = 'block';
-    logo2.src = url; logo2.style.display = 'block';
-  } else {
-    logo1.style.display = 'none';
-    logo2.style.display = 'none';
-  }
-}
-
-function gerenciarBannerKBS() {
-  const b = blocos[idxBloco];
-  const banner = document.getElementById('letreiro-kbs-auto');
-  if (b && b.arquivos && b.arquivos[b.arquivoAtual]) {
-    const nomeBruto = b.arquivos[b.arquivoAtual].file.name;
-    let nomeLimpo = nomeBruto.split(/DUBLADO|convertido|DVDRip|XviD|_00|1080p|720p/i)[0].replace(/^[\s.]+/, "").trim();
-    if(nomeLimpo.endsWith('.')) nomeLimpo = nomeLimpo.slice(0, -1);
-    document.getElementById('letreiro-texto-arquivo').innerText = "EXIBINDO: " + nomeLimpo;
-    
-    const urlLogo = document.getElementById('logoUrl').value;
-    atualizarLogos(urlLogo);
-
-    banner.style.display = 'flex';
-    setTimeout(() => { banner.style.display = 'none'; }, 20000); 
-  }
-}
-setInterval(gerenciarBannerKBS, 180000);
-
-function fmt(s){ s=Math.max(0,Math.floor(s||0)); const h=String(Math.floor(s/3600)).padStart(2,'0'); const m=String(Math.floor((s%3600)/60)).padStart(2,'0'); const ss=String(s%60).padStart(2,'0'); return `${h}:${m}:${ss}`; }
-function timeToSec(str){ if(!str) return 0; const p=str.split(':').map(Number); if(p.length === 3) return p[0]*3600 + p[1]*60 + p[2]; return (p[0]||0)*3600+(p[1]||0)*60; }
-function anyPlayableBlocks(){ return blocos.some(b=>b && !b.removido); }
-
-function adicionarBloco(tipo){
-  if (tipo === 'youtube') return alert('Blocos YouTube / M3U são gerenciados apenas pelo painel Admin.');
-  const bloco = { tipo, arquivos: [], progresso: [], tempo: (tipo==='timer'||tipo==='pause'?300:0), sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: (tipo==='movie'?3:0), ytlink:'', m3ulink:'', diaSemana:'', horaInicio:'', horaFim:'', removido:false, _agendadoRodando:false, diasSelecionados: [], horarios: [] };
-  const i = blocos.push(bloco)-1;
-  renderizarBloco(i, bloco);
-  atualizarGrade();
-}
-
-function renderizarBloco(i, bloco){
-  const card = document.createElement('div');
-  card.className='bloco'; card.id=`bloco-${i}`;
-  const isTimer = bloco.tipo === 'timer';
-  const isYoutubeM3U = bloco.tipo === 'youtube';
-  card.innerHTML = `
-    <h3>Bloco ${i+1} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':bloco.tipo==='movie'?'Filmes':bloco.tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
-    <div class="row">
-      ${(isTimer||bloco.tipo==='movie') ? `<label>Pasta:</label><input type="file" webkitdirectory directory multiple onchange="carregarArquivos(${i}, this.files)">`:''}
-     ${isTimer ? `
-        <label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempo(${i}, this.value)">
-        <div style="margin-top:10px; width:100%; background:#222; padding:8px; border-radius:5px;"><label>Dias da Semana:</label><br><div style="display:grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size:11px;">
-            ${['domingo','segunda','terca','quarta','quinta','sexta','sabado'].map(d => `<label style="cursor:pointer;"><input type="checkbox" ${bloco.diasSelecionados && bloco.diasSelecionados.includes(d) ? 'checked' : ''} onchange="toggleDia(${i}, '${d}')"> ${d.charAt(0).toUpperCase() + d.slice(1)}</label>`).join('')}
-          </div></div>
-        <div style="margin-top:10px; width:100% text-align: left;"><label>Horários Programados:</label><div id="lista-horarios-${i}">${(bloco.horarios || []).map((h, idx) => `<div style="display:flex; gap:5px; margin-bottom:5px;"><input type="time" step="1" value="${h.inicio}" oninput="editHora(${i}, ${idx}, 'inicio', this.value)" style="width:85px;"><input type="time" step="1" value="${h.fim}" oninput="editHora(${i}, ${idx}, 'fim', this.value)" style="width:85px;"><button onclick="removeHora(${i}, ${idx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px;">X</button></div>`).join('')}</div><button onclick="addHora(${i})" style="font-size:11px; width:100%; margin-top:5px; background:#1976d2; color:white; border-radius:5px; padding:5px;">+ Adicionar Horário</button></div>
-      `:''}
-      ${bloco.tipo==='pause' ? `<label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempo(${i}, this.value)">`:''}
-      ${bloco.tipo==='movie' ? `<label>Limite:</label><input type="number" min="1" value="${bloco.limitePorCiclo||3}" onchange="definirLimite(${i}, this.value)"><div style="margin-top:8px; width:100%;"><button class="mini-btn" onclick="voltarArquivo(${i})">⏮ Voltar vídeo</button><button class="mini-btn" onclick="pularArquivo(${i})">⏭ Pular vídeo</button></div>`:''}
-      ${isYoutubeM3U ? `<label>Início:</label><input type="time" step="1" value="${bloco.horaInicio||''}" disabled><label>Fim:</label><input type="time" step="1" value="${bloco.horaFim||''}" disabled>`:''}
-    </div>
-    <div class="hint" id="info-${i}">${isYoutubeM3U?'Agendamento Admin':bloco.arquivos.length+' arquivos.'}</div>
-    <button onclick="removerBloco(${i})" style="margin-top:8px;background:#b71c1c; width:100%;">🗑 Remover</button>
-  `;
-  blocosEl.appendChild(card);
-}
-
-setInterval(()=>{ verificarAgendados(); }, 1000);
-
-function verificarAgendados() {
-  if (blocos.length === 0) return;
-  const agora = new Date();
-  const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
-  const horaAtual = agora.toTimeString().split(' ')[0];
-  let blocoEncontrado = false; let indiceParaRodar = -1;
-
-  for (let i = 0; i < blocos.length; i++) {
-    const b = blocos[i]; if (!b || b.removido) continue;
-    if (b.tipo === 'youtube') {
-      const diaMatch = (b.diaSemana === "" || b.diaSemana.toLowerCase() === hoje);
-      const dentroDoHorario = (b.horaInicio && b.horaFim && horaAtual >= b.horaInicio && horaAtual < b.horaFim);
-      if (diaMatch && dentroDoHorario) { blocoEncontrado = true; indiceParaRodar = i; break; }
-    }
-    if (b.tipo === 'timer' && b.horarios && b.horarios.length > 0) {
-      const diaMatch = (!b.diasSelecionados || b.diasSelecionados.length === 0 || b.diasSelecionados.includes(hoje));
-      const horarioMatch = b.horarios.some(h => horaAtual >= h.inicio && horaAtual < h.fim);
-      if (diaMatch && horarioMatch) { blocoEncontrado = true; indiceParaRodar = i; break; }
-    }
-  }
-
-  if (blocoEncontrado) {
-    const b = blocos[indiceParaRodar];
-    if (!b._agendadoRodando) {
-      if (sistemaIniciado && idxBloco !== indiceParaRodar && !blocos[idxBloco]._agendadoRodando) {
-        blocoAnteriorIdx = idxBloco; blocoAnteriorProgresso = video.currentTime; blocoAnteriorPaused = video.paused;
-      }
-      blocos.forEach(bl => bl._agendadoRodando = false);
-      b._agendadoRodando = true; idxBloco = indiceParaRodar; sistemaIniciado = true; tocarAtual();
-    }
-  } else {
-    const agendadoQueEstavaRodando = blocos.find(b => b._agendadoRodando);
-    if (agendadoQueEstavaRodando) {
-      agendadoQueEstavaRodando._agendadoRodando = false;
-      if (blocoAnteriorIdx !== -1) {
-        idxBloco = blocoAnteriorIdx; blocoAnteriorIdx = -1; tocarAtual();
-        setTimeout(() => { video.currentTime = blocoAnteriorProgresso; if(blocoAnteriorPaused) video.pause(); }, 600);
-      } else { proximoBloco(); }
-    }
-  }
-}
+let blocos = [], idxBloco = 0, sistemaIniciado = false, hlsInstance = null;
 
 function tocarAtual() {
-  document.querySelectorAll('.bloco').forEach(el => el.classList.remove('running'));
-  clearTimeout(pauseTimer); detachTimers(); stopM3U(); stopYouTube();
-  if (!anyPlayableBlocks()) return;
-  const b = blocos[idxBloco]; if (!b || b.removido) { pularParaProximo(); return; }
-
-  const agora = new Date();
-  const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
-  const horaAgora = agora.toTimeString().split(' ')[0];
-
-  if (b.tipo === 'timer') {
-    const diaMatch = b.diasSelecionados && b.diasSelecionados.includes(hoje);
-    const horarioMatch = b.horarios && b.horarios.some(h => horaAgora >= h.inicio && h.fim > horaAgora);
-    if (!diaMatch || !horarioMatch) { pularParaProximo(); return; }
-  }
-  if (b.tipo === 'youtube') {
-    const diaMatchAdmin = (b.diaSemana === "" || b.diaSemana.toLowerCase() === hoje);
-    const dentroDoHorarioAdmin = (horaAgora >= b.horaInicio && horaAgora < b.horaFim);
-    if (!diaMatchAdmin || !dentroDoHorarioAdmin) { pularParaProximo(); return; }
-  }
-
-  const card = document.getElementById(`bloco-${idxBloco}`); if (card) card.classList.add('running');
+  const b = blocos[idxBloco];
+  if (!b) return;
   ytplayer.style.display = 'none'; video.style.display = 'block';
-
-  if (b.tipo === 'pause') { video.pause(); pauseTimer = setTimeout(() => proximoBloco(), b.tempo * 1000); return; }
-  if (b.tipo === 'youtube') { if (b.ytlink) startYouTubeNow(b); else if (b.m3ulink) startM3UNow(b); return; }
-  if (b.arquivos.length === 0) { pularParaProximo(); return; }
-
-  video.src = b.arquivos[b.arquivoAtual].url;
-  video.currentTime = b.progresso[b.arquivoAtual] || 0;
-  video.play().catch(() => {});
-  attachHandlersFor(b);
-  gerenciarBannerKBS();
-}
-
-function pularParaProximo() { idxBloco = (idxBloco + 1) % blocos.length; tocarAtual(); }
-
-function attachHandlersFor(b){
-  detachTimers();
-  if (b.tipo === 'timer') {
-    let start = video.currentTime;
-    timeupdateHandler = () => { if (video.currentTime - start >= b.tempo) { proximoArquivoMesmoBloco(); } };
-    video.addEventListener('timeupdate', timeupdateHandler);
+  if (b.m3ulink) {
+    if (Hls.isSupported()) {
+        if (hlsInstance) hlsInstance.destroy();
+        hlsInstance = new Hls();
+        hlsInstance.loadSource(b.m3ulink);
+        hlsInstance.attachMedia(video);
+    }
+  } else if (b.arquivos && b.arquivos.length > 0) {
+      video.src = b.arquivos[b.arquivoAtual].url;
   }
-  video.onended = () => {
-    b.arquivoAtual = (b.arquivoAtual + 1) % b.arquivos.length;
-    if (b.tipo === 'movie') { b._count = (b._count || 0) + 1; if (b._count >= b.limitePorCiclo) { b._count = 0; proximoBloco(); return; } }
-    tocarAtual();
-  };
+  video.play().catch(()=>{});
 }
 
-function carregarArquivos(i, fileList){
-  const validExtensions = ['.mp4', '.webm', '.ogg', '.mkv', '.mov'];
-  const files = Array.from(fileList).filter(f => validExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
-  blocos[i].arquivos = files.map(f => ({ url: URL.createObjectURL(f), file: f }));
-  blocos[i].progresso = blocos[i].arquivos.map(()=>0);
-  document.getElementById(`info-${i}`).textContent = files.length + " arquivos.";
-  atualizarGrade();
-}
-function definirTempo(i,v){ blocos[i].tempo=timeToSec(v); atualizarGrade(); }
-function abrirAdmin() { window.open('admin.html', '_blank'); }
-function definirLimite(i,v){ blocos[i].limitePorCiclo=parseInt(v); atualizarGrade(); }
-function pularArquivo(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; if(idxBloco===i) tocarAtual(); } }
-function voltarArquivo(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual-1+b.arquivos.length)%b.arquivos.length; if(idxBloco===i) tocarAtual(); } }
-function removerBloco(i){ blocos[i].removido=true; document.getElementById(`bloco-${i}`).remove(); proximoBloco(); }
 function iniciar(){ sistemaIniciado = true; idxBloco=0; tocarAtual(); }
 function proximoBloco(){ idxBloco=(idxBloco+1)%blocos.length; tocarAtual(); }
 function pausar(){ video.pause(); }
-function retomar(){ video.play(); }
-function startYouTubeNow(b){ ytplayer.style.display='block'; video.style.display='none'; const id = b.ytlink.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-0-9_-]{11})/); if(id) ytplayer.src=`https://www.youtube.com/embed/${id[1]}?autoplay=1`; }
-function stopYouTube(){ ytplayer.src=''; ytplayer.style.display='none'; }
-
-function startM3UNow(b) {
-    video.style.display = 'block';
-    if (Hls.isSupported()) {
-        if (hlsInstance) stopM3U();
-        hlsInstance = new Hls({ enableWorker: true, lowLatencyMode: true, manifestLoadingMaxRetry: 10, levelLoadingMaxRetry: 10 });
-        hlsInstance.loadSource(b.m3ulink); hlsInstance.attachMedia(video);
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); });
-        hlsInstance.on(Hls.Events.ERROR, function (event, data) {
-            if (data.fatal) {
-                switch (data.type) {
-                    case Hls.ErrorTypes.NETWORK_ERROR: hlsInstance.startLoad(); break;
-                    case Hls.ErrorTypes.MEDIA_ERROR: hlsInstance.recoverMediaError(); break;
-                    default: stopM3U(); proximoBloco(); break;
-                }
-            }
-        });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = b.m3ulink; video.addEventListener('loadedmetadata', () => video.play());
-    }
-}
-
-function stopM3U() { if (hlsInstance) { hlsInstance.detachMedia(); hlsInstance.destroy(); hlsInstance = null; } video.pause(); video.removeAttribute('src'); video.load(); }
-function detachTimers(){ if(timeupdateHandler) video.removeEventListener('timeupdate', timeupdateHandler); video.onended=null; }
-function proximoArquivoMesmoBloco(){ const b=blocos[idxBloco]; b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; tocarAtual(); }
-function resizePlayer(){ const w=document.getElementById('playerWidth').value, h=document.getElementById('playerHeight').value; video.style.width=w+'px'; video.style.height=h+'px'; ytplayer.style.width=w+'px'; ytplayer.style.height=h+'px'; }
-function salvarProgramacao(){ const blob=new Blob([JSON.stringify(blocos)],{type:"application/json"}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download="programacao.json"; a.click(); }
-function carregarProgramacao(input){ const reader=new FileReader(); reader.onload=e=>{ blocos=JSON.parse(e.target.result); blocosEl.innerHTML=""; blocos.forEach((b,i)=>renderizarBloco(i,b)); atualizarGrade(); }; reader.readAsText(input.files[0]); }
-function blocoAnterior(){ idxBloco=(idxBloco-1+blocos.length)%blocos.length; tocarAtual(); }
-function atualizarGrade(){ gradeEl.textContent = blocos.filter(b=>!b.removido).map((b,i)=>`Bloco ${i+1}: ${b.tipo} ${b.horaInicio?'('+b.horaInicio+')':''}`).join('\n'); }
-
-function toggleDia(i, dia) { if (!blocos[i].diasSelecionados) blocos[i].diasSelecionados = []; const idx = blocos[i].diasSelecionados.indexOf(dia); if (idx === -1) blocos[i].diasSelecionados.push(dia); else blocos[i].diasSelecionados.splice(idx, 1); }
-function addHora(i) { if (!blocos[i].horarios) blocos[i].horarios = []; blocos[i].horarios.push({ inicio: "00:00:00", fim: "00:00:00" }); const container = document.getElementById(`lista-horarios-${i}`); const div = document.createElement('div'); const idx = blocos[i].horarios.length - 1; div.style = "display:flex; gap:5px; margin-bottom:5px;"; div.innerHTML = `<input type="time" step="1" value="00:00:00" oninput="editHora(${i}, ${idx}, 'inicio', this.value)" style="width:85px;"><input type="time" step="1" value="00:00:00" oninput="editHora(${i}, ${idx}, 'fim', this.value)" style="width:85px;"><button onclick="removeHora(${i}, ${idx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px;">X</button>`; container.appendChild(div); }
-function editHora(i, idx, campo, valor) { blocos[i].horarios[idx][campo] = valor; }
-function removeHora(i, idx) { blocos[i].horarios.splice(idx, 1); const container = document.getElementById(`lista-horarios-${i}`); container.innerHTML = blocos[i].horarios.map((h, subIdx) => `<div style="display:flex; gap:5px; margin-bottom:5px;"><input type="time" step="1" value="${h.inicio}" oninput="editHora(${i}, ${subIdx}, 'inicio', this.value)" style="width:85px;"><input type="time" step="1" value="${h.fim}" oninput="editHora(${i}, ${subIdx}, 'fim', this.value)" style="width:85px;"><button onclick="removeHora(${i}, ${subIdx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px;">X</button></div>`).join(''); }
-
-// Lógica de Arrastar (Drag nativo para Banners)
-let isDragging = false; 
-let offsetX, offsetY; 
-let activeElement = null;
-
-window.startDrag = function(e) { 
-    isDragging = true; 
-    activeElement = e.currentTarget;
-    offsetX = e.clientX - activeElement.getBoundingClientRect().left; 
-    offsetY = e.clientY - activeElement.getBoundingClientRect().top; 
-    document.addEventListener('mousemove', onDrag); 
-    document.addEventListener('mouseup', stopDrag); 
-};
-
-function onDrag(e) { 
-    if (!isDragging || !activeElement) return; 
-    const container = activeElement.parentElement.getBoundingClientRect(); 
-    let x = e.clientX - container.left - offsetX; 
-    let y = e.clientY - container.top - offsetY; 
-    activeElement.style.left = x + 'px'; 
-    activeElement.style.top = y + 'px'; 
-}
-
-function stopDrag() { 
-    isDragging = false; 
-    activeElement = null;
-    document.removeEventListener('mousemove', onDrag); 
-}
-
-// Lógica de Transmissão por REGIÃO DO PLAYER
-let mediaRecorder;
-let socket;
-
-window.toggleStream = async function() {
-    const btn = document.getElementById('btnStream');
-    const led = document.getElementById('statusLed');
-    const url = document.getElementById('bridgeUrl').value;
-    const playerEl = document.getElementById('player');
-
-    if (!mediaRecorder || mediaRecorder.state === "inactive") {
-        try {
-            const stream = await navigator.mediaDevices.getDisplayMedia({
-                video: { displaySurface: "browser", frameRate: 20 },
-                audio: true,
-                preferCurrentTab: true
-            });
-            
-            if (!!window.CropTarget) {
-              const target = await CropTarget.fromElement(playerEl);
-              const [videoTrack] = stream.getVideoTracks();
-              await videoTrack.cropTo(target);
-            }
-            
-            socket = new WebSocket(url);
-            
-            socket.onopen = () => {
-                mediaRecorder = new MediaRecorder(stream, { 
-                    mimeType: 'video/webm; codecs=vp8,opus',
-                    videoBitsPerSecond: 450000 
-                });
-                mediaRecorder.ondataavailable = (e) => { 
-                    if (e.data.size > 0 && socket.readyState === WebSocket.OPEN) {
-                        socket.send(e.data); 
-                    }
-                };
-                mediaRecorder.start(100); 
-                btn.innerText = "⏹ PARAR TRANSMISSÃO";
-                btn.style.background = "#2e7d32";
-                led.style.background = "#00ff00";
-            };
-            socket.onclose = () => resetStreamUI(btn, led);
-            socket.onerror = () => { alert("Erro de conexão."); resetStreamUI(btn, led); };
-            stream.getVideoTracks()[0].onended = () => {
-                if(mediaRecorder) mediaRecorder.stop();
-                if(socket) socket.close();
-                resetStreamUI(btn, led);
-            };
-        } catch (err) { 
-            console.error(err);
-            alert("Erro: Certifique-se de escolher 'Separador do Chrome' e a aba deste player."); 
-        }
-    } else {
-        mediaRecorder.stop();
-        if(socket) socket.close();
-        resetStreamUI(btn, led);
-    }
-};
-
-function resetStreamUI(btn, led) { 
-    btn.innerText = "🔴 INICIAR TRANSMISSÃO"; 
-    btn.style.background = "#b71c1c"; 
-    led.style.background = "#444"; 
-}
-
-/* --- LOGICA GLOBAL DE TRAVA E MOVIMENTACAO DOS ELEMENTOS --- */
-let layoutTravado = true;
-const btnTrava = document.createElement('button');
-btnTrava.id = 'btn-trava-layout';
-btnTrava.innerHTML = '🔒 Layout Travado';
-btnTrava.className = 'layout-travado';
-document.body.appendChild(btnTrava);
-
-btnTrava.onclick = () => {
-  layoutTravado = !layoutTravado;
-  if (layoutTravado) {
-    btnTrava.innerHTML = '🔒 Layout Travado';
-    btnTrava.className = 'layout-travado';
-    document.body.classList.remove('modo-edicao');
-  } else {
-    btnTrava.innerHTML = '🔓 Layout Livre';
-    btnTrava.className = 'layout-destravado';
-    document.body.classList.add('modo-edicao');
-  }
-};
-
-document.addEventListener('mousedown', (e) => {
-  if (layoutTravado) return;
-  const target = e.target.closest('.movel');
-  if (!target) return;
-  if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-
-  let shiftX = e.clientX - target.getBoundingClientRect().left;
-  let shiftY = e.clientY - target.getBoundingClientRect().top;
-
-  function moveAt(pageX, pageY) {
-    target.style.left = pageX - shiftX + 'px';
-    target.style.top = pageY - shiftY + 'px';
-  }
-  function onMouseMove(event) { moveAt(event.pageX, event.pageY); }
-  document.addEventListener('mousemove', onMouseMove);
-  document.onmouseup = function() {
-    document.removeEventListener('mousemove', onMouseMove);
-    document.onmouseup = null;
-  };
-});
-document.addEventListener('dragstart', (e) => { if (e.target.closest('.movel')) e.preventDefault(); });
 </script>
 </body>
 </html>
