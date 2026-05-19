@@ -22,7 +22,7 @@
     position: relative;
   }
 
-  /* --- ESTILOS PARA MOVIMENTAÇÃO --- */
+  /* --- NOVOS ESTILOS PARA MOVIMENTAÇÃO --- */
   .movel {
     position: absolute !important;
     cursor: move;
@@ -287,7 +287,7 @@
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
 
-  // RESOLUÇÃO PARA OPERA GX: Usando método Pop-up com tratamento robusto para novos usuários
+  // LOGIN EXCLUSIVO VIA POP-UP DO GOOGLE
   window.fazerLoginGoogle = () => {
     signInWithPopup(auth, provider)
       .then((result) => {
@@ -309,10 +309,11 @@
       })
       .catch(err => {
         console.error(err);
-        alert("Erro ao conectar com Google. Verifique se o seu navegador não bloqueou a janela pop-up.");
+        alert("Erro ao conectar com Google. Verifique os bloqueadores do seu navegador.");
       });
   };
 
+  // FUNÇÃO DO TESTE DE 7 DIAS ÚNICO
   window.ativarTeste7Dias = () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -343,7 +344,6 @@
   onAuthStateChanged(auth, (user) => {
     if (user) {
       document.getElementById('tela-login').style.display = 'none';
-      
       onValue(ref(db, `usuarios/${user.uid}/config`), snap => {
         const config = snap.val() || { expiracao: 0, testeUtilizado: false };
         const agora = Date.now();
@@ -452,11 +452,11 @@
       </button>
 
       <button class="btn-plano-premium" onclick="gerarPix(29.90)">
-        <span class="nome">Plano Fluxo Mensal</span>
+        <span class="nome">Plano Mensal</span>
         <span class="preco">R$ 29,90</span>
       </button>
 
-      <button class="btn-plano-premium" onclick="gerarPix(230.90)">
+      <button class="btn-plano-premium destaque" onclick="gerarPix(230.90)">
         <span class="nome">Plano Semestral 🌟</span>
         <span class="preco">R$ 230,90</span>
       </button>
@@ -636,7 +636,7 @@ function renderizarBloco(i, bloco){
           </div></div>
         <div style="margin-top:10px; width:100% text-align: left;"><label>Horários Programados:</label><div id="lista-horarios-${i}">${(bloco.horarios || []).map((h, idx) => `<div style="display:flex; gap:5px; margin-bottom:5px;"><input type="time" step="1" value="${h.inicio}" oninput="editHora(${i}, ${idx}, 'inicio', this.value)" style="width:85px;"><input type="time" step="1" value="${h.fim}" oninput="editHora(${i}, ${idx}, 'fim', this.value)" style="width:85px;"><button onclick="removeHora(${i}, ${idx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px;">X</button></div>`).join('')}</div><button onclick="addHora(${i})" style="font-size:11px; width:100%; margin-top:5px; background:#1976d2; color:white; border-radius:5px; padding:5px;">+ Adicionar Horário</button></div>
       `:''}
-      ${bloco.tipo==='pause' ? `<label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempokeys(${i}, this.value)">`:''}
+      ${bloco.tipo==='pause' ? `<label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempo(${i}, this.value)">`:''}
       ${bloco.tipo==='movie' ? `<label>Limite:</label><input type="number" min="1" value="${bloco.limitePorCiclo||3}" onchange="definirLimite(${i}, this.value)"><div style="margin-top:8px; width:100%;"><button class="mini-btn" onclick="voltarArquivo(${i})">⏮ Voltar vídeo</button><button class="mini-btn" onclick="pularArquivo(${i})">⏭ Pular vídeo</button></div>`:''}
       ${isYoutubeM3U ? `<label>Início:</label><input type="time" step="1" value="${bloco.horaInicio||''}" disabled><label>Fim:</label><input type="time" step="1" value="${bloco.horaFim||''}" disabled>`:''}
     </div>
