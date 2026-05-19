@@ -934,5 +934,31 @@ document.addEventListener('mousedown', (e) => {
 });
 document.addEventListener('dragstart', (e) => { if (e.target.closest('.movel')) e.preventDefault(); });
 </script>
+  ... (todo o teu código original) ...
+
+<script>
+  // Script para eliminar forçadamente os controlos e a rodinha de carga
+  const player = document.getElementById('player');
+  
+  function limparPlayer() {
+    if (player) {
+      player.controls = false; // Remove os controlos nativos
+      // Remove o ícone de carregamento se existir
+      const shadow = player.shadowRoot;
+      if (shadow) {
+        const loading = shadow.querySelector('.media-loading-indicator');
+        if (loading) loading.style.display = 'none';
+      }
+    }
+  }
+
+  // Monitoriza o carregamento do vídeo a cada 500ms
+  setInterval(limparPlayer, 500);
+</script>
+
 </body>
+</html>
+  
+</body>
+  
 </html>
