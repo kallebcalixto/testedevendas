@@ -186,7 +186,7 @@
     border:1px solid #333; border-radius:8px; 
   }
 
-  /* REMOVE COMPLETAMENTE A RODINHA CINZA E AS BARRAS DURANTE AS TROCAS */
+  /* CORTE SECO PERFEITO: Ocultação absoluta da rodinha cinza de carregamento e das barras durante as trocas */
   video::-webkit-media-controls-start-playback-button { display: none !important; }
   video::-internal-media-controls-loading-indicator { display: none !important; }
   video::-webkit-media-controls-loading-indicator { display: none !important; }
@@ -291,7 +291,7 @@
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
 
-  // LOGIN EXCLUSIVO POR GMAIL VIA POP-UP MODERNO
+  // LOGIN EXCLUSIVO GMAIL POR POP-UP COMPATÍVEL COM OPERA GX
   window.fazerLoginGoogle = () => {
     signInWithPopup(auth, provider)
       .then((result) => {
@@ -313,11 +313,11 @@
       })
       .catch(err => {
         console.error(err);
-        alert("Erro ao conectar com Google. Verifique os bloqueadores de pop-up do navegador.");
+        alert("Erro ao conectar com Google. Verifique os bloqueadores de pop-up do seu navegador.");
       });
   };
 
-  // ATIVAÇÃO DOS 7 DIAS GRÁTIS ÚNICO
+  // SISTEMA DO TESTE GRÁTIS DE 7 DIAS ÚNICO POR CONTA
   window.ativarTeste7Dias = () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -336,7 +336,7 @@
         expiracao: seteDiasEmMilisegundos,
         testeUtilizado: true
       }).then(() => {
-        alert("Teste de 7 dias ativado com sucesso!");
+        alert("Teste de 7 dias ativado com sucesso! Aproveite o seu player.");
       }).catch(err => alert("Erro ao ativar teste: " + err.message));
     });
   };
