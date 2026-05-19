@@ -186,13 +186,14 @@
     border:1px solid #333; border-radius:8px; 
   }
 
-  /* CORTE SECO PERFEITO: Ocultação absoluta da rodinha cinza de carregamento e das barras durante as trocas */
+  /* BLOQUEIO ABSOLUTO DE ELEMENTOS DE INTERFACE E RODAS DE CARREGAMENTO DO NAVEGADOR */
   video::-webkit-media-controls-start-playback-button { display: none !important; }
   video::-internal-media-controls-loading-indicator { display: none !important; }
   video::-webkit-media-controls-loading-indicator { display: none !important; }
   video::-webkit-media-controls { display: none !important; }
   video::-webkit-media-controls-enclosure { display: none !important; }
   video::-webkit-media-controls-panel { display: none !important; }
+  video::--webkit-media-controls-play-button { display: none !important; }
 
   #player { object-fit: contain; display:block; }
   #ytplayer { display:none; }
@@ -291,7 +292,7 @@
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
 
-  // LOGIN EXCLUSIVO GMAIL POR POP-UP COMPATÍVEL COM OPERA GX
+  // NOVO PAINEL DE LOGIN EXCLUSIVO POR GMAIL
   window.fazerLoginGoogle = () => {
     signInWithPopup(auth, provider)
       .then((result) => {
@@ -313,11 +314,11 @@
       })
       .catch(err => {
         console.error(err);
-        alert("Erro ao conectar com Google. Verifique os bloqueadores de pop-up do seu navegador.");
+        alert("Erro ao conectar com Google. Verifique os bloqueadores ou permissões do seu navegador.");
       });
   };
 
-  // SISTEMA DO TESTE GRÁTIS DE 7 DIAS ÚNICO POR CONTA
+  // LOGICA DO TESTE GRÁTIS DE 7 DIAS ÚNICO
   window.ativarTeste7Dias = () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -754,6 +755,7 @@ function carregarArquivos(i, fileList){
   atualizarGrade();
 }
 function definirTempo(i,v){ blocos[i].tempo=timeToSec(v); atualizarGrade(); }
+function abrirAdmin() { window.open('admin.html', '_blank'); }
 function definirLimite(i,v){ blocos[i].limitePorCiclo=parseInt(v); atualizarGrade(); }
 function pularArquivo(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; if(idxBloco===i) tocarAtual(); } }
 function voltarArquivo(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual-1+b.arquivos.length)%b.arquivos.length; if(idxBloco===i) tocarAtual(); } }
