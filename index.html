@@ -168,11 +168,19 @@
     background: #000; display: flex; justify-content: center; align-items: center; z-index: 99999;
   }
   .card-login {
-    background: #1b1b1b; padding: 40px 30px; border-radius: 12px;
-    border: 1px solid #333; width: 340px; text-align: center;
+    background: #1b1b1b; padding: 30px; border-radius: 12px;
+    border: 1px solid #333; width: 320px; text-align: center;
   }
-  .card-login h2 { margin-bottom: 10px; color: #2e7d32; font-weight: 900; }
-  .card-login p { color: #888; font-size: 14px; margin-bottom: 25px; }
+  .card-login h2 { margin-bottom: 20px; color: #2e7d32; }
+  .card-login input {
+    width: 100%; padding: 12px; margin: 10px 0; background: #222;
+    border: 1px solid #444; color: #fff; border-radius: 6px; box-sizing: border-box;
+  }
+  .card-login button {
+    width: 100%; padding: 12px; background: #2e7d32; color: white;
+    border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px;
+  }
+  .card-login button:hover { background: #3e8d42; }
 
   header { padding:16px 20px; background:#1b1b1b; border-top:1px solid #2a2a2a; }
   header h1 { margin:0 0 6px 0; font-size:18px; }
@@ -186,7 +194,7 @@
     border:1px solid #333; border-radius:8px; 
   }
 
-  /* AJUSTE SOLICITADO: Ocultação total e limpa de controles e rodas de carregamento em trocas ao vivo */
+  /* AJUSTE SOLICITADO: Bloqueio total da rodinha cinza de carregamento e ocultação da barra para um corte seco perfeito ao vivo */
   video::-webkit-media-controls-start-playback-button { display: none !important; }
   video::-internal-media-controls-loading-indicator { display: none !important; }
   video::-webkit-media-controls-loading-indicator { display: none !important; }
@@ -271,8 +279,8 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-  import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBzzQg4fMWQm82aOu2xM2huVPvHeyitFxQ",
@@ -288,57 +296,28 @@
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
   const auth = getAuth(app);
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
 
-  // LOGIN REESCRITO EXCLUSIVO POR GMAIL VIA POP-UP COMPATÍVEL
-  window.fazerLoginGoogle = () => {
-    signInWithPopup(auth, provider)
-      .then((result) => {
-        if (result && result.user) {
-          const user = result.user;
-          document.getElementById('tela-login').style.display = 'none';
-          
-          const playerRef = ref(db, `usuarios/${user.uid}/player_m3u/0`);
-          get(playerRef).then((snapshot) => {
-            if (!snapshot.exists()) {
-              set(playerRef, {
-                dia: "segunda", inicio: "12:00", fim: "13:00",
-                m3u: "https://srv4.zcast.com.br/samircalixto/samircalixto/playlist.m3u8",
-                yt: "", timestamp: Date.now()
-              });
-            }
-          });
-        }
-      })
-      .catch(err => {
-        console.error(err);
-        alert("Erro ao conectar com Google. Verifique se as janelas pop-up estão liberadas.");
-      });
+  window.fazerLogin = () => {
+    const email = document.getElementById('email').value;
+    const pass = document.getElementById('pass').value;
+    signInWithEmailAndPassword(auth, email, pass).catch(err => alert("Erro: " + err.message));
   };
 
-  // LOGICA ADICIONADA DO TESTE DE 7 DIAS ÚNICO NO FIREBASE
-  window.ativarTeste7Dias = () => {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    const configRef = ref(db, `usuarios/${user.uid}/config`);
-    get(configRef).then((snapshot) => {
-      const config = snapshot.val() || {};
-      if (config.testeUtilizado) {
-        alert("Desculpe, este e-mail já utilizou o período de 7 dias de teste grátis.");
-        return;
-      }
-
-      const seteDiasEmMilisegundos = Date.now() + (7 * 24 * 60 * 60 * 1000);
-      
-      set(configRef, {
-        expiracao: seteDiasEmMilisegundos,
-        testeUtilizado: true
-      }).then(() => {
-        alert("Teste de 7 dias ativado com sucesso! Aproveite o seu player.");
-      }).catch(err => alert("Erro ao ativar teste: " + err.message));
-    });
+  window.fazerCadastro = () => {
+    const email = document.getElementById('email').value;
+    const pass = document.getElementById('pass').value;
+    if(!email || !pass) return alert("Preencha email e senha");
+    createUserWithEmailAndPassword(auth, email, pass)
+      .then((userCredential) => {
+        const user = userCredential.user;
+        const novaReferencia = ref(db, `usuarios/${user.uid}/player_m3u/0`);
+        set(novaReferencia, {
+          dia: "segunda", inicio: "12:00", fim: "13:00",
+          m3u: "https://srv4.zcast.com.br/samircalixto/samircalixto/playlist.m3u8",
+          yt: "", timestamp: Date.now()
+        }).then(() => alert("Cliente cadastrado!"));
+      })
+      .catch(err => alert("Erro ao cadastrar: " + err.message));
   };
 
   window.fazerLogout = () => {
@@ -349,16 +328,8 @@
     if (user) {
       document.getElementById('tela-login').style.display = 'none';
       onValue(ref(db, `usuarios/${user.uid}/config`), snap => {
-        const config = snap.val() || { expiracao: 0, testeUtilizado: false };
+        const config = snap.val() || { expiracao: 0 };
         const agora = Date.now();
-        
-        const btnTeste = document.getElementById('btn-teste-7dias');
-        if (config.testeUtilizado) {
-          btnTeste.style.display = 'none';
-        } else {
-          btnTeste.style.display = 'flex';
-        }
-
         if (config.expiracao < agora) {
           document.getElementById('tela-pagamento').style.display = 'flex';
           document.getElementById('conteudo-player').style.display = 'none';
@@ -372,7 +343,6 @@
     } else {
       document.getElementById('tela-login').style.display = 'flex';
       document.getElementById('conteudo-player').style.display = 'none';
-      document.getElementById('tela-pagamento').style.display = 'none';
     }
   });
 
@@ -448,13 +418,8 @@
     <div class="painel-premium">
       <div class="status-badge">Sinal Interrompido</div>
       <h2>Acesso Expirado</h2>
-      <p>Sua licença KBS TV chegou ao fim. Selecione um plano abaixo ou ative seu teste gratuito para liberar o player:</p>
+      <p>Sua licença KBS TV chegou ao fim. Selecione um plano abaixo para liberar o player agora mesmo:</p>
       
-      <button id="btn-teste-7dias" class="btn-plano-premium destaque" onclick="ativarTeste7Dias()" style="background: linear-gradient(145deg, #1b5e20, #2e7d32); border-color: var(--gold);">
-        <span class="nome">🎁 Ativar 7 Dias de Teste</span>
-        <span class="preco">GRÁTIS</span>
-      </button>
-
       <button class="btn-plano-premium" onclick="gerarPix(29.90)">
         <span class="nome">Plano Mensal</span>
         <span class="preco">R$ 29,90</span>
@@ -478,13 +443,11 @@
 
   <div id="tela-login">
     <div class="card-login">
-      <h2>KBS TV</h2>
-      <p>Área de Acesso do Cliente</p>
-      
-      <button onclick="fazerLoginGoogle()" style="background:#db4437; padding: 16px; font-size: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(219,68,55,0.2); transition: all 0.2s; cursor: pointer; border: none; color: white;">
-        <svg style="width:20px; height:20px; fill:white;" viewBox="0 0 24 24"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 6.133 1 1.18 5.925 1.18 12s4.953 11 11.06 11c6.373 0 10.596-4.477 10.596-10.75 0-.725-.078-1.275-.173-1.615H12.24z"/></svg>
-        ENTRAR COM O GMAIL
-      </button>
+      <h2>KBS TV - ACESSO</h2>
+      <input type="email" id="email" placeholder="E-mail">
+      <input type="password" id="pass" placeholder="Senha">
+      <button onclick="fazerLogin()">ENTRAR NO PLAYER</button>
+      <button onclick="fazerCadastro()" style="background:#1976d2; margin-top: 5px;">CADASTRAR NOVO CLIENTE</button>
     </div>
   </div>
 
@@ -762,7 +725,7 @@ function iniciar(){ sistemaIniciado = true; idxBloco=0; tocarAtual(); }
 function proximoBloco(){ idxBloco=(idxBloco+1)%blocos.length; tocarAtual(); }
 function pausar(){ video.pause(); }
 function retomar(){ video.play(); }
-function startYouTubeNow(b){ ytplayer.style.display='block'; video.style.display='none'; const id = b.ytlink.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-0-9_-]{11})/); if(id) ytplayer.src=`https://www.youtube.com/embed/${id[1]}?autoplay=1`; }
+function startYouTubeNow(b){ ytplayer.style.display='block'; video.style.display='none'; const id = b.ytlink.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-z0-9_-]{11})/); if(id) ytplayer.src=`https://www.youtube.com/embed/${id[1]}?autoplay=1`; }
 function stopYouTube(){ ytplayer.src=''; ytplayer.style.display='none'; }
 
 function startM3UNow(b) {
