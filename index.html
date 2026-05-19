@@ -268,7 +268,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-  import { getAuth, onAuthStateChanged, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBzzQg4fMWQm82aOu2xM2huVPvHeyitFxQ",
@@ -285,32 +285,33 @@
   const db = getDatabase(app);
   const auth = getAuth(app);
   const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
 
+  // RESOLUÇÃO PARA OPERA GX: Usando método Pop-up com tratamento robusto para novos usuários
   window.fazerLoginGoogle = () => {
-    signInWithRedirect(auth, provider).catch(err => alert("Erro no redirecionamento: " + err.message));
+    signInWithPopup(auth, provider)
+      .then((result) => {
+        if (result && result.user) {
+          const user = result.user;
+          document.getElementById('tela-login').style.display = 'none';
+          
+          const playerRef = ref(db, `usuarios/${user.uid}/player_m3u/0`);
+          get(playerRef).then((snapshot) => {
+            if (!snapshot.exists()) {
+              set(playerRef, {
+                dia: "segunda", inicio: "12:00", fim: "13:00",
+                m3u: "https://srv4.zcast.com.br/samircalixto/samircalixto/playlist.m3u8",
+                yt: "", timestamp: Date.now()
+              });
+            }
+          });
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Erro ao conectar com Google. Verifique se o seu navegador não bloqueou a janela pop-up.");
+      });
   };
-
-  getRedirectResult(auth)
-    .then((result) => {
-      if (result && result.user) {
-        const user = result.user;
-        document.getElementById('tela-login').style.display = 'none';
-        
-        const playerRef = ref(db, `usuarios/${user.uid}/player_m3u/0`);
-        get(playerRef).then((snapshot) => {
-          if (!snapshot.exists()) {
-            set(playerRef, {
-              dia: "segunda", inicio: "12:00", fim: "13:00",
-              m3u: "https://srv4.zcast.com.br/samircalixto/samircalixto/playlist.m3u8",
-              yt: "", timestamp: Date.now()
-            });
-          }
-        });
-      }
-    })
-    .catch((err) => {
-      console.error("Erro ao processar retorno do Google:", err);
-    });
 
   window.ativarTeste7Dias = () => {
     const user = auth.currentUser;
@@ -476,7 +477,7 @@
       <h2>KBS TV</h2>
       <p>Área de Acesso do Cliente</p>
       
-      <button onclick="fazerLoginGoogle()" style="background:#db4437; padding: 16px; font-size: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(219,68,55,0.2); transition: all 0.2s;">
+      <button onclick="fazerLoginGoogle()" style="background:#db4437; padding: 16px; font-size: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(219,68,55,0.2); transition: all 0.2s; cursor: pointer; border: none; color: white;">
         <svg style="width:20px; height:20px; fill:white;" viewBox="0 0 24 24"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 6.133 1 1.18 5.925 1.18 12s4.953 11 11.06 11c6.373 0 10.596-4.477 10.596-10.75 0-.725-.078-1.275-.173-1.615H12.24z"/></svg>
         ENTRAR COM O GMAIL
       </button>
