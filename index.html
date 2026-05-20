@@ -462,7 +462,7 @@
         <span class="preco">R$ 230,90</span>
       </button>
 
-      <button class="btn-plano-premium" onclick="gerarPix(349.90)">
+      <button class="btn-plano-premium" onclick="gerarPix(1.00)">
         <span class="nome">Plano Anual</span>
         <span class="preco">R$ 349,90</span>
       </button>
@@ -692,15 +692,15 @@ function verificarAgendados() {
 }
 
 function tocarAtual() {
-  document.querySelectorAll('.bloco').forEach(el => el.classList.remove('running'));
-  clearTimeout(pauseTimer); detachTimers(); stopM3U(); stopYouTube();
   if (!anyPlayableBlocks()) return;
-  const b = blocos[idxBloco]; if (!b || b.removido) { pularParaProximo(); return; }
+  const b = blocos[idxBloco]; 
+  if (!b || b.removido) { pularParaProximo(); return; }
 
   const agora = new Date();
   const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
   const horaAgora = agora.toTimeString().split(' ')[0];
 
+  // 1. VALIDAÇÃO TOTALMENTE EM MEMÓRIA (Não limpa nada e não mexe na tela ainda)
   if (b.tipo === 'timer') {
     const diaMatch = b.diasSelecionados && b.diasSelecionados.includes(hoje);
     const horarioMatch = b.horarios && b.horarios.some(h => horaAgora >= h.inicio && h.fim > horaAgora);
@@ -712,21 +712,45 @@ function tocarAtual() {
     if (!diaMatchAdmin || !dentroDoHorarioAdmin) { pularParaProximo(); return; }
   }
 
-  const card = document.getElementById(`bloco-${idxBloco}`); if (card) card.classList.add('running');
-  ytplayer.style.display = 'none'; video.style.display = 'block';
+  // 2. PASSOU NAS VALIDAÇÕES? Agora sim o bloco é real. Paramos o player antigo com segurança.
+  document.querySelectorAll('.bloco').forEach(el => el.classList.remove('running'));
+  clearTimeout(pauseTimer); 
+  detachTimers(); 
+  
+  // Só interrompe o YouTube/M3U se o novo bloco NÃO for do tipo youtube (evita parar o stream se ele continuar ativo)
+  if (b.tipo !== 'youtube') {
+    stopM3U(); 
+    stopYouTube();
+    ytplayer.style.display = 'none'; 
+    video.style.display = 'block';
+  }
+
+  const card = document.getElementById(`bloco-${idxBloco}`); 
+  if (card) card.classList.add('running');
 
   if (b.tipo === 'pause') { video.pause(); pauseTimer = setTimeout(() => proximoBloco(), b.tempo * 1000); return; }
   if (b.tipo === 'youtube') { if (b.ytlink) startYouTubeNow(b); else if (b.m3ulink) startM3UNow(b); return; }
   if (b.arquivos.length === 0) { pularParaProximo(); return; }
 
-  video.src = b.arquivos[b.arquivoAtual].url;
+  // 3. EVITA RECARREGAR O VÍDEO SE JÁ FOR O MESMO (Acaba com qualquer engasgo ou tela preta)
+  const novaUrl = b.arquivos[b.arquivoAtual].url;
+  if (video.src !== novaUrl) {
+    video.src = novaUrl;
+  }
+  
   video.currentTime = b.progresso[b.arquivoAtual] || 0;
   video.play().catch(() => {});
   attachHandlersFor(b);
   gerenciarBannerKBS();
 }
 
-function pularParaProximo() { idxBloco = (idxBloco + 1) % blocos.length; tocarAtual(); }
+function pularParaProximo() { 
+  idxBloco = (idxBloco + 1) % blocos.length; 
+  // O setTimeout de 0ms joga a execução para o próximo ciclo de renderização, limpando o bug visual
+  setTimeout(() => {
+    tocarAtual(); 
+  }, 0);
+}
 
 function attachHandlersFor(b){
   detachTimers();
@@ -741,7 +765,6 @@ function attachHandlersFor(b){
     tocarAtual();
   };
 }
-
 function carregarArquivos(i, fileList){
   const validExtensions = ['.mp4', '.webm', '.ogg', '.mkv', '.mov'];
   const files = Array.from(fileList).filter(f => validExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
