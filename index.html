@@ -184,6 +184,7 @@
     width:500px; height:280px; 
     background:#000 !important;
     border:1px solid #333; border-radius:8px; 
+    transition: opacity 0.15s ease-in-out; /* Transição suave de opacidade */
   }
 
   video::-webkit-media-controls-start-playback-button { display: none !important; }
@@ -679,9 +680,23 @@ function verificarAgendados() {
     if (agendadoQueEstavaRodando) {
       agendadoQueEstavaRodando._agendadoRodando = false;
       if (blocoAnteriorIdx !== -1) {
-        idxBloco = blocoAnteriorIdx; blocoAnteriorIdx = -1; tocarAtual();
-        setTimeout(() => { video.currentTime = blocoAnteriorProgresso; if(blocoAnteriorPaused) video.pause(); }, 600);
-      } else { window.proximoBloco(); }
+        idxBloco = blocoAnteriorIdx; 
+        blocoAnteriorIdx = -1; 
+        
+        // ESCONDE O PLAYER IMEDIATAMENTE (CORREÇÃO ANTI-FLASH)
+        video.style.opacity = '0';
+        video.style.backgroundColor = '#000000';
+        
+        tocarAtual();
+        
+        // Força a injeção do tempo antigo sem delay e sem renderizar o frame zero
+        if (blocos[idxBloco] && blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
+          video.currentTime = blocoAnteriorProgresso;
+          if (blocoAnteriorPaused) video.pause();
+        }
+      } else { 
+        window.proximoBloco(); 
+      }
     }
   }
 }
@@ -726,7 +741,7 @@ function tocarAtual() {
   if (b.tipo === 'youtube') { if (b.ytlink) startYouTubeNow(b); else if (b.m3ulink) startM3UNow(b); return; }
   if (b.arquivos.length === 0) { pularParaProximo(); return; }
 
-  // 3. BLACKOUT REFORÇADO
+  // 3. ATIVAÇÃO DO BLACKOUT (TELA TOTALMENTE PRETA ATÉ CARREGAR O SEGUNDO EXATO)
   video.style.opacity = '0';
   video.style.backgroundColor = '#000000';
 
@@ -735,9 +750,12 @@ function tocarAtual() {
     video.src = novaUrl;
   }
   
-  video.currentTime = b.progresso[b.arquivoAtual] || 0;
+  // Define o ponto do vídeo
+  const tempoAlvo = b.progresso[b.arquivoAtual] || 0;
+  video.currentTime = tempoAlvo;
   
-  if ((b.progresso[b.arquivoAtual] || 0) === 0) {
+  // Se o vídeo for começar do zero absoluto (0s), ele não precisa buscar nada, pode mostrar na hora
+  if (tempoAlvo === 0) {
     video.style.opacity = '1';
   }
 
@@ -754,8 +772,16 @@ function pularParaProximo() {
 function attachHandlersFor(b){
   detachTimers();
   
+  // EVENTO CHAVE: Só remove a tela preta (opacity=1) quando o vídeo terminar de dar o salto temporal correto!
   video.onseeked = () => {
     video.style.opacity = '1';
+  };
+
+  // Evento extra caso o vídeo já esteja pronto e estável
+  video.onplaying = () => {
+    if (video.currentTime > 0) {
+      video.style.opacity = '1';
+    }
   };
 
   if (b.tipo === 'timer') {
