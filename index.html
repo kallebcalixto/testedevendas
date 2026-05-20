@@ -700,7 +700,7 @@ function tocarAtual() {
   const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
   const horaAgora = agora.toTimeString().split(' ')[0];
 
-  // 1. VALIDAÇÃO TOTALMENTE EM MEMÓRIA (Não limpa nada e não mexe na tela ainda)
+  // 1. VALIDAÇÃO EM MEMÓRIA
   if (b.tipo === 'timer') {
     const diaMatch = b.diasSelecionados && b.diasSelecionados.includes(hoje);
     const horarioMatch = b.horarios && b.horarios.some(h => horaAgora >= h.inicio && h.fim > horaAgora);
@@ -712,12 +712,11 @@ function tocarAtual() {
     if (!diaMatchAdmin || !dentroDoHorarioAdmin) { pularParaProximo(); return; }
   }
 
-  // 2. PASSOU NAS VALIDAÇÕES? Agora sim o bloco é real. Paramos o player antigo com segurança.
+  // 2. SE PASSOU, PREPARA A INTERFACE
   document.querySelectorAll('.bloco').forEach(el => el.classList.remove('running'));
   clearTimeout(pauseTimer); 
   detachTimers(); 
   
-  // Só interrompe o YouTube/M3U se o novo bloco NÃO for do tipo youtube (evita parar o stream se ele continuar ativo)
   if (b.tipo !== 'youtube') {
     stopM3U(); 
     stopYouTube();
@@ -732,24 +731,47 @@ function tocarAtual() {
   if (b.tipo === 'youtube') { if (b.ytlink) startYouTubeNow(b); else if (b.m3ulink) startM3UNow(b); return; }
   if (b.arquivos.length === 0) { pularParaProximo(); return; }
 
-  // 3. EVITA RECARREGAR O VÍDEO SE JÁ FOR O MESMO (Acaba com qualquer engasgo ou tela preta)
+  // 3. O SEGREDO DO BLACKOUT: Deixa o vídeo invisível antes de mudar o SRC ou o Tempo
+  video.style.opacity = '0';
+  video.style.backgroundColor = '#000000'; // Garante fundo preto no elemento do player
+
   const novaUrl = b.arquivos[b.arquivoAtual].url;
   if (video.src !== novaUrl) {
     video.src = novaUrl;
   }
   
+  // Aplica o tempo de onde parou
   video.currentTime = b.progresso[b.arquivoAtual] || 0;
+  
+  // Se o vídeo já ia começar do zero (0), não precisa esperar o "seeked", pode mostrar direto
+  if ((b.progresso[b.arquivoAtual] || 0) === 0) {
+    video.style.opacity = '1';
+  }
+
   video.play().catch(() => {});
   attachHandlersFor(b);
   gerenciarBannerKBS();
 }
 
-function pularParaProximo() { 
-  idxBloco = (idxBloco + 1) % blocos.length; 
-  // O setTimeout de 0ms joga a execução para o próximo ciclo de renderização, limpando o bug visual
-  setTimeout(() => {
-    tocarAtual(); 
-  }, 0);
+function attachHandlersFor(b){
+  detachTimers();
+  
+  // EVENTO DE SEGURANÇA: Só mostra o vídeo quando ele terminar de ir para o tempo correto de onde parou
+  video.onseeked = () => {
+    video.style.opacity = '1';
+  };
+
+  if (b.tipo === 'timer') {
+    let start = video.currentTime;
+    timeupdateHandler = () => { if (video.currentTime - start >= b.tempo) { proximoArquivoMesmoBloco(); } };
+    video.addEventListener('timeupdate', timeupdateHandler);
+  }
+  
+  video.onended = () => {
+    b.arquivoAtual = (b.arquivoAtual + 1) % b.arquivos.length;
+    if (b.tipo === 'movie') { b._count = (b._count || 0) + 1; if (b._count >= b.limitePorCiclo) { b._count = 0; proximoBloco(); return; } }
+    tocarAtual();
+  };
 }
 
 function attachHandlersFor(b){
