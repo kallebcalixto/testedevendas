@@ -184,7 +184,7 @@
     width:500px; height:280px; 
     background:#000 !important;
     border:1px solid #333; border-radius:8px; 
-    transition: opacity 0.15s ease-in-out; /* Transição suave de opacidade */
+    transition: opacity 0.15s ease-in-out;
   }
 
   video::-webkit-media-controls-start-playback-button { display: none !important; }
@@ -361,6 +361,9 @@
           document.getElementById('conteudo-player').style.display = 'block';
           const blocosRef = ref(db, `usuarios/${user.uid}/player_m3u`);
           iniciarLeituraFirebase(blocosRef);
+          
+          // CARREGA A PROGRAMAÇÃO LOCAL AUTOMATICAMENTE DO FIREBASE APÓS LOGIN
+          carregarProgramacaoFirebaseAutomatica(user.uid);
         }
       });
     } else {
@@ -433,6 +436,34 @@
           if (idxBloco >= blocos.length) idxBloco = 0;
       });
   };
+
+  // FUNÇÃO AUTOMÁTICA PARA SALVAR LISTA LOCAL DIRETO NO FIREBASE DO CLIENTE
+  window.salvarProgramacao = function() {
+    const user = auth.currentUser;
+    if (!user) return alert("Faça login para salvar!");
+
+    // Filtra para salvar apenas os blocos locais (filmes, tempos fixos, pausas)
+    const blocosLocaisParaSalvar = blocos.filter(b => b.tipo !== 'youtube');
+
+    set(ref(db, `usuarios/${user.uid}/programacao_local`), blocosLocaisParaSalvar)
+      .then(() => alert("Programação da sua máquina salva e sincronizada na nuvem com sucesso!"))
+      .catch(err => alert("Erro ao salvar: " + err.message));
+  };
+
+  // FUNÇÃO QUE PUXA OS BLOCOS AUTOMATICAMENTE AO ABRIR O PROGRAMA
+  function carregarProgramacaoFirebaseAutomatica(uid) {
+    get(ref(db, `usuarios/${uid}/programacao_local`)).then((snapshot) => {
+      if (snapshot.exists()) {
+        const salvos = snapshot.val();
+        let blocosAgendadosAtuais = blocos.filter(b => b.tipo === 'youtube');
+        
+        blocos = [...salvos, ...blocosAgendadosAtuais];
+        blocosEl.innerHTML = '';
+        blocos.forEach((b, i) => renderizarBloco(i, b));
+        atualizarGrade();
+      }
+    });
+  }
 </script>
 </head>
 
@@ -526,8 +557,8 @@
               <label style="font-size:11px; color:#2e7d32; font-weight:bold;">URL DO BRIDGE (NODE.JS):</label>
               <input type="text" id="bridgeUrl" value="ws://localhost:8080" style="width:100%; background:#000; border:1px solid #444; color:#fff; padding:8px; margin:5px 0; border-radius:5px;">
               <div style="display:flex; gap:10px; align-items:center;">
-                  <button id="btnStream" onclick="toggleStream()" style="background:#b71c1c; flex:1; font-weight:bold;">🔴 INICIAR TRANSMISSÃO</button>
-                  <div id="statusLed" style="width:12px; height:12px; background:#444; border-radius:50%;"></div>
+                <button id="btnStream" onclick="toggleStream()" style="background:#b71c1c; flex:1; font-weight:bold;">🔴 INICIAR TRANSMISSÃO</button>
+                <div id="statusLed" style="width:12px; height:12px; background:#444; border-radius:50%;"></div>
               </div>
           </div>
 
@@ -535,9 +566,7 @@
             <button class="btn-sec" onclick="adicionarBloco('timer')">+ Bloco (Tempo Fixo)</button>
             <button class="btn-sec" onclick="adicionarBloco('movie')">+ Bloco (Filmes)</button>
             <button class="btn-sec" onclick="adicionarBloco('pause')">+ Bloco (Pausa)</button>
-            <button class="btn-sec" onclick="salvarProgramacao()">💾 Salvar</button>
-            <button class="btn-sec" onclick="document.getElementById('fileInput').click()">📂 Carregar</button>
-            <input type="file" id="fileInput" style="display:none" accept="application/json" onchange="carregarProgramacao(this)">
+            <button class="btn-sec" onclick="salvarProgramacao()">💾 Salvar na Nuvem</button>
           </div>
 
           <div style="margin-top:15px; background:#222; padding:15px; border-radius:8px; border:1px solid #333; width: 300px;">
@@ -549,7 +578,7 @@
           </div>
         </div>
       </div>
-      
+
       <div id="blocos" class="grid movel" style="top: 450px; left: 20px;"></div>
     </div>
 
@@ -564,7 +593,6 @@ const video = document.getElementById('player');
 const ytplayer = document.getElementById('ytplayer');
 const gradeEl = document.getElementById('grade');
 const blocosEl = document.getElementById('blocos');
-
 let blocos = [];
 let idxBloco = 0;
 let timeupdateHandler = null;
@@ -579,8 +607,10 @@ function atualizarLogos(url) {
   const logo1 = document.getElementById('letreiro-logo-img');
   const logo2 = document.getElementById('img-banner-fixo');
   if(url) {
-    logo1.src = url; logo1.style.display = 'block';
-    logo2.src = url; logo2.style.display = 'block';
+    logo1.src = url;
+    logo1.style.display = 'block';
+    logo2.src = url;
+    logo2.style.display = 'block';
   } else {
     logo1.style.display = 'none';
     logo2.style.display = 'none';
@@ -589,29 +619,50 @@ function atualizarLogos(url) {
 
 function gerenciarBannerKBS() {
   const b = blocos[idxBloco];
-  const banner = document.getElementById('letreiro-kbs-auto');
   if (b && b.arquivos && b.arquivos[b.arquivoAtual]) {
-    const nomeBruto = b.arquivos[b.arquivoAtual].file.name;
+    const banner = document.getElementById('letreiro-kbs-auto');
+    const nomeBruto = b.arquivos[b.arquivoAtual].nome;
+    if(!nomeBruto) return;
     let nomeLimpo = nomeBruto.split(/DUBLADO|convertido|DVDRip|XviD|_00|1080p|720p/i)[0].replace(/^[\s.]+/, "").trim();
     if(nomeLimpo.endsWith('.')) nomeLimpo = nomeLimpo.slice(0, -1);
     document.getElementById('letreiro-texto-arquivo').innerText = "EXIBINDO: " + nomeLimpo;
-    
     const urlLogo = document.getElementById('logoUrl').value;
     atualizarLogos(urlLogo);
-
     banner.style.display = 'flex';
-    setTimeout(() => { banner.style.display = 'none'; }, 20000); 
+    setTimeout(() => { banner.style.display = 'none'; }, 20000);
   }
 }
 setInterval(gerenciarBannerKBS, 180000);
 
-function fmt(s){ s=Math.max(0,Math.floor(s||0)); const h=String(Math.floor(s/3600)).padStart(2,'0'); const m=String(Math.floor((s%3600)/60)).padStart(2,'0'); const ss=String(s%60).padStart(2,'0'); return `${h}:${m}:${ss}`; }
-function timeToSec(str){ if(!str) return 0; const p=str.split(':').map(Number); if(p.length === 3) return p[0]*3600 + p[1]*60 + p[2]; return (p[0]||0)*3600+(p[1]||0)*60; }
-function anyPlayableBlocks(){ return blocos.some(b=>b && !b.removido); }
+function fmt(s){
+  s=Math.max(0,Math.floor(s||0));
+  const h=String(Math.floor(s/3600)).padStart(2,'0');
+  const m=String(Math.floor((s%3600)/60)).padStart(2,'0');
+  const ss=String(s%60).padStart(2,'0');
+  return `${h}:${m}:${ss}`;
+}
+
+function timeToSec(str){
+  if(!str) return 0;
+  const p=str.split(':').map(Number);
+  if(p.length === 3) return p[0]*3600 + p[1]*60 + p[2];
+  return (p[0]||0)*3600+(p[1]||0)*60;
+}
+
+function anyPlayableBlocks(){
+  return blocos.some(b=>b && !b.removido);
+}
 
 window.adicionarBloco = function(tipo){
   if (tipo === 'youtube') return alert('Blocos YouTube / M3U são gerenciados apenas pelo painel Admin.');
-  const bloco = { tipo, arquivos: [], progresso: [], tempo: (tipo==='timer'||tipo==='pause'?300:0), sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: (tipo==='movie'?3:0), ytlink:'', m3ulink:'', diaSemana:'', horaInicio:'', horaFim:'', removido:false, _agendadoRodando:false, diasSelecionados: [], horarios: [] };
+  const bloco = {
+    tipo, arquivos: [], progresso: [],
+    tempo: (tipo==='timer'||tipo==='pause'?300:0),
+    sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0,
+    limitePorCiclo: (tipo==='movie'?3:0),
+    ytlink:'', m3ulink:'', diaSemana:'', horaInicio:'', horaFim:'',
+    removido:false, _agendadoRodando:false, diasSelecionados: [], horarios: []
+  };
   const i = blocos.push(bloco)-1;
   renderizarBloco(i, bloco);
   atualizarGrade();
@@ -619,345 +670,256 @@ window.adicionarBloco = function(tipo){
 
 function renderizarBloco(i, bloco){
   const card = document.createElement('div');
-  card.className='bloco'; card.id=`bloco-${i}`;
+  card.className='bloco';
+  card.id=`bloco-${i}`;
   const isTimer = bloco.tipo === 'timer';
   const isYoutubeM3U = bloco.tipo === 'youtube';
+  
+  if(isYoutubeM3U) return; // Escondido da grade local
+
   card.innerHTML = `
-    <h3>Bloco ${i+1} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':bloco.tipo==='movie'?'Filmes':bloco.tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
-    <div class="row">
-      ${(isTimer||bloco.tipo==='movie') ? `<label>Pasta:</label><input type="file" webkitdirectory directory multiple onchange="carregarArquivos(${i}, this.files)">`:''}
-     ${isTimer ? `
-        <label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempo(${i}, this.value)">
-        <div style="margin-top:10px; width:100%; background:#222; padding:8px; border-radius:5px;"><label>Dias da Semana:</label><br><div style="display:grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size:11px;">
-            ${['domingo','segunda','terca','quarta','quinta','sexta','sabado'].map(d => `<label style="cursor:pointer;"><input type="checkbox" ${bloco.diasSelecionados && bloco.diasSelecionados.includes(d) ? 'checked' : ''} onchange="toggleDia(${i}, '${d}')"> ${d.charAt(0).toUpperCase() + d.slice(1)}</label>`).join('')}
-          </div></div>
-        <div style="margin-top:10px; width:100% text-align: left;"><label>Horários Programados:</label><div id="lista-horarios-${i}">${(bloco.horarios || []).map((h, idx) => `<div style="display:flex; gap:5px; margin-bottom:5px;"><input type="time" step="1" value="${h.inicio}" oninput="editHora(${i}, ${idx}, 'inicio', this.value)" style="width:85px;"><input type="time" step="1" value="${h.fim}" oninput="editHora(${i}, ${idx}, 'fim', this.value)" style="width:85px;"><button onclick="removeHora(${i}, ${idx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px;">X</button></div>`).join('')}</div><button onclick="addHora(${i})" style="font-size:11px; width:100%; margin-top:5px; background:#1976d2; color:white; border-radius:5px; padding:5px;">+ Adicionar Horário</button></div>
-      `:''}
-      ${bloco.tipo==='pause' ? `<label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempo(${i}, this.value)">`:''}
-      ${bloco.tipo==='movie' ? `<label>Limite:</label><input type="number" min="1" value="${bloco.limitePorCiclo||3}" onchange="definirLimite(${i}, this.value)"><div style="margin-top:8px; width:100%;"><button class="mini-btn" onclick="voltarArquivo(${i})">⏮ Voltar vídeo</button><button class="mini-btn" onclick="pularArquivo(${i})">⏭ Pular vídeo</button></div>`:''}
-      ${isYoutubeM3U ? `<label>Início:</label><input type="time" step="1" value="${bloco.horaInicio||''}" disabled><label>Fim:</label><input type="time" step="1" value="${bloco.horaFim||''}" disabled>`:''}
+    <h3>${bloco.tipo === 'movie' ? '🎬 Bloco Filmes' : bloco.tipo === 'pause' ? '⏸ Bloco Pausa' : '⏱ Tempo Fixo'}</h3>
+    <div style="margin-bottom:8px;">
+      <label>Arquivos de Vídeo (.mp4):</label>
+      <input type="text" placeholder="Nome do arquivo (ex: filme.mp4)" id="input-add-file-${i}" style="width:70%; background:#000; padding:4px; border:1px solid #444; color:#fff; border-radius:4px;">
+      <button onclick="adicionarVideoManual(${i})" style="padding:4px 8px; font-size:12px;">+</button>
+      <div id="lista-arquivos-${i}" style="margin-top:5px; font-size:11px; max-height:80px; overflow-y:auto; color:#aaa;"></div>
     </div>
-    <div class="hint" id="info-${i}">${isYoutubeM3U?'Agendamento Admin':bloco.arquivos.length+' arquivos.'}</div>
-    <button onclick="removerBloco(${i})" style="margin-top:8px;background:#b71c1c; width:100%;">🗑 Remover</button>
+    ${isTimer ? `
+      <div class="row">
+        <label>Duração:</label>
+        <input type="text" value="${fmt(bloco.tempo)}" placeholder="00:00:00" onchange="alterarTempoBloco(${i}, this.value)" style="width:80px; background:#000; text-align:center; color:#fff; border:1px solid #444; padding:4px; border-radius:4px;">
+      </div>
+    ` : ''}
+    ${bloco.tipo === 'movie' ? `
+      <div class="row">
+        <label>Vídeos por ciclo:</label>
+        <input type="number" value="${bloco.limitePorCiclo || 3}" onchange="blocos(${i}).limitePorCiclo = parseInt(this.value); atualizarGrade();" style="width:50px; background:#000; color:#fff; border:1px solid #444; padding:4px; border-radius:4px;">
+      </div>
+    ` : ''}
+    <div style="margin-top:10px; display:flex; justify-content:space-between;">
+      <button class="mini-btn" onclick="removerBloco(${i})" style="background:#b71c1c;">Excluir</button>
+    </div>
   `;
   blocosEl.appendChild(card);
+  atualizarListaArquivosDOM(i);
 }
 
-setInterval(()=>{ verificarAgendados(); }, 1000);
+window.adicionarVideoManual = function(i) {
+  const input = document.getElementById(`input-add-file-${i}`);
+  const nome = input.value.trim();
+  if(!nome) return;
+  
+  blocos[i].arquivos.push({ nome: nome });
+  blocos[i].progresso.push(0);
+  input.value = '';
+  atualizarListaArquivosDOM(i);
+  atualizarGrade();
+};
 
-function verificarAgendados() {
-  if (blocos.length === 0) return;
-  const agora = new Date();
-  const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
-  const horaAtual = agora.toTimeString().split(' ')[0];
-  let blocoEncontrado = false; let indiceParaRodar = -1;
+function atualizarListaArquivosDOM(i) {
+  const container = document.getElementById(`lista-arquivos-${i}`);
+  if(!container) return;
+  container.innerHTML = '';
+  blocos[i].arquivos.forEach((arq, idx) => {
+    container.innerHTML += `<div>🎞️ ${idx+1}. ${arq.nome}</div>`;
+  });
+}
 
-  for (let i = 0; i < blocos.length; i++) {
-    const b = blocos[i]; if (!b || b.removido) continue;
-    if (b.tipo === 'youtube') {
-      const diaMatch = (b.diaSemana === "" || b.diaSemana.toLowerCase() === hoje);
-      const dentroDoHorario = (b.horaInicio && b.horaFim && horaAtual >= b.horaInicio && horaAtual < b.horaFim);
-      if (diaMatch && dentroDoHorario) { blocoEncontrado = true; indiceParaRodar = i; break; }
+window.alterarTempoBloco = function(i, val) {
+  blocos[i].tempo = timeToSec(val);
+  atualizarGrade();
+};
+
+window.removerBloco = function(i){
+  blocos[i].removido = true;
+  document.getElementById(`bloco-${i}`).remove();
+  atualizarGrade();
+};
+
+function atualizarGrade(){
+  gradeEl.innerHTML = '';
+  let txt = '';
+  blocos.forEach((b,i)=>{
+    if(b.removido) return;
+    if(b.tipo === 'youtube') {
+      txt += `🔹 [ADMIN AGENDADO] Início: ${b.horaInicio} | Fim: ${b.horaFim} (Link: ${b.ytlink || b.m3ulink})\n`;
+    } else {
+      txt += `🔸 Bloco ${i} [${b.tipo.toUpperCase()}] - ${b.arquivos.length} vídeos adicionados`;
+      if(b.tipo==='timer') txt += ` | Duração Fixa: ${fmt(b.tempo)}`;
+      txt += '\n';
     }
-    if (b.tipo === 'timer' && b.horarios && b.horarios.length > 0) {
-      const diaMatch = (!b.diasSelecionados || b.diasSelecionados.length === 0 || b.diasSelecionados.includes(hoje));
-      const horarioMatch = b.horarios.some(h => horaAtual >= h.inicio && horaAtual < h.fim);
-      if (diaMatch && horarioMatch) { blocoEncontrado = true; indiceParaRodar = i; break; }
-    }
+  });
+  gradeEl.innerHTML = txt || 'Nenhum bloco configurado na grade local.';
+}
+
+// --- ENGINE REPRODUTORA DO PLAYER ---
+function tocarElemento() {
+  if(!anyPlayableBlocks()) return;
+  
+  const b = blocos[idxBloco];
+  
+  if(!b || b.removido) {
+    proximoBloco();
+    return;
   }
 
-  if (blocoEncontrado) {
-    const b = blocos[indiceParaRodar];
-    if (!b._agendadoRodando) {
-      if (sistemaIniciado && idxBloco !== indiceParaRodar && !blocos[idxBloco]._agendadoRodando) {
-        blocoAnteriorIdx = idxBloco; blocoAnteriorProgresso = video.currentTime; blocoAnteriorPaused = video.paused;
+  // Se o bloco atual for agendado (Admin)
+  if (b.tipo === 'youtube') {
+    destruirHls();
+    video.style.display = 'none';
+    ytplayer.style.display = 'block';
+    
+    if(b.m3ulink) {
+      ytplayer.style.display = 'none';
+      video.style.display = 'block';
+      if (Hls.isSupported()) {
+        hlsInstance = new Hls();
+        hlsInstance.loadSource(b.m3ulink);
+        hlsInstance.attachMedia(video);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(()=>{}); });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = b.m3ulink;
+        video.play().catch(()=>{});
       }
-      blocos.forEach(bl => bl._agendadoRodando = false);
-      b._agendadoRodando = true; idxBloco = indiceParaRodar; sistemaIniciado = true; tocarAtual();
+    } else {
+      let embed = b.ytlink;
+      if(embed.includes('watch?v=')) embed = embed.split('v=')[1].split('&')[0];
+      ytplayer.src = `https://www.youtube.com/embed/${embed}?autoplay=1&controls=1`;
+    }
+    
+    document.querySelectorAll('.bloco').forEach(el=>el.classList.remove('running'));
+    return;
+  }
+
+  // Se o bloco for mídias locais (Filmes, Tempo Fixo ou Pausa)
+  if (b.arquivos.length === 0) {
+    proximoBloco();
+    return;
+  }
+
+  destruirHls();
+  ytplayer.style.display = 'none';
+  video.style.display = 'block';
+
+  const arquivo = b.arquivos[b.arquivoAtual];
+  
+  // O SEGREDO DO MINI-SERVIDOR PORTÁTIL: CHAMA DIRETO DA PASTA DO CLIENTE PELO SERVER
+  video.src = `http://localhost:8080/midias/${encodeURIComponent(arquivo.nome)}`;
+  
+  video.currentTime = b.progresso[b.arquivoAtual] || 0;
+  
+  document.querySelectorAll('.bloco').forEach(el=>el.classList.remove('running'));
+  const card = document.getElementById(`bloco-${idxBloco}`);
+  if(card) card.classList.add('running');
+
+  video.play().then(() => {
+    gerenciarBannerKBS();
+  }).catch(err => {
+    console.log("Aguardando interação inicial...");
+  });
+
+  if(b.tipo === 'timer' && b.sessaoRestante <= 0) {
+    b.sessaoRestante = b.tempo;
+  }
+
+  // Remove ouvintes antigos para não duplicar loops
+  if(timeupdateHandler) video.removeEventListener('timeupdate', timeupdateHandler);
+  
+  timeupdateHandler = () => {
+    b.progresso[b.arquivoAtual] = video.currentTime;
+    
+    if(b.tipo === 'timer') {
+      b.sessaoRestante -= 0.25; 
+      if(b.sessaoRestante <= 0) {
+        b.sessaoRestante = 0;
+        proximoBloco();
+      }
+    }
+  };
+  
+  video.addEventListener('timeupdate', timeupdateHandler);
+  video.onended = () => {
+    b.progresso[b.arquivoAtual] = 0;
+    b.arquivoAtual = (b.arquivoAtual + 1) % b.arquivos.length;
+    tocarElemento();
+  };
+}
+
+function destruirHls() {
+  if(hlsInstance) {
+    hlsInstance.destroy();
+    hlsInstance = null;
+  }
+}
+
+window.iniciar = function() {
+  sistemaIniciado = true;
+  tocarElemento();
+};
+window.pausar = function() { video.pause(); };
+window.retomar = function() { video.play().catch(()=>{}); };
+
+window.proximoBloco = function() {
+  if(blocos.length === 0) return;
+  idxBloco = (idxBloco + 1) % blocos.length;
+  tocarElemento();
+};
+
+window.blocoAnterior = function() {
+  if(blocos.length === 0) return;
+  idxBloco = (idxBloco - 1 + blocos.length) % blocos.length;
+  tocarElemento();
+};
+
+// --- MONITORAMENTO EM TEMPO REAL DE CONFLITOS DE HORÁRIOS ADMIN ---
+setInterval(() => {
+  if(!sistemaIniciado) return;
+
+  const agora = new Date();
+  const diaSemanaAtual = ["domingo","segunda","terca","quarta","quinta","sexta","sabado"][agora.getDay()];
+  const horaMinAtual = `${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`;
+
+  let blocoAgendadoParaRodar = -1;
+
+  blocos.forEach((b, idx) => {
+    if(b.tipo === 'youtube' && b.diaSemana === diaSemanaAtual) {
+      if(horaMinAtual >= b.horaInicio && horaMinAtual < b.horaFim) {
+        blocoAgendadoParaRodar = idx;
+      }
+    }
+  });
+
+  if(blocoAgendadoParaRodar !== -1) {
+    if(idxBloco !== blocoAgendadoParaRodar) {
+      if(blocos[idxBloco].tipo !== 'youtube') {
+        blocoAnteriorIdx = idxBloco;
+        blocoAnteriorProgresso = video.currentTime;
+        blocoAnteriorPaused = video.paused;
+      }
+      idxBloco = blocoAgendadoParaRodar;
+      tocarElemento();
     }
   } else {
-    const agendadoQueEstavaRodando = blocos.find(b => b._agendadoRodando);
-    if (agendadoQueEstavaRodando) {
-      agendadoQueEstavaRodando._agendadoRodando = false;
-      if (blocoAnteriorIdx !== -1) {
-        idxBloco = blocoAnteriorIdx; 
-        blocoAnteriorIdx = -1; 
-        
-        // ESCONDE O PLAYER IMEDIATAMENTE (CORREÇÃO ANTI-FLASH)
-        video.style.opacity = '0';
-        video.style.backgroundColor = '#000000';
-        
-        tocarAtual();
-        
-        // Força a injeção do tempo antigo sem delay e sem renderizar o frame zero
-        if (blocos[idxBloco] && blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
-          video.currentTime = blocoAnteriorProgresso;
-          if (blocoAnteriorPaused) video.pause();
-        }
-      } else { 
-        window.proximoBloco(); 
+    if(blocos[idxBloco] && blocos[idxBloco].tipo === 'youtube') {
+      if(blocoAnteriorIdx !== -1 && blocos[blocoAnteriorIdx] && !blocos[blocoAnteriorIdx].removido) {
+        idxBloco = blocoAnteriorIdx;
+        blocoAnteriorIdx = -1;
+        tocarElemento();
+        video.currentTime = blocoAnteriorProgresso;
+        if(blocoAnteriorPaused) video.pause();
+      } else {
+        proximoBloco();
       }
     }
   }
-}
+}, 5000);
 
-function tocarAtual() {
-  if (!anyPlayableBlocks()) return;
-  const b = blocos[idxBloco]; 
-  if (!b || b.removido) { pularParaProximo(); return; }
-
-  const agora = new Date();
-  const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
-  const horaAgora = agora.toTimeString().split(' ')[0];
-
-  // 1. VALIDAÇÃO EM MEMÓRIA
-  if (b.tipo === 'timer') {
-    const diaMatch = b.diasSelecionados && b.diasSelecionados.includes(hoje);
-    const horarioMatch = b.horarios && b.horarios.some(h => horaAgora >= h.inicio && h.fim > horaAgora);
-    if (!diaMatch || !horarioMatch) { pularParaProximo(); return; }
-  }
-  if (b.tipo === 'youtube') {
-    const diaMatchAdmin = (b.diaSemana === "" || b.diaSemana.toLowerCase() === hoje);
-    const dentroDoHorarioAdmin = (horaAgora >= b.horaInicio && horaAgora < b.horaFim);
-    if (!diaMatchAdmin || !dentroDoHorarioAdmin) { pularParaProximo(); return; }
-  }
-
-  // 2. SE PASSOU, PREPARA A INTERFACE
-  document.querySelectorAll('.bloco').forEach(el => el.classList.remove('running'));
-  clearTimeout(pauseTimer); 
-  detachTimers(); 
-  
-  if (b.tipo !== 'youtube') {
-    stopM3U(); 
-    stopYouTube();
-    ytplayer.style.display = 'none'; 
-    video.style.display = 'block';
-  }
-
-  const card = document.getElementById(`bloco-${idxBloco}`); 
-  if (card) card.classList.add('running');
-
-  if (b.tipo === 'pause') { video.pause(); pauseTimer = setTimeout(() => window.proximoBloco(), b.tempo * 1000); return; }
-  if (b.tipo === 'youtube') { if (b.ytlink) startYouTubeNow(b); else if (b.m3ulink) startM3UNow(b); return; }
-  if (b.arquivos.length === 0) { pularParaProximo(); return; }
-
-  // 3. ATIVAÇÃO DO BLACKOUT (TELA TOTALMENTE PRETA ATÉ CARREGAR O SEGUNDO EXATO)
-  video.style.opacity = '0';
-  video.style.backgroundColor = '#000000';
-
-  const novaUrl = b.arquivos[b.arquivoAtual].url;
-  if (video.src !== novaUrl) {
-    video.src = novaUrl;
-  }
-  
-  // Define o ponto do vídeo
-  const tempoAlvo = b.progresso[b.arquivoAtual] || 0;
-  video.currentTime = tempoAlvo;
-  
-  // Se o vídeo for começar do zero absoluto (0s), ele não precisa buscar nada, pode mostrar na hora
-  if (tempoAlvo === 0) {
-    video.style.opacity = '1';
-  }
-
-  video.play().catch(() => {});
-  attachHandlersFor(b);
-  gerenciarBannerKBS();
-}
-
-function pularParaProximo() {
-  idxBloco = (idxBloco + 1) % blocos.length;
-  setTimeout(() => { tocarAtual(); }, 0);
-}
-
-function attachHandlersFor(b){
-  detachTimers();
-  
-  // EVENTO CHAVE: Só remove a tela preta (opacity=1) quando o vídeo terminar de dar o salto temporal correto!
-  video.onseeked = () => {
-    video.style.opacity = '1';
-  };
-
-  // Evento extra caso o vídeo já esteja pronto e estável
-  video.onplaying = () => {
-    if (video.currentTime > 0) {
-      video.style.opacity = '1';
-    }
-  };
-
-  if (b.tipo === 'timer') {
-    let start = video.currentTime;
-    timeupdateHandler = () => { if (video.currentTime - start >= b.tempo) { proximoArquivoMesmoBloco(); } };
-    video.addEventListener('timeupdate', timeupdateHandler);
-  }
-  
-  video.onended = () => {
-    b.arquivoAtual = (b.arquivoAtual + 1) % b.arquivos.length;
-    if (b.tipo === 'movie') { b._count = (b._count || 0) + 1; if (b._count >= b.limitePorCiclo) { b._count = 0; window.proximoBloco(); return; } }
-    tocarAtual();
-  };
-}
-
-window.carregarArquivos = function(i, fileList){
-  const validExtensions = ['.mp4', '.webm', '.ogg', '.mkv', '.mov'];
-  const files = Array.from(fileList).filter(f => validExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
-  blocos[i].arquivos = files.map(f => ({ url: URL.createObjectURL(f), file: f }));
-  blocos[i].progresso = blocos[i].arquivos.map(()=>0);
-  document.getElementById(`info-${i}`).textContent = files.length + " arquivos.";
-  atualizarGrade();
-}
-window.definirTempo = function(i,v){ blocos[i].tempo=timeToSec(v); atualizarGrade(); }
-window.definirLimite = function(i,v){ blocos[i].limitePorCiclo=parseInt(v); atualizarGrade(); }
-window.pularArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; if(idxBloco===i) tocarAtual(); } }
-window.voltarArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual-1+b.arquivos.length)%b.arquivos.length; if(idxBloco===i) tocarAtual(); } }
-window.removerBloco = function(i){ blocos[i].removido=true; document.getElementById(`bloco-${i}`).remove(); window.proximoBloco(); }
-
-window.iniciar = function(){ sistemaIniciado = true; idxBloco=0; tocarAtual(); }
-window.proximoBloco = function(){ idxBloco=(idxBloco+1)%blocos.length; tocarAtual(); }
-window.pausar = function(){ video.pause(); }
-window.retomar = function(){ video.play(); }
-
-function startYouTubeNow(b){ ytplayer.style.display='block'; video.style.display='none'; const id = b.ytlink.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-z0-9_-]{11})/); if(id) ytplayer.src=`https://www.youtube.com/embed/${id[1]}?autoplay=1`; }
-function stopYouTube(){ ytplayer.src=''; ytplayer.style.display='none'; }
-
-function startM3UNow(b) {
-    video.style.display = 'block';
-    if (Hls.isSupported()) {
-        if (hlsInstance) stopM3U();
-        hlsInstance = new Hls({ enableWorker: true, lowLatencyMode: true, manifestLoadingMaxRetry: 10, levelLoadingMaxRetry: 10 });
-        hlsInstance.loadSource(b.m3ulink); hlsInstance.attachMedia(video);
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); });
-        hlsInstance.on(Hls.Events.ERROR, function (event, data) {
-            if (data.fatal) {
-                switch (data.type) {
-                    case Hls.ErrorTypes.NETWORK_ERROR: hlsInstance.startLoad(); break;
-                    case Hls.ErrorTypes.MEDIA_ERROR: hlsInstance.recoverMediaError(); break;
-                    default: stopM3U(); window.proximoBloco(); break;
-                }
-            }
-        });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = b.m3ulink; video.addEventListener('loadedmetadata', () => video.play());
-    }
-}
-
-function stopM3U() { if (hlsInstance) { hlsInstance.detachMedia(); hlsInstance.destroy(); hlsInstance = null; } video.pause(); video.removeAttribute('src'); video.load(); }
-function detachTimers(){ if(timeupdateHandler) video.removeEventListener('timeupdate', timeupdateHandler); video.onended=null; }
-function proximoArquivoMesmoBloco(){ const b=blocos[idxBloco]; b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; tocarAtual(); }
-window.resizePlayer = function(){ const w=document.getElementById('playerWidth').value, h=document.getElementById('playerHeight').value; video.style.width=w+'px'; video.style.height=h+'px'; ytplayer.style.width=w+'px'; ytplayer.style.height=h+'px'; }
-window.salvarProgramacao = function(){ const blob=new Blob([JSON.stringify(blocos)],{type:"application/json"}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download="programacao.json"; a.click(); }
-window.carregarProgramacao = function(input){ const reader=new FileReader(); reader.onload=e=>{ blocos=JSON.parse(e.target.result); blocosEl.innerHTML=""; blocos.forEach((b,i)=>renderizarBloco(i,b)); atualizarGrade(); }; reader.readAsText(input.files[0]); }
-window.blocoAnterior = function(){ idxBloco=(idxBloco-1+blocos.length)%blocos.length; tocarAtual(); }
-function atualizarGrade(){ gradeEl.textContent = blocos.filter(b=>!b.removido).map((b,i)=>`Bloco ${i+1}: ${b.tipo} ${b.horaInicio?'('+b.horaInicio+')':''}`).join('\n'); }
-
-window.toggleDia = function(i, dia) { if (!blocos[i].diasSelecionados) blocos[i].diasSelecionados = []; const idx = blocos[i].diasSelecionados.indexOf(dia); if (idx === -1) blocos[i].diasSelecionados.push(dia); else blocos[i].diasSelecionados.splice(idx, 1); }
-window.addHora = function(i) { if (!blocos[i].horarios) blocos[i].horarios = []; blocos[i].horarios.push({ inicio: "00:00:00", fim: "00:00:00" }); const container = document.getElementById(`lista-horarios-${i}`); const div = document.createElement('div'); const idx = blocos[i].horarios.length - 1; div.style = "display:flex; gap:5px; margin-bottom:5px;"; div.innerHTML = `<input type="time" step="1" value="00:00:00" oninput="editHora(${i}, ${idx}, 'inicio', this.value)" style="width:85px;"><input type="time" step="1" value="00:00:00" oninput="editHora(${i}, ${idx}, 'fim', this.value)" style="width:85px;"><button onclick="removeHora(${i}, ${idx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px;">X</button>`; container.appendChild(div); }
-window.editHora = function(i, idx, campo, valor) { blocos[i].horarios[idx][campo] = valor; }
-window.removeHora = function(i, idx) { blocos[i].horarios.splice(idx, 1); const container = document.getElementById(`lista-horarios-${i}`); container.innerHTML = blocos[i].horarios.map((h, subIdx) => `<div style="display:flex; gap:5px; margin-bottom:5px;"><input type="time" step="1" value="${h.inicio}" oninput="editHora(${i}, ${subIdx}, 'inicio', this.value)" style="width:85px;"><input type="time" step="1" value="${h.fim}" oninput="editHora(${i}, ${subIdx}, 'fim', this.value)" style="width:85px;"><button onclick="removeHora(${i}, ${subIdx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px;">X</button></div>`).join(''); }
-
-// Lógica de Arrastar (Drag nativo para Banners)
-let isDragging = false; 
-let offsetX, offsetY; 
-let activeElement = null;
-
-window.startDrag = function(e) { 
-    isDragging = true; 
-    activeElement = e.currentTarget;
-    offsetX = e.clientX - activeElement.getBoundingClientRect().left; 
-    offsetY = e.clientY - activeElement.getBoundingClientRect().top; 
-    document.addEventListener('mousemove', onDrag); 
-    document.addEventListener('mouseup', stopDrag); 
-};
-
-function onDrag(e) { 
-    if (!isDragging || !activeElement) return; 
-    const container = activeElement.parentElement.getBoundingClientRect(); 
-    let x = e.clientX - container.left - offsetX; 
-    let y = e.clientY - container.top - offsetY; 
-    activeElement.style.left = x + 'px'; 
-    activeElement.style.top = y + 'px'; 
-}
-
-function stopDrag() { 
-    isDragging = false; 
-    activeElement = null;
-    document.removeEventListener('mousemove', onDrag); 
-}
-
-// Lógica de Transmissão por REGIÃO DO PLAYER
-let mediaRecorder;
-let socket;
-
-window.toggleStream = async function() {
-    const btn = document.getElementById('btnStream');
-    const led = document.getElementById('statusLed');
-    const url = document.getElementById('bridgeUrl').value;
-    const playerEl = document.getElementById('player');
-
-    if (!mediaRecorder || mediaRecorder.state === "inactive") {
-        try {
-            const stream = await navigator.mediaDevices.getDisplayMedia({
-                video: { displaySurface: "browser", frameRate: 20 },
-                audio: true,
-                preferCurrentTab: true
-            });
-            
-            if (!!window.CropTarget) {
-              const target = await CropTarget.fromElement(playerEl);
-              const [videoTrack] = stream.getVideoTracks();
-              await videoTrack.cropTo(target);
-            }
-            
-            socket = new WebSocket(url);
-            
-            socket.onopen = () => {
-                mediaRecorder = new MediaRecorder(stream, { 
-                    mimeType: 'video/webm; codecs=vp8,opus',
-                    videoBitsPerSecond: 450000 
-                });
-                mediaRecorder.ondataavailable = (e) => { 
-                    if (e.data.size > 0 && socket.readyState === WebSocket.OPEN) {
-                        socket.send(e.data); 
-                    }
-                };
-                mediaRecorder.start(100); 
-                btn.innerText = "⏹ PARAR TRANSMISSÃO";
-                btn.style.background = "#2e7d32";
-                led.style.background = "#00ff00";
-            };
-            socket.onclose = () => resetStreamUI(btn, led);
-            socket.onerror = () => { alert("Erro de conexão."); resetStreamUI(btn, led); };
-            stream.getVideoTracks()[0].onended = () => {
-                if(mediaRecorder) mediaRecorder.stop();
-                if(socket) socket.close();
-                resetStreamUI(btn, led);
-            };
-        } catch (err) { 
-            console.error(err);
-            alert("Erro: Certifique-se de escolher 'Separador do Chrome' e a aba deste player."); 
-        }
-    } else {
-        mediaRecorder.stop();
-        if(socket) socket.close();
-        resetStreamUI(btn, led);
-    }
-};
-
-function resetStreamUI(btn, led) { 
-    btn.innerText = "🔴 INICIAR TRANSMISSÃO"; 
-    btn.style.background = "#b71c1c"; 
-    led.style.background = "#444"; 
-}
-
-/* --- LOGICA GLOBAL DE TRAVA E MOVIMENTACAO DOS ELEMENTOS --- */
+// --- SISTEMA COMPLETO DE MOVIMENTAÇÃO DE LAYOUT ---
 let layoutTravado = true;
-const btnTrava = document.createElement('button');
-btnTrava.id = 'btn-trava-layout';
-btnTrava.innerHTML = '🔒 Layout Travado';
-btnTrava.className = 'layout-travado';
-document.body.appendChild(btnTrava);
-
-btnTrava.onclick = () => {
+window.toggleTravaLayout = function() {
   layoutTravado = !layoutTravado;
+  const btnTrava = document.getElementById('btn-trava-layout');
   if (layoutTravado) {
     btnTrava.innerHTML = '🔒 Layout Travado';
     btnTrava.className = 'layout-travado';
@@ -992,20 +954,6 @@ document.addEventListener('mousedown', (e) => {
 document.addEventListener('dragstart', (e) => { if (e.target.closest('.movel')) e.preventDefault(); });
 </script>
 
-<script>
-  const player = document.getElementById('player');
-  
-  function limparPlayer() {
-    if (player) {
-      player.controls = false; 
-      const shadow = player.shadowRoot;
-      if (shadow) {
-        const loading = shadow.querySelector('.media-loading-indicator');
-        if (loading) loading.style.display = 'none';
-      }
-    }
-  }
-  setInterval(limparPlayer, 500);
-</script>
+<div id="btn-trava-layout" class="layout-travado" onclick="toggleTravaLayout()">🔒 Layout Travado</div>
 </body>
 </html>
