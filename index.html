@@ -954,6 +954,45 @@ document.addEventListener('dragstart', (e) => { if (e.target.closest('.movel')) 
     }
   }
 </script>
+  <script>
+// Força o salvamento na memória automática sempre que clicas no botão Salvar
+const botaoSalvar Original = window.salvarProgramacao;
+window.salvarProgramacao = function() {
+  if (typeof blocos !== 'undefined' && blocos.length > 0) {
+    localStorage.setItem('kbs_programacao', JSON.stringify(blocos));
+  }
+  if (typeof botaoSalvarOriginal === 'function') {
+    botaoSalvarOriginal();
+  } else {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(blocos));
+    const dlAnchorElem = document.createElement('a');
+    dlAnchorElem.setAttribute("href", dataStr);
+    dlAnchorElem.setAttribute("download", "programacao_player.json");
+    dlAnchorElem.click();
+  }
+};
+
+// Carrega tudo automaticamente da memória secreta assim que abres a página
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    const dadosSalvos = localStorage.getItem('kbs_programacao');
+    if (dadosSalvos && typeof blocosEl !== 'undefined' && typeof renderizarBloco === 'function' && typeof atualizarGrade === 'function') {
+      try {
+        const listaRecuperada = JSON.parse(dadosSalvos);
+        if (Array.isArray(listaRecuperada) && listaRecuperada.length > 0) {
+          blocos = listaRecuperada;
+          blocosEl.innerHTML = '';
+          blocos.forEach((b, i) => renderizarBloco(i, b));
+          atualizarGrade();
+          console.log("Lista recuperada automaticamente!");
+        }
+      } catch(e) {
+        console.log("Sem dados para carregar.");
+      }
+    }
+  }, 600);
+});
+</script>
 
 </body>
 </html>
