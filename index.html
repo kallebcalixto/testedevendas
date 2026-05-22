@@ -303,7 +303,7 @@
     }
   }
 
-  function executarMidiaRemota(bloco) {
+  function ejecutarMidiaRemota(bloco) {
     console.log("Executando Bloco Remoto Fixo:", bloco);
     window.isInterrompidoPorRemoto = true;
     
@@ -716,7 +716,7 @@ function voltarFluxoPadraoLocal() {
     }
 }
 
-function ejecutarBlocoAtual() {
+function executarBlocoAtual() {
   if(currentBlocoIndex < 0 || currentBlocoIndex >= blocos.length) return;
   if(blocoFixoAtivoAgora || window.isInterrompidoPorRemoto) return;
 
@@ -751,16 +751,6 @@ function executarVideoCarrossel() {
     console.log("Erro ao reproduzir arquivo local, pulando em 3s...", err);
     timeoutPausa = setTimeout(proximaMidia, 3000);
   });
-}
-
-// RESTAURAÇÃO DA FUNÇÃO EXATA DO SEU ELEMENTO PLAYER ORIGINAL
-function limparPlayer() {
-  const player = document.getElementById('player');
-  if(player) {
-    player.pause();
-    player.removeAttribute('src');
-    player.load();
-  }
 }
 
 function executarPausaBloco() {
@@ -853,12 +843,14 @@ function limparTudo() {
   }
 }
 
-// --- ARMAZENAMENTO COM LOCALSTORAGE EM BUTÃO SALVAR ---
+// --- ARMAZENAMENTO ADAPTADO ---
 function salvarProgramacao() {
   if(blocos.length === 0) { alert('Nenhum bloco para salvar!'); return; }
   
+  // Salva no LocalStorage do navegador automaticamente
   localStorage.setItem('kbs_programacao', JSON.stringify(blocos));
 
+  // Continua baixando o arquivo original .json normalmente
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(blocos, null, 2));
   const downloadAnchor = document.createElement('a');
   downloadAnchor.setAttribute("href", dataStr);
@@ -890,7 +882,7 @@ function carregarProgramacao(event) {
   reader.readAsText(file);
 }
 
-// INICIALIZADOR AUTOMÁTICO DO LOCALSTORAGE
+// GATILHO DE CARREGAMENTO AUTOMÁTICO NA INICIALIZAÇÃO
 window.addEventListener('DOMContentLoaded', () => {
   const dadosSalvos = localStorage.getItem('kbs_programacao');
   if (dadosSalvos) {
@@ -899,18 +891,18 @@ window.addEventListener('DOMContentLoaded', () => {
       if (Array.isArray(listaRecuperada) && listaRecuperada.length > 0) {
         blocos = listaRecuperada;
         window.blocos = blocos;
-        console.log("Programação carregada automaticamente do LocalStorage.");
+        console.log("Programação carregada automaticamente da memória local.");
         ordenarEAtualizar();
       }
     } catch(e) {
-      console.log("Sem dados válidos salvos no LocalStorage.");
+      console.log("Nenhum dado recuperado.");
     }
   }
 });
 </script>
 
 <script>
-// --- MOTOR DE ARRASTAR ELEMENTOS (INTEGRALMENTE RESTAURADO) ---
+// --- MOTOR DE ARRASTAR ELEMENTOS (SEU COMPORTAMENTO ORIGINAL) ---
 let layoutTravado = true;
 
 function alternarTravaLayout() {
@@ -949,6 +941,18 @@ document.addEventListener('mousedown', (e) => {
   };
 });
 document.addEventListener('dragstart', (e) => { if (e.target.closest('.movel')) e.preventDefault(); });
+</script>
+
+<script>
+  const player = document.getElementById('player');
+  
+  function limparPlayer() {
+    if (player) {
+      player.pause();
+      player.removeAttribute('src');
+      player.load();
+    }
+  }
 </script>
 
 </body>
