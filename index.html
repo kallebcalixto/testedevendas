@@ -361,9 +361,6 @@
           document.getElementById('conteudo-player').style.display = 'block';
           const blocosRef = ref(db, `usuarios/${user.uid}/player_m3u`);
           iniciarLeituraFirebase(blocosRef);
-          
-          // CARREGA A PROGRAMAÇÃO LOCAL AUTOMATICAMENTE DO FIREBASE APÓS LOGIN
-          carregarProgramacaoFirebaseAutomatica(user.uid);
         }
       });
     } else {
@@ -436,34 +433,6 @@
           if (idxBloco >= blocos.length) idxBloco = 0;
       });
   };
-
-  // FUNÇÃO AUTOMÁTICA PARA SALVAR LISTA LOCAL DIRETO NO FIREBASE DO CLIENTE
-  window.salvarProgramacao = function() {
-    const user = auth.currentUser;
-    if (!user) return alert("Faça login para salvar!");
-
-    // Filtra para salvar apenas os blocos locais (filmes, tempos fixos, pausas)
-    const blocosLocaisParaSalvar = blocos.filter(b => b.tipo !== 'youtube');
-
-    set(ref(db, `usuarios/${user.uid}/programacao_local`), blocosLocaisParaSalvar)
-      .then(() => alert("Programação da sua máquina salva e sincronizada na nuvem com sucesso!"))
-      .catch(err => alert("Erro ao salvar: " + err.message));
-  };
-
-  // FUNÇÃO QUE PUXA OS BLOCOS AUTOMATICAMENTE AO ABRIR O PROGRAMA
-  function carregarProgramacaoFirebaseAutomatica(uid) {
-    get(ref(db, `usuarios/${uid}/programacao_local`)).then((snapshot) => {
-      if (snapshot.exists()) {
-        const salvos = snapshot.val();
-        let blocosAgendadosAtuais = blocos.filter(b => b.tipo === 'youtube');
-        
-        blocos = [...salvos, ...blocosAgendadosAtuais];
-        blocosEl.innerHTML = '';
-        blocos.forEach((b, i) => renderizarBloco(i, b));
-        atualizarGrade();
-      }
-    });
-  }
 </script>
 </head>
 
@@ -566,7 +535,8 @@
             <button class="btn-sec" onclick="adicionarBloco('timer')">+ Bloco (Tempo Fixo)</button>
             <button class="btn-sec" onclick="adicionarBloco('movie')">+ Bloco (Filmes)</button>
             <button class="btn-sec" onclick="adicionarBloco('pause')">+ Bloco (Pausa)</button>
-            <button class="btn-sec" onclick="salvarProgramacao()">💾 Salvar na Nuvem</button>
+            <button class="btn-sec" onclick="salvarProgramacao()">💾 Salvar Programação</button>
+            <button class="btn-sec" onclick="carregarProgramacao()">📂 Carregar Programação</button>
           </div>
 
           <div style="margin-top:15px; background:#222; padding:15px; border-radius:8px; border:1px solid #333; width: 300px;">
@@ -621,7 +591,7 @@ function gerenciarBannerKBS() {
   const b = blocos[idxBloco];
   if (b && b.arquivos && b.arquivos[b.arquivoAtual]) {
     const banner = document.getElementById('letreiro-kbs-auto');
-    const nomeBruto = b.arquivos[b.arquivoAtual].nome;
+    const nomeBruto = b.arquivos[b.arquivoAtual].name;
     if(!nomeBruto) return;
     let nomeLimpo = nomeBruto.split(/DUBLADO|convertido|DVDRip|XviD|_00|1080p|720p/i)[0].replace(/^[\s.]+/, "").trim();
     if(nomeLimpo.endsWith('.')) nomeLimpo = nomeLimpo.slice(0, -1);
@@ -680,10 +650,9 @@ function renderizarBloco(i, bloco){
   card.innerHTML = `
     <h3>${bloco.tipo === 'movie' ? '🎬 Bloco Filmes' : bloco.tipo === 'pause' ? '⏸ Bloco Pausa' : '⏱ Tempo Fixo'}</h3>
     <div style="margin-bottom:8px;">
-      <label>Arquivos de Vídeo (.mp4):</label>
-      <input type="text" placeholder="Nome do arquivo (ex: filme.mp4)" id="input-add-file-${i}" style="width:70%; background:#000; padding:4px; border:1px solid #444; color:#fff; border-radius:4px;">
-      <button onclick="adicionarVideoManual(${i})" style="padding:4px 8px; font-size:12px;">+</button>
-      <div id="lista-arquivos-${i}" style="margin-top:5px; font-size:11px; max-height:80px; overflow-y:auto; color:#aaa;"></div>
+      <label>Carregar Vídeos (.mp4):</label>
+      <input type="file" multiple accept="video/mp4" onchange="carregarVideosBloco(${i}, this.files)" webkitdirectory style="width:100%; font-size:12px;">
+      <div id="count-${i}" class="hint" style="margin-top:4px;">0 vídeos carregados</div>
     </div>
     ${isTimer ? `
       <div class="row">
@@ -702,29 +671,17 @@ function renderizarBloco(i, bloco){
     </div>
   `;
   blocosEl.appendChild(card);
-  atualizarListaArquivosDOM(i);
+  document.getElementById(`count-${i}`).innerText = `${bloco.arquivos.length} vídeos carregados`;
 }
 
-window.adicionarVideoManual = function(i) {
-  const input = document.getElementById(`input-add-file-${i}`);
-  const nome = input.value.trim();
-  if(!nome) return;
-  
-  blocos[i].arquivos.push({ nome: nome });
-  blocos[i].progresso.push(0);
-  input.value = '';
-  atualizarListaArquivosDOM(i);
+window.carregarVideosBloco = function(i, files){
+  const arr = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.mp4'));
+  blocos[i].arquivos = arr;
+  blocos[i].progresso = new Array(arr.length).fill(0);
+  blocos[i].arquivoAtual = 0;
+  document.getElementById(`count-${i}`).innerText = `${arr.length} vídeos carregados`;
   atualizarGrade();
 };
-
-function atualizarListaArquivosDOM(i) {
-  const container = document.getElementById(`lista-arquivos-${i}`);
-  if(!container) return;
-  container.innerHTML = '';
-  blocos[i].arquivos.forEach((arq, idx) => {
-    container.innerHTML += `<div>🎞️ ${idx+1}. ${arq.nome}</div>`;
-  });
-}
 
 window.alterarTempoBloco = function(i, val) {
   blocos[i].tempo = timeToSec(val);
@@ -745,7 +702,7 @@ function atualizarGrade(){
     if(b.tipo === 'youtube') {
       txt += `🔹 [ADMIN AGENDADO] Início: ${b.horaInicio} | Fim: ${b.horaFim} (Link: ${b.ytlink || b.m3ulink})\n`;
     } else {
-      txt += `🔸 Bloco ${i} [${b.tipo.toUpperCase()}] - ${b.arquivos.length} vídeos adicionados`;
+      txt += `🔸 Bloco ${i} [${b.tipo.toUpperCase()}] - ${b.arquivos.length} vídeos carregados`;
       if(b.tipo==='timer') txt += ` | Duração Fixa: ${fmt(b.tempo)}`;
       txt += '\n';
     }
@@ -753,7 +710,6 @@ function atualizarGrade(){
   gradeEl.innerHTML = txt || 'Nenhum bloco configurado na grade local.';
 }
 
-// --- ENGINE REPRODUTORA DO PLAYER ---
 function tocarElemento() {
   if(!anyPlayableBlocks()) return;
   
@@ -764,7 +720,6 @@ function tocarElemento() {
     return;
   }
 
-  // Se o bloco atual for agendado (Admin)
   if (b.tipo === 'youtube') {
     destruirHls();
     video.style.display = 'none';
@@ -792,7 +747,6 @@ function tocarElemento() {
     return;
   }
 
-  // Se o bloco for mídias locais (Filmes, Tempo Fixo ou Pausa)
   if (b.arquivos.length === 0) {
     proximoBloco();
     return;
@@ -802,11 +756,8 @@ function tocarElemento() {
   ytplayer.style.display = 'none';
   video.style.display = 'block';
 
-  const arquivo = b.arquivos[b.arquivoAtual];
-  
-  // O SEGREDO DO MINI-SERVIDOR PORTÁTIL: CHAMA DIRETO DA PASTA DO CLIENTE PELO SERVER
-  video.src = `http://localhost:8080/midias/${encodeURIComponent(arquivo.nome)}`;
-  
+  const file = b.arquivos[b.arquivoAtual];
+  video.src = URL.createObjectURL(file);
   video.currentTime = b.progresso[b.arquivoAtual] || 0;
   
   document.querySelectorAll('.bloco').forEach(el=>el.classList.remove('running'));
@@ -823,7 +774,6 @@ function tocarElemento() {
     b.sessaoRestante = b.tempo;
   }
 
-  // Remove ouvintes antigos para não duplicar loops
   if(timeupdateHandler) video.removeEventListener('timeupdate', timeupdateHandler);
   
   timeupdateHandler = () => {
@@ -872,7 +822,6 @@ window.blocoAnterior = function() {
   tocarElemento();
 };
 
-// --- MONITORAMENTO EM TEMPO REAL DE CONFLITOS DE HORÁRIOS ADMIN ---
 setInterval(() => {
   if(!sistemaIniciado) return;
 
@@ -915,7 +864,37 @@ setInterval(() => {
   }
 }, 5000);
 
-// --- SISTEMA COMPLETO DE MOVIMENTAÇÃO DE LAYOUT ---
+window.salvarProgramacao = function() {
+  const localBlocos = blocos.filter(b => b.tipo !== 'youtube');
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(localBlocos));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", "programacao_kbs.json");
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+};
+
+window.carregarProgramacao = function() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = event => {
+      const salvos = JSON.parse(event.target.result);
+      let blocosAgendadosAtuais = blocos.filter(b => b.tipo === 'youtube');
+      blocos = [...salvos, ...blocosAgendadosAtuais];
+      blocosEl.innerHTML = '';
+      blocos.forEach((b, i) => renderizarBloco(i, b));
+      atualizarGrade();
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+};
+
 let layoutTravado = true;
 window.toggleTravaLayout = function() {
   layoutTravado = !layoutTravado;
@@ -952,6 +931,114 @@ document.addEventListener('mousedown', (e) => {
   };
 });
 document.addEventListener('dragstart', (e) => { if (e.target.closest('.movel')) e.preventDefault(); });
+</script>
+
+<script>
+  const player = document.getElementById('player');
+  
+  function limparPlayer() {
+    if (player) {
+      player.pause();
+      player.removeAttribute('src');
+      player.load();
+    }
+  }
+
+  function resizePlayer() {
+    const width = document.getElementById('playerWidth').value;
+    const height = document.getElementById('playerHeight').value;
+    const player = document.getElementById('player');
+    const ytplayer = document.getElementById('ytplayer');
+    
+    if (player) {
+      player.style.width = width + 'px';
+      player.style.height = height + 'px';
+    }
+    if (ytplayer) {
+      ytplayer.style.width = width + 'px';
+      ytplayer.style.height = height + 'px';
+    }
+  }
+
+  let socket = null;
+  let mediaRecorder = null;
+  let streamInterval = null;
+
+  function toggleStream() {
+    const btn = document.getElementById('btnStream');
+    const led = document.getElementById('statusLed');
+    
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      pararTransmissao();
+      btn.innerText = '🔴 INICIAR TRANSMISSÃO';
+      btn.style.background = '#b71c1c';
+      led.style.background = '#444';
+    } else {
+      iniciarTransmissao();
+    }
+  }
+
+  function iniciarTransmissao() {
+    const btn = document.getElementById('btnStream');
+    const led = document.getElementById('statusLed');
+    const bridgeUrl = document.getElementById('bridgeUrl').value;
+
+    console.log('Conectando ao Bridge OBS em:', bridgeUrl);
+    socket = new WebSocket(bridgeUrl);
+
+    socket.onopen = () => {
+      console.log('Conectado ao Bridge com sucesso!');
+      btn.innerText = '⏹️ PARAR TRANSMISSÃO';
+      btn.style.background = '#2e7d32';
+      led.style.background = '#00ff00';
+      capturarEEnviar();
+    };
+
+    socket.onclose = () => {
+      console.log('Conexão encerrada com o Bridge.');
+      pararTransmissao();
+      btn.innerText = '🔴 INICIAR TRANSMISSÃO';
+      btn.style.background = '#b71c1c';
+      led.style.background = '#444';
+    };
+
+    socket.onerror = (err) => {
+      console.error('Erro no WebSocket:', err);
+      alert('Não foi possível conectar ao Bridge. Certifique-se de que o Node.js está rodando localmente.');
+      pararTransmissao();
+    };
+  }
+
+  function capturarEEnviar() {
+    const stream = player.captureStream ? player.captureStream(30) : player.mozCaptureStream ? player.mozCaptureStream(30) : null;
+    
+    if (!stream) {
+      alert('Seu navegador não suporta captura de fluxo de vídeo.');
+      return;
+    }
+
+    const options = { mimeType: 'video/webm; codecs=vp8,opus' };
+    mediaRecorder = new MediaRecorder(stream, options);
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
+        socket.send(event.data);
+      }
+    };
+
+    mediaRecorder.start(100); 
+  }
+
+  function pararTransmissao() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    if (socket) {
+      socket.close();
+    }
+    mediaRecorder = null;
+    socket = null;
+  }
 </script>
 
 <div id="btn-trava-layout" class="layout-travado" onclick="toggleTravaLayout()">🔒 Layout Travado</div>
