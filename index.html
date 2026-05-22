@@ -184,7 +184,7 @@
     width:500px; height:280px; 
     background:#000 !important;
     border:1px solid #333; border-radius:8px; 
-    transition: opacity 0.15s ease-in-out; /* Transição suave de opacidade */
+    transition: opacity 0.15s ease-in-out;
   }
 
   video::-webkit-media-controls-start-playback-button { display: none !important; }
@@ -199,7 +199,7 @@
   .btn-pri { background:#2e7d32; } .btn-pri:hover{ background:#3e8d42; }
   .btn-sec { background:#1976d2; } .btn-sec:hover{ background:#2a82d8; }
   .btn-admin { background:#6200ee; font-weight: bold; } .btn-admin:hover { background:#7c4dff; }
-   
+     
   .grid { 
     display:flex; 
     flex-wrap:wrap; 
@@ -212,7 +212,7 @@
     width: auto;
     max-width: 90vw;
   }
-   
+     
   .bloco { position:relative; flex:0 0 260px; border:1px solid #2b2b2b; background:#171717; border-radius:10px; padding:12px; }
   .bloco h3 { margin:0 0 10px 0; font-size:15px; }
   .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
@@ -250,7 +250,7 @@
     justify-content: center;
     overflow: hidden;
     resize: both; 
-    width: 80px;   
+    width: 80px;    
     height: 80px; 
     min-width: 20px;
     min-height: 20px;
@@ -683,13 +683,11 @@ function verificarAgendados() {
         idxBloco = blocoAnteriorIdx; 
         blocoAnteriorIdx = -1; 
         
-        // ESCONDE O PLAYER IMEDIATAMENTE (CORREÇÃO ANTI-FLASH)
         video.style.opacity = '0';
         video.style.backgroundColor = '#000000';
         
         tocarAtual();
         
-        // Força a injeção do tempo antigo sem delay e sem renderizar o frame zero
         if (blocos[idxBloco] && blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
           video.currentTime = blocoAnteriorProgresso;
           if (blocoAnteriorPaused) video.pause();
@@ -710,7 +708,6 @@ function tocarAtual() {
   const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
   const horaAgora = agora.toTimeString().split(' ')[0];
 
-  // 1. VALIDAÇÃO EM MEMÓRIA
   if (b.tipo === 'timer') {
     const diaMatch = b.diasSelecionados && b.diasSelecionados.includes(hoje);
     const horarioMatch = b.horarios && b.horarios.some(h => horaAgora >= h.inicio && h.fim > horaAgora);
@@ -722,7 +719,6 @@ function tocarAtual() {
     if (!diaMatchAdmin || !dentroDoHorarioAdmin) { pularParaProximo(); return; }
   }
 
-  // 2. SE PASSOU, PREPARA A INTERFACE
   document.querySelectorAll('.bloco').forEach(el => el.classList.remove('running'));
   clearTimeout(pauseTimer); 
   detachTimers(); 
@@ -741,7 +737,6 @@ function tocarAtual() {
   if (b.tipo === 'youtube') { if (b.ytlink) startYouTubeNow(b); else if (b.m3ulink) startM3UNow(b); return; }
   if (b.arquivos.length === 0) { pularParaProximo(); return; }
 
-  // 3. ATIVAÇÃO DO BLACKOUT (TELA TOTALMENTE PRETA ATÉ CARREGAR O SEGUNDO EXATO)
   video.style.opacity = '0';
   video.style.backgroundColor = '#000000';
 
@@ -750,11 +745,9 @@ function tocarAtual() {
     video.src = novaUrl;
   }
   
-  // Define o ponto do vídeo
   const tempoAlvo = b.progresso[b.arquivoAtual] || 0;
   video.currentTime = tempoAlvo;
   
-  // Se o vídeo for começar do zero absoluto (0s), ele não precisa buscar nada, pode mostrar na hora
   if (tempoAlvo === 0) {
     video.style.opacity = '1';
   }
@@ -772,12 +765,10 @@ function pularParaProximo() {
 function attachHandlersFor(b){
   detachTimers();
   
-  // EVENTO CHAVE: Só remove a tela preta (opacity=1) quando o vídeo terminar de dar o salto temporal correto!
   video.onseeked = () => {
     video.style.opacity = '1';
   };
 
-  // Evento extra caso o vídeo já esteja pronto e estável
   video.onplaying = () => {
     if (video.currentTime > 0) {
       video.style.opacity = '1';
@@ -1009,7 +1000,7 @@ document.addEventListener('dragstart', (e) => { if (e.target.closest('.movel')) 
 </script>
 <script>
 // Força o salvamento na memória automática sempre que clicas no botão Salvar
-const botaoSalvar Original = window.salvarProgramacao;
+const botaoSalvarOriginal = window.salvarProgramacao;
 window.salvarProgramacao = function() {
   if (typeof blocos !== 'undefined' && blocos.length > 0) {
     localStorage.setItem('kbs_programacao', JSON.stringify(blocos));
