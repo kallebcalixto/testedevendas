@@ -37,6 +37,966 @@
     position: fixed;
     bottom: 20px;
     right: 20px;
+    z-index: 9999;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 30px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  }
+  .layout-travado { background: var(--error-color); color: white; }
+  .layout-destravado { background: var(--primary-color); color: white; }
+
+  /* Ajustes de posicionamento padrão inicial para não quebrar */
+  #main-container { top: 10px; left: 10px; }
+  #painel-controle { top: 10px; left: 830px; }
+
+  /* --- ESTILOS ORIGINAIS --- */
+  #main-container {
+    width: 800px;
+    background: #111;
+    border: 3px solid #222;
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+  }
+  h2 {
+    margin-top: 0;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #fff;
+    border-bottom: 2px solid #222;
+    padding-bottom: 10px;
+    font-size: 20px;
+  }
+  .grid-player-info {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 15px;
+  }
+  .container-player {
+    background: #000;
+    border: 2px solid #333;
+    border-radius: 8px;
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
+    overflow: hidden;
+  }
+  video, iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+  .info-lateral {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .card-status {
+    background: #1a1a1a;
+    border-left: 5px solid var(--primary-color);
+    padding: 12px;
+    border-radius: 6px;
+  }
+  .card-status h3 { margin: 0 0 5px 0; font-size: 14px; color: #aaa; text-transform: uppercase; }
+  .card-status p { margin: 0; font-size: 16px; font-weight: bold; }
+  #txt-proximo { color: var(--gold); }
+  .lista-reproducao {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 10px;
+    height: 180px;
+    overflow-y: auto;
+  }
+  .lista-reproducao h3 { margin: 0 0 10px 0; font-size: 14px; color: #aaa; text-transform: uppercase; text-align: center; border-bottom: 1px solid #222; padding-bottom: 5px; }
+  .item-fila {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 8px;
+    background: #222;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    font-size: 13px;
+    border-left: 3px solid #555;
+  }
+  .item-fila.ativo { border-left-color: var(--primary-color); background: #1b2e1b; }
+  .item-fila.fixed { border-left-color: var(--error-color); }
+  .item-fila .duracao { color: #888; }
+  #painel-controle {
+    width: 320px;
+    background: #111;
+    border: 3px solid #222;
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+  }
+  .abas {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #222;
+    padding-bottom: 10px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 8px;
+    background: #222;
+    border: 1px solid #333;
+    color: #aaa;
+    cursor: pointer;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 12px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .tab-btn.ativo { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
+  .conteudo-tab { display: none; flex-direction: column; gap: 12px; }
+  .conteudo-tab.ativo { display: flex; }
+  .grupo-campo { display: flex; flex-direction: column; gap: 5px; }
+  .grupo-campo label { font-size: 12px; color: #aaa; text-transform: uppercase; font-weight: bold; }
+  input[type="text"], input[type="time"], input[type="number"], select {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    padding: 8px;
+    border-radius: 6px;
+    color: #fff;
+    font-family: inherit;
+  }
+  input[type="text"]:focus, input[type="time"]:focus, select:focus { border-color: var(--primary-color); outline: none; }
+  .btn-acao {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background 0.2s;
+  }
+  .btn-acao:hover { filter: brightness(1.2); }
+  .btn-sec {
+    background: #333;
+    color: white;
+    border: 1px solid #444;
+    padding: 8px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-sec:hover { background: #444; }
+  .btn-danger { background: var(--error-color) !important; }
+  .grid-botoes-config { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .lista-gerenciamento {
+    max-height: 200px;
+    overflow-y: auto;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 5px;
+  }
+  .item-gerenciado {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px;
+    background: #222;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+  .item-gerenciado button {
+    background: none;
+    border: none;
+    color: var(--error-color);
+    cursor: pointer;
+    font-weight: bold;
+  }
+  #btn-admin {
+    background: #007bff;
+    color: white;
+    font-size: 14px;
+    margin-top: 10px;
+  }
+</style>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBzzQg4fMWQm82aOu2xM2huVPvHeyitFxQ",
+    authDomain: "controle-remoto-da345.firebaseapp.com",
+    databaseURL: "https://controle-remoto-da345-default-rtdb.firebaseio.com",
+    projectId: "controle-remoto-da345",
+    storageBucket: "controle-remoto-da345.firebasestorage.app",
+    messagingSenderId: "246457543992",
+    appId: "1:246457543992:web:41bf1bd64a4788fb2625cd",
+    measurementId: "G-CFHSFG82SX"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const auth = getAuth(app);
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      const liveRef = ref(db, `usuarios/${user.uid}/player_m3u`);
+      onValue(liveRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          processarProgramacaoRemota(data);
+        }
+      });
+    } else {
+      console.log("Usuário não autenticado no Firebase.");
+    }
+  });
+
+  function processarProgramacaoRemota(data) {
+    const agora = new Date();
+    const diaSemanaAtual = agora.getDay(); 
+    const diasMapa = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+    const diaTexto = diasMapa[diaSemanaAtual];
+
+    const horaParaSegundos = (hms) => {
+      if(!hms) return 0;
+      const [h, m, s] = hms.split(':').map(Number);
+      return (h * 3600) + (m * 60) + (s || 0);
+    };
+
+    const segundosAgora = (agora.getHours() * 3600) + (agora.getMinutes() * 60) + agora.getSeconds();
+    let blocoAtivoRemoto = null;
+
+    for (let id in data) {
+      const p = data[id];
+      if (p.dias && p.dias.includes(diaTexto)) {
+        const inicioSeg = horaParaSegundos(p.inicio);
+        const fimSeg = horaParaSegundos(p.fim);
+
+        if (segundosAgora >= inicioSeg && segundosAgora < fimSeg) {
+          blocoAtivoRemoto = p;
+          break;
+        }
+      }
+    }
+
+    if (blocoAtivoRemoto) {
+      if (!window.blocoRemotoExecutando || window.blocoRemotoExecutando.id !== blocoAtivoRemoto.timestamp) {
+        window.blocoRemotoExecutando = {
+          id: blocoAtivoRemoto.timestamp,
+          dados: blocoAtivoRemoto
+        };
+        executarMidiaRemota(blocoAtivoRemoto);
+      }
+    } else {
+      if (window.blocoRemotoExecutando) {
+        window.blocoRemotoExecutando = null;
+        voltarProgramacaoLocal();
+      }
+    }
+  }
+
+  function executarMidiaRemota(bloco) {
+    console.log("Executando Bloco Remoto Fixo:", bloco);
+    window.isInterrompidoPorRemoto = true;
+    
+    if (window.playerInterrompido) {
+       // Já estava interrompido antes, não faz nada
+    } else {
+       // Se tem algum vídeo rodando localmente, captura a posição exata antes de parar
+       const videoLocal = document.getElementById('player');
+       if (videoLocal && !videoLocal.paused && videoLocal.src) {
+           window.posicaoVideoInterrompido = videoLocal.currentTime;
+           window.srcVideoInterrompido = videoLocal.src;
+           window.indexBlocoInterrompido = window.currentBlocoIndex;
+           console.log(`Programação local pausada no vídeo: ${videoLocal.src} aos ${videoLocal.currentTime}s`);
+       }
+    }
+
+    const container = document.querySelector('.container-player');
+    container.innerHTML = '';
+
+    if (bloco.yt) {
+      let ytId = extrairYoutubeID(bloco.yt);
+      if (ytId) {
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://www.youtube.com/embed/${ytId}?autoplay=1&controls=0&rel=0`;
+        iframe.allow = "autoplay; encrypted-media";
+        container.innerHTML = '';
+        container.appendChild(iframe);
+        document.getElementById('txt-atual').innerText = "BLOCO REMOTO (YOUTUBE)";
+      }
+    } else if (bloco.m3u) {
+      const video = document.createElement('video');
+      video.id = "player";
+      video.autoplay = true;
+      video.controls = false;
+      container.appendChild(video);
+      document.getElementById('txt-atual').innerText = "BLOCO REMOTO (M3U8/STREAM)";
+
+      if (bloco.m3u.includes('.m3u8')) {
+        if (Hls.isSupported()) {
+          const hls = new Hls();
+          hls.loadSource(bloco.m3u);
+          hls.attachMedia(video);
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = bloco.m3u;
+        }
+      } else {
+        video.src = bloco.m3u;
+      }
+    }
+  }
+
+  function voltarProgramacaoLocal() {
+    console.log("Fim do bloco fixo remoto. Retornando à programação local...");
+    window.isInterrompidoPorRemoto = false;
+    
+    // Reconstrói o elemento de vídeo padrão local
+    const container = document.querySelector('.container-player');
+    container.innerHTML = '<video id="player" autoplay onended="proximaMidia()"></video>';
+    
+    // Modificação para voltar exatamente de onde parou
+    if (window.srcVideoInterrompido) {
+        console.log(`Retomando vídeo local: ${window.srcVideoInterrompido} a partir de ${window.posicaoVideoInterrompido}s`);
+        window.currentBlocoIndex = window.indexBlocoInterrompido;
+        const videoLocal = document.getElementById('player');
+        videoLocal.src = window.srcVideoInterrompido;
+        
+        // Espera carregar os metadados para poder setar o tempo correto sem dar erro
+        videoLocal.onloadedmetadata = function() {
+            videoLocal.currentTime = window.posicaoVideoInterrompido;
+            videoLocal.play();
+            // Restaura o listener padrão de fim de vídeo
+            videoLocal.onended = proximaMidia;
+        };
+        
+        // Atualiza a interface
+        const blocoAtual = window.blocos[window.currentBlocoIndex];
+        document.getElementById('txt-atual').innerText = blocoAtual ? blocoAtual.nome : "Retomando...";
+        atualizarFilaUI();
+        
+        // Limpa as variáveis de interrupção
+        window.srcVideoInterrompido = null;
+        window.posicaoVideoInterrompido = 0;
+        window.indexBlocoInterrompido = null;
+    } else {
+        // Se não havia nada rodando antes, apenas reinicia o carrossel local do começo
+        window.currentBlocoIndex = 0;
+        rodarProgramacaoLocal();
+    }
+  }
+
+  function extrairYoutubeID(url) {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  }
+  
+  window.abrirAdmin = () => {
+    window.open('admin.html', '_blank', 'width=800,height=600');
+  };
+</script>
+</head>
+<body>
+
+<button id="btn-trava-layout" class="layout-travado" onclick="alternarTravaLayout()">🔒 Layout Travado</button>
+
+<div id="main-container" class="movel">
+  <h2>Player Programado — KBS TV</h2>
+  <div class="grid-player-info">
+    <div class="esquerda">
+      <div class="container-player">
+        <video id="player" autoplay onended="proximaMidia()"></video>
+      </div>
+    </div>
+    <div class="info-lateral">
+      <div class="card-status">
+        <h3>No Ar Agora</h3>
+        <p id="txt-atual">NENHUM BLOCO ATIVO</p>
+      </div>
+      <div class="card-status">
+        <h3>A Seguir</h3>
+        <p id="txt-proximo">FIM DA PROGRAMAÇÃO</p>
+      </div>
+      <div class="lista-reproducao">
+        <h3>Fila de Exibição</h3>
+        <div id="fila-itens"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="painel-controle" class="movel">
+  <div class="abas">
+    <button class="tab-btn ativo" onclick="mudarTab('tab-tempo-fixo')">Tempo Fixo</button>
+    <button class="tab-btn" onclick="mudarTab('tab-filmes')">Filmes/Séries</button>
+    <button class="tab-btn" onclick="mudarTab('tab-pausa')">Pausa</button>
+  </div>
+
+  <div id="tab-tempo-fixo" class="conteudo-tab ativo">
+    <div class="grupo-campo">
+      <label>Nome do Bloco</label>
+      <input type="text" id="tf-nome" placeholder="Ex: Jornal Local" />
+    </div>
+    <div class="grupo-campo">
+      <label>Hora de Início</label>
+      <input type="time" id="tf-inicio" step="1" />
+    </div>
+    <div class="grupo-campo">
+      <label>Hora de Término</label>
+      <input type="time" id="tf-fim" step="1" />
+    </div>
+    <div class="grupo-campo">
+      <label>URL do Arquivo / Stream</label>
+      <input type="text" id="tf-url" placeholder="http://... ou C:/videos/..." />
+    </div>
+    <button class="btn-acao" onclick="adicionarTempoFixo()">Adicionar Tempo Fixo</button>
+  </div>
+
+  <div id="tab-filmes" class="conteudo-tab">
+    <div class="grupo-campo">
+      <label>Nome do Bloco</label>
+      <input type="text" id="fl-nome" placeholder="Ex: Bloco de Filmes" />
+    </div>
+    <div class="grupo-campo">
+      <label>Arquivos de Vídeo (Um por linha)</label>
+      <textarea id="fl-arquivos" rows="4" style="background:#1a1a1a; border:1px solid #444; color:#fff; border-radius:6px; padding:8px; font-family:inherit; resize:vertical;" placeholder="C:/midias/filme1.mp4&#10;C:/midias/filme2.mp4"></textarea>
+    </div>
+    <button class="btn-acao" onclick="adicionarBlocoFilmes()">Adicionar Bloco</button>
+  </div>
+
+  <div id="tab-pausa" class="conteudo-tab">
+    <div class="grupo-campo">
+      <label>Duração da Pausa (Minutos)</label>
+      <input type="number" id="ps-duracao" value="5" min="1" />
+    </div>
+    <div class="grupo-campo">
+      <label>URL do Vídeo de Espera (Opcional)</label>
+      <input type="text" id="ps-url" placeholder="C:/videos/comerciais.mp4" />
+    </div>
+    <button class="btn-acao" onclick="adicionarPausa()">Adicionar Pausa</button>
+  </div>
+
+  <div style="margin-top:15px; border-top:2px solid #222; padding-top:15px;">
+    <h3 style="margin:0 0 10px 0; font-size:12px; color:#aaa; text-transform:uppercase;">Blocos Configurados</h3>
+    <div class="lista-gerenciamento" id="lista-gerenciamento-itens"></div>
+    
+    <div class="grid-botoes-config" style="margin-top:10px;">
+      <button class="btn-sec" onclick="salvarProgramacao()">💾 Salvar</button>
+      <button class="btn-sec" onclick="document.getElementById('fileInput').click()">📂 Carregar</button>
+      <input type="file" id="fileInput" style="display:none" onchange="carregarProgramacao(event)" accept=".json" />
+    </div>
+    <button class="btn-sec btn-danger" style="width:100%; margin-top:8px;" onclick="limparTudo()">🗑️ Limpar Programação</button>
+    <button id="btn-admin" class="btn-acao" onclick="abrirAdmin()">⚙️ ABRIR ADMIN</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+let blocos = [];
+let currentBlocoIndex = -1;
+let currentVideoIndex = 0;
+let timeoutPausa = null;
+let intervalCheckFixo = null;
+let blocoFixoAtivoAgora = null;
+
+// --- SISTEMA DE ABAS ---
+function mudarTab(tabId) {
+  document.querySelectorAll('.conteudo-tab').forEach(el => el.classList.remove('ativo'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('ativo'));
+  document.getElementById(tabId).classList.add('ativo');
+  event.currentTarget.classList.add('ativo');
+}
+
+// --- FUNÇÕES DE ADICIONAR BLOCOS ---
+function adicionarTempoFixo() {
+  const nome = document.getElementById('tf-nome').value.trim() || 'Bloco Tempo Fixo';
+  const inicio = document.getElementById('tf-inicio').value;
+  const fim = document.getElementById('tf-fim').value;
+  const url = document.getElementById('tf-url').value.trim();
+
+  if(!inicio || !fim || !url) { alert('Preencha Início, Término e URL!'); return; }
+
+  blocos.push({ type: 'fixo', nome, inicio, fim, url });
+  ordenarEAtualizar();
+  limparCampos('tab-tempo-fixo');
+}
+
+function adicionarBlocoFilmes() {
+  const nome = document.getElementById('fl-nome').value.trim() || 'Bloco de Filmes';
+  const textoAreas = document.getElementById('fl-arquivos').value.split('\n');
+  const arquivos = textoAreas.map(line => line.trim()).filter(line => line.length > 0);
+
+  if(arquivos.length === 0) { alert('Insira pelo menos um caminho de arquivo!'); return; }
+
+  blocos.push({ type: 'carrossel', nome, arquivos });
+  ordenarEAtualizar();
+  limparCampos('tab-filmes');
+}
+
+function adicionarPausa() {
+  const duracao = parseInt(document.getElementById('ps-duracao').value) || 5;
+  const url = document.getElementById('ps-url').value.trim();
+
+  blocos.push({ type: 'pausa', nome: `Pausa de ${duracao} min`, duracao, url });
+  ordenarEAtualizar();
+  limparCampos('tab-pausa');
+}
+
+function removerBloco(index) {
+  blocos.splice(index, 1);
+  if(currentBlocoIndex === index) {
+    pararExecucaoGeral();
+  } else if(currentBlocoIndex > index) {
+    currentBlocoIndex--;
+  }
+  ordenarEAtualizar();
+}
+
+function limparCampos(tabId) {
+  document.getElementById(tabId).querySelectorAll('input, textarea').forEach(i => {
+    if(i.type !== 'number') i.value = '';
+  });
+}
+
+function ordenarEAtualizar() {
+  // Mantém os fixos ordenados por horário. Os outros ficam na ordem de inserção abaixo dos fixos.
+  const fixos = blocos.filter(b => b.type === 'fixo').sort((a,b) => a.inicio.localeCompare(b.inicio));
+  const outros = blocos.filter(b => b.type !== 'fixo');
+  blocos = [...fixos, ...outros];
+
+  atualizarFilaUI();
+  atualizarGerenciamentoUI();
+  
+  if(blocos.length > 0 && currentBlocoIndex === -1 && !window.isInterrompidoPorRemoto) {
+    iniciarGrade();
+  }
+}
+
+// --- INTERFACE (UI) ---
+function atualizarFilaUI() {
+  const container = document.getElementById('fila-itens');
+  container.innerHTML = '';
+
+  blocos.forEach((b, i) => {
+    const div = document.createElement('div');
+    div.className = `item-fila ${b.type === 'fixo' ? 'fixed' : ''} ${i === currentBlocoIndex ? 'ativo' : ''}`;
+    
+    let infoExtra = '';
+    if(b.type === 'fixo') infoExtra = `<span class="duracao">${b.inicio} - ${b.fim}</span>`;
+    if(b.type === 'pausa') infoExtra = `<span class="duracao">${b.duracao} min</span>`;
+    if(b.type === 'carrossel') infoExtra = `<span class="duracao">${b.arquivos.length} vídeos</span>`;
+
+    div.innerHTML = `<span>${b.nome}</span> ${infoExtra}`;
+    container.appendChild(div);
+  });
+}
+
+function atualizarGerenciamentoUI() {
+  const container = document.getElementById('lista-gerenciamento-itens');
+  container.innerHTML = '';
+
+  blocos.forEach((b, i) => {
+    const div = document.createElement('div');
+    div.className = 'item-gerenciado';
+    div.innerHTML = `
+      <span>[${b.type.toUpperCase()}] ${b.nome}</span>
+      <button onclick="removerBloco(${i})">X</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+// --- MOTOR DE EXECUÇÃO (CORE) ---
+function iniciarGrade() {
+  if(intervalCheckFixo) clearInterval(intervalCheckFixo);
+  intervalCheckFixo = setInterval(verificarCronogramaFixo, 1000);
+
+  // Procura o primeiro bloco sequencial (não fixo) para iniciar o carrossel padrão
+  const primeiroSequencial = blocos.findIndex(b => b.type !== 'fixo');
+  if(primeiroSequencial !== -1) {
+    currentBlocoIndex = primeiroSequencial;
+    currentVideoIndex = 0;
+    executarBlocoAtual();
+  } else {
+    // Se só existirem blocos fixos na lista
+    document.getElementById('txt-atual').innerText = "AGUARDANDO HORÁRIO FIXO";
+  }
+}
+
+function verificarCronogramaFixo() {
+  if (window.isInterrompidoPorRemoto) return; // Dá prioridade absoluta ao comando do Firebase
+
+  const agoraStr = new Date().toTimeString().split(' ')[0]; // HH:MM:SS
+  
+  // Procura se tem algum bloco fixo que deve rodar exatamente agora
+  const blocoFixoValido = blocos.find(b => b.type === 'fixo' && agoraStr >= b.inicio && agoraStr < b.fim);
+
+  if(blocoFixoValido) {
+    if(blocoFixoAtivoAgora !== blocoFixoValido) {
+      blocoFixoAtivoAgora = blocoFixoValido;
+      executarBlocoFixoUrgent(blocoFixoValido);
+    }
+  } else {
+    if(blocoFixoAtivoAgora) {
+      console.log("Fim do horário do bloco fixo local. Retornando ao fluxo padrão.");
+      blocoFixoAtivoAgora = null;
+      voltarFluxoPadraoLocal();
+    }
+  }
+}
+
+function executarBlocoFixoUrgent(bloco) {
+  console.log("⏰ Interrupção por Horário Fixo Local:", bloco.nome);
+  if(timeoutPausa) clearTimeout(timeoutPausa);
+
+  // Se tem algum vídeo rodando localmente no carrossel, salva a posição exata antes de trocar pro bloco fixo
+  const videoLocal = document.getElementById('player');
+  if (videoLocal && !videoLocal.paused && videoLocal.src && !window.playerInterrompido) {
+      window.posicaoVideoInterrompido = videoLocal.currentTime;
+      window.srcVideoInterrompido = videoLocal.src;
+      window.indexBlocoInterrompido = currentBlocoIndex;
+      window.playerInterrompido = true;
+      console.log(`Pausado carrossel sequencial aos ${videoLocal.currentTime}s`);
+  }
+
+  document.getElementById('txt-atual').innerText = bloco.nome;
+  
+  // Atualiza destaque visual na lista
+  const idx = blocos.indexOf(bloco);
+  currentBlocoIndex = idx;
+  atualizarFilaUI();
+
+  const video = document.getElementById('player');
+  limparPlayer();
+  
+  if (bloco.url.includes('.m3u8')) {
+    if (Hls.isSupported()) {
+      const hls = new Hls();
+      hls.loadSource(bloco.url);
+      hls.attachMedia(video);
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = bloco.url;
+    }
+  } else {
+    video.src = bloco.url;
+  }
+  video.play().catch(e => console.log("Erro autoplay fixo:", e));
+}
+
+function voltarFluxoPadraoLocal() {
+    // Retorna exatamente para o ponto onde o carrossel sequencial foi interrompido pelo horário fixo
+    if (window.srcVideoInterrompido) {
+        console.log(`Retomando carrossel sequencial: ${window.srcVideoInterrompido} a partir de ${window.posicaoVideoInterrompido}s`);
+        currentBlocoIndex = window.indexBlocoInterrompido;
+        window.playerInterrompido = false;
+        
+        const videoLocal = document.getElementById('player');
+        limparPlayer();
+        videoLocal.src = window.srcVideoInterrompido;
+        
+        videoLocal.onloadedmetadata = function() {
+            videoLocal.currentTime = window.posicaoVideoInterrompido;
+            videoLocal.play();
+            videoLocal.onended = proximaMidia;
+        };
+        
+        const blocoAtual = blocos[currentBlocoIndex];
+        document.getElementById('txt-atual').innerText = blocoAtual ? blocoAtual.nome : "KBS TV";
+        atualizarFilaUI();
+        
+        window.srcVideoInterrompido = null;
+        window.posicaoVideoInterrompido = 0;
+        window.indexBlocoInterrompido = null;
+    } else {
+        // Fallback caso não houvesse mídia prévia guardada
+        proximaFilaSequencial();
+    }
+}
+
+function executarBlocoAtual() {
+  if(currentBlocoIndex < 0 || currentBlocoIndex >= blocos.length) return;
+  if(blocoFixoAtivoAgora || window.isInterrompidoPorRemoto) return; // Bloqueia se houver fixo prioritário rodando
+
+  const bloco = blocos[currentBlocoIndex];
+  document.getElementById('txt-atual').innerText = bloco.nome;
+  atualizarFilaUI();
+  atualizarProximoUI();
+
+  if(bloco.type === 'carrossel') {
+    executarVideoCarrossel();
+  } else if(bloco.type === 'pausa') {
+    executarPausaBloco();
+  }
+}
+
+function executarVideoCarrossel() {
+  const bloco = blocos[currentBlocoIndex];
+  if(!bloco.arquivos || bloco.arquivos.length === 0) { proximaFilaSequencial(); return; }
+
+  if(currentVideoIndex >= bloco.arquivos.length) {
+    currentVideoIndex = 0; // Reseta sub-lista e pula pro próximo bloco da grade global
+    proximaFilaSequencial();
+    return;
+  }
+
+  const pathMidia = bloco.arquivos[currentVideoIndex];
+  const video = document.getElementById('player');
+  limparPlayer();
+
+  video.src = pathMidia;
+  video.play().catch(err => {
+    console.log("Erro ao reproduzir arquivo local, pulando em 3s...", err);
+    timeoutPausa = setTimeout(proximaMidia, 3000);
+  });
+}
+
+function executarPausaBloco() {
+  const bloco = blocos[currentBlocoIndex];
+  const video = document.getElementById('player');
+  limparPlayer();
+
+  if(bloco.url) {
+    video.src = bloco.url;
+    video.loop = true;
+    video.play().catch(e => console.log(e));
+  } else {
+    document.getElementById('txt-atual').innerText = `${bloco.nome} (Tela Preta)`;
+  }
+
+  timeoutPausa = setTimeout(() => {
+    video.loop = false;
+    proximaFilaSequencial();
+  }, bloco.duracao * 60 * 1000);
+}
+
+function proximaMidia() {
+  if(blocoFixoAtivoAgora || window.isInterrompidoPorRemoto) return; 
+
+  const bloco = blocos[currentBlocoIndex];
+  if(bloco && bloco.type === 'carrossel') {
+    currentVideoIndex++;
+    executarVideoCarrossel();
+  } else {
+    proximaFilaSequencial();
+  }
+}
+
+function proximaFilaSequencial() {
+  if(timeoutPausa) clearTimeout(timeoutPausa);
+  
+  // Localiza os blocos que não são fixos para continuar a sequência infinita
+  const sequenciais = blocos.map((b,i) => ({b,i})).filter(item => item.b.type !== 'pausa' || item.b.type !== 'fixo'); 
+  
+  let nextIndex = currentBlocoIndex + 1;
+  
+  // Loop infinito na lista pulando os fixos
+  while(nextIndex < blocos.length && blocos[nextIndex].type === 'fixo') {
+    nextIndex++;
+  }
+
+  if(nextIndex >= blocos.length) {
+    // Volta pro início buscando o primeiro não fixo
+    nextIndex = blocos.findIndex(b => b.type !== 'fixo');
+  }
+
+  if(nextIndex !== -1) {
+    currentBlocoIndex = nextIndex;
+    currentVideoIndex = 0;
+    executarBlocoAtual();
+  } else {
+    pararExecucaoGeral();
+    document.getElementById('txt-atual').innerText = "FIM DA GRADE SEQUENCIAL";
+  }
+}
+
+function atualizarProximoUI() {
+  let nextIndex = currentBlocoIndex + 1;
+  while(nextIndex < blocos.length && blocos[nextIndex].type === 'fixo') {
+    nextIndex++;
+  }
+  if(nextIndex >= blocos.length) {
+    nextIndex = blocos.findIndex(b => b.type !== 'fixo');
+  }
+
+  const prox = blocos[nextIndex];
+  document.getElementById('txt-proximo').innerText = (prox && nextIndex !== currentBlocoIndex) ? prox.nome : "REPETINDO BLOCO ATUAL";
+}
+
+function limparPlayer() {
+  const video = document.getElementById('player');
+  if(video) {
+    video.removeAttribute('src');
+    video.load();
+  }
+}
+
+function pararExecucaoGeral() {
+  limparPlayer();
+  if(timeoutPausa) clearTimeout(timeoutPausa);
+  if(intervalCheckFixo) clearInterval(intervalCheckFixo);
+  currentBlocoIndex = -1;
+  blocoFixoAtivoAgora = null;
+}
+
+function limparTudo() {
+  if(confirm("Deseja limpar toda a programação atual?")) {
+    pararExecucaoGeral();
+    blocos = [];
+    localStorage.removeItem('kbs_programacao'); // Limpa a memória também
+    atualizarFilaUI();
+    atualizarGerenciamentoUI();
+    document.getElementById('txt-atual').innerText = "NENHUM BLOCO ATIVO";
+    document.getElementById('txt-proximo').innerText = "FIM DA PROGRAMAÇÃO";
+  }
+}
+
+// --- ARMAZENAMENTO (SALVAR / CARREGAR) ---
+function salvarProgramacao() {
+  if(blocos.length === 0) { alert('Nenhum bloco para salvar!'); return; }
+  
+  // SALVAMENTO AUTOMÁTICO NA MEMÓRIA DO NAVEGADOR
+  localStorage.setItem('kbs_programacao', JSON.stringify(blocos));
+
+  // MANTÉM O DOWNLOAD DO ARQUIVO .JSON CASO VOCÊ QUEIRA LEVAR PARA OUTRO PC
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(blocos, null, 2));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", "programacao_kbs.json");
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+}
+
+function carregarProgramacao(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const carregados = JSON.parse(e.target.result);
+      if(Array.isArray(carregados)) {
+        pararExecucaoGeral();
+        blocos = carregados;
+        localStorage.setItem('kbs_programacao', JSON.stringify(blocos)); // Atualiza a memória local com o arquivo carregado
+        ordenarEAtualizar();
+      }
+    } catch (err) {
+      alert('Erro ao ler arquivo de programação!');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// CARREGAMENTO AUTOMÁTICO ASSIM QUE A PÁGINA ABRE
+window.addEventListener('DOMContentLoaded', () => {
+  const dadosSalvos = localStorage.getItem('kbs_programacao');
+  if (dadosSalvos) {
+    try {
+      const listaRecuperada = JSON.parse(dadosSalvos);
+      if (Array.isArray(listaRecuperada) && listaRecuperada.length > 0) {
+        blocos = listaRecuperada;
+        console.log("Programação recuperada automaticamente da memória local!");
+        ordenarEAtualizar();
+      }
+    } catch(e) {
+      console.log("Nenhuma programação anterior válida encontrada na memória.");
+    }
+  }
+});
+</script>
+
+<script>
+// --- MOTOR DE ARRASTAR ELEMENTOS ---
+let layoutTravado = true;
+
+function alternarTravaLayout() {
+  const btnTrava = document.getElementById('btn-trava-layout');
+  layoutTravado = !layoutTravado;
+
+  if (layoutTravado) {
+    btnTrava.innerHTML = '🔒 Layout Travado';
+    btnTrava.className = 'layout-travado';
+    document.body.classList.remove('modo-edicao');
+  } else {
+    btnTrava.innerHTML = '🔓 Layout Livre';
+    btnTrava.className = 'layout-destravado';
+    document.body.classList.add('modo-edicao');
+  }
+};
+
+document.addEventListener('mousedown', (e) => {
+  if (layoutTravado) return;
+  const target = e.target.closest('.movel');
+  if (!target) return;
+  if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+  let shiftX = e.clientX - target.getBoundingClientRect().left;
+  let shiftY = e.clientY - target.getBoundingClientRect().top;
+
+  function moveAt(pageX, pageY) {
+    target.style.left = pageX - shiftX + 'px';
+    target.style.top = pageY - shiftY + 'px';
+  }
+  function onMouseMove(event) { moveAt(event.pageX, event.pageY); }
+  document.addEventListener('mousemove', onMouseMove);
+  document.onmouseup = function() {
+    document.removeEventListener('mousemove', onMouseMove);
+    document.onmouseup = null;
+  };
+});
+document.addEventListener('dragstart', (e) => { if (e.target.closest('.movel')) e.preventDefault(); });
+</script>
+
+</body>
+</html><!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>Player Programado — KBS TV</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { 
+    color-scheme: dark; 
+    --primary-color: #2e7d32; 
+    --error-color: #ff4d4d;
+    --gold: #ffd700;
+  }
+  body {
+    background:#000;
+    color:#eee;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    margin:0;
+    overflow: auto !important; 
+    min-width: 100vw;
+    min-height: 101vh;
+    position: relative;
+  }
+
+  /* --- NOVOS ESTILOS PARA MOVIMENTAÇÃO --- */
+  .movel {
+    position: absolute !important;
+    cursor: move;
+    z-index: 10;
+    transition: outline 0.2s;
+  }
+  .modo-edicao .movel {
+    outline: 2px dashed var(--primary-color);
+    background: rgba(46, 125, 50, 0.05);
+  }
+  #btn-trava-layout {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
     z-index: 999999;
     padding: 15px 25px;
     border-radius: 50px;
