@@ -650,57 +650,55 @@ function verificarAgendados() {
   const agora = new Date();
   const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
   const horaAtual = agora.toTimeString().split(' ')[0];
-  let blocoEncontrado = false; let indiceParaRodar = -1;
+  let blocoEncontrado = false; 
+  let indiceParaRodar = -1;
 
   for (let i = 0; i < blocos.length; i++) {
-    const b = blocos[i]; if (!b || b.removido) continue;
-    if (b.tipo === 'youtube') {
-      const diaMatch = (b.diaSemana === "" || b.diaSemana.toLowerCase() === hoje);
-      const dentroDoHorario = (b.horaInicio && b.horaFim && horaAtual >= b.horaInicio && horaAtual < b.horaFim);
-      if (diaMatch && dentroDoHorario) { blocoEncontrado = true; indiceParaRodar = i; break; }
-    }
-    if (b.tipo === 'timer' && b.horarios && b.horarios.length > 0) {
-      const diaMatch = (!b.diasSelecionados || b.diasSelecionados.length === 0 || b.diasSelecionados.includes(hoje));
-      const horarioMatch = b.horarios.some(h => horaAtual >= h.inicio && horaAtual < h.fim);
-      if (diaMatch && horarioMatch) { blocoEncontrado = true; indiceParaRodar = i; break; }
+    const b = blocos[i]; 
+    if (!b || b.removido) continue;
+    
+    // Verifica se é um bloco ativo agora
+    const diaMatch = (b.tipo === 'youtube') ? (b.diaSemana === "" || b.diaSemana.toLowerCase() === hoje) : (!b.diasSelecionados || b.diasSelecionados.includes(hoje));
+    const dentroDoHorario = (b.tipo === 'youtube') ? (b.horaInicio && b.horaFim && horaAtual >= b.horaInicio && horaAtual < b.horaFim) : (b.horarios && b.horarios.some(h => horaAtual >= h.inicio && horaAtual < h.fim));
+
+    if (diaMatch && dentroDoHorario) { 
+      blocoEncontrado = true; 
+      indiceParaRodar = i; 
+      break; 
     }
   }
 
   if (blocoEncontrado) {
     const b = blocos[indiceParaRodar];
     if (!b._agendadoRodando) {
-      if (sistemaIniciado && idxBloco !== indiceParaRodar && !blocos[idxBloco]._agendadoRodando) {
-        blocoAnteriorIdx = idxBloco; blocoAnteriorProgresso = video.currentTime; blocoAnteriorPaused = video.paused;
+      // 1. SALVAR ESTADO DO ANTERIOR antes de mudar
+      if (sistemaIniciado && idxBloco !== indiceParaRodar) {
+        if (blocos[idxBloco].tipo !== 'youtube') {
+            blocoAnteriorProgresso = video.currentTime;
+            blocos[idxBloco].progresso[blocos[idxBloco].arquivoAtual] = video.currentTime;
+        }
+        blocoAnteriorIdx = idxBloco;
       }
+      
       blocos.forEach(bl => bl._agendadoRodando = false);
-      b._agendadoRodando = true; idxBloco = indiceParaRodar; sistemaIniciado = true; tocarAtual();
+      b._agendadoRodando = true; 
+      idxBloco = indiceParaRodar; 
+      sistemaIniciado = true; 
+      tocarAtual();
     }
   } else {
+    // Retorno ao fluxo normal
     const agendadoQueEstavaRodando = blocos.find(b => b._agendadoRodando);
     if (agendadoQueEstavaRodando) {
       agendadoQueEstavaRodando._agendadoRodando = false;
       if (blocoAnteriorIdx !== -1) {
-        idxBloco = blocoAnteriorIdx; 
-        blocoAnteriorIdx = -1; 
-        
-        // ESCONDE O PLAYER IMEDIATAMENTE (CORREÇÃO ANTI-FLASH)
-        video.style.opacity = '0';
-        video.style.backgroundColor = '#000000';
-        
-        tocarAtual();
-        
-        // Força a injeção do tempo antigo sem delay e sem renderizar o frame zero
-        if (blocos[idxBloco] && blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
-          video.currentTime = blocoAnteriorProgresso;
-          if (blocoAnteriorPaused) video.pause();
-        }
-      } else { 
-        window.proximoBloco(); 
+        idxBloco = blocoAnteriorIdx;
+        blocoAnteriorIdx = -1;
+        tocarAtual(); // O tocarAtual agora já tem a lógica de carregar o progresso salvo
       }
     }
   }
 }
-
 function tocarAtual() {
   if (!anyPlayableBlocks()) return;
   const b = blocos[idxBloco]; 
