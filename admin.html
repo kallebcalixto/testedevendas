@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Admin – Programação Individual</title>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBzzQg4fMWQm82aOu2xM2huVPvHeyitFxQ",
+    authDomain: "controle-remoto-da345.firebaseapp.com",
+    databaseURL: "https://controle-remoto-da345-default-rtdb.firebaseio.com",
+    projectId: "controle-remoto-da345",
+    storageBucket: "controle-remoto-da345.firebasestorage.app",
+    messagingSenderId: "246457543992",
+    appId: "1:246457543992:web:41bf1bd64a4788fb2625cd",
+    measurementId: "G-CFHSFG82SX"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const auth = getAuth(app);
+
+  let blocosRef = null;
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      blocosRef = ref(db, `usuarios/${user.uid}/player_m3u`);
+      onValue(blocosRef, snap => atualizarLista(snap.val()));
+      console.log("Admin conectado à pasta: " + user.uid);
+    } else {
+      alert("Acesso negado. Faça login no Player primeiro.");
+      window.location.href = "cara.html"; 
+    }
+  });
+
+  function atualizarLista(dados) {
+    const lista = document.getElementById("lista");
+    lista.innerHTML = "";
+    const diasSemana = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"];
+
+    Object.keys(dados || {}).forEach(i => {
+      const b = dados[i];
+      const diasSelecionados = b.dias || []; // Agora é um array
+      
+      const card = document.createElement("div");
+      card.className = "card";
+      
+      // Criando a lista de dias com Checkboxes
+      let diasHTML = '<div class="dias-check">';
+      diasSemana.forEach(dia => {
+        const checked = diasSelecionados.includes(dia) ? "checked" : "";
+        diasHTML += `
+          <label style="display:block; font-size:12px;">
+            <input type="checkbox" class="dia-${i}" value="${dia}" ${checked}> ${dia.charAt(0).toUpperCase() + dia.slice(1)}
+          </label>`;
+      });
+      diasHTML += '</div>';
+
+      card.innerHTML = `
+        <h3>Bloco ${i}</h3>
+        <label>Link M3U:</label>
+        <input id="m3u-${i}" value="${b.m3u || ''}">
+        <label>Link YouTube:</label>
+        <input id="yt-${i}" value="${b.yt || ''}">
+        
+        <label>Dias da semana:</label>
+        ${diasHTML}
+
+        <label>Hora início (com segundos):</label>
+        <input id="inicio-${i}" type="time" step="1" value="${b.inicio || '00:00:00'}">
+        <label>Hora fim (com segundos):</label>
+        <input id="fim-${i}" type="time" step="1" value="${b.fim || '00:00:00'}">
+        
+        <button class="saveBtn" onclick="salvar(${i})">Salvar</button>
+        <button class="deleteBtn" onclick="apagar(${i})">Apagar</button>
+      `;
+      lista.appendChild(card);
+    });
+  }
+
+  window.salvar = function(i) {
+    if(!auth.currentUser) return;
+    
+    // Captura todos os dias marcados
+    const checkboxes = document.querySelectorAll(`.dia-${i}:checked`);
+    const diasMarcados = Array.from(checkboxes).map(cb => cb.value);
+
+    const caminho = ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${i}`);
+    set(caminho, {
+      m3u: document.getElementById("m3u-" + i).value,
+      yt: document.getElementById("yt-" + i).value,
+      dias: diasMarcados, // Salvando como array
+      inicio: document.getElementById("inicio-" + i).value,
+      fim: document.getElementById("fim-" + i).value,
+      timestamp: Date.now()
+    });
+    alert("✔ Salvo com múltiplos dias e segundos!");
+  };
+
+  window.apagar = function(i) {
+    if (!confirm("Apagar bloco?")) return;
+    remove(ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${i}`));
+  };
+
+  window.adicionarBloco = function() {
+    onValue(blocosRef, snap => {
+      const dados = snap.val() || {};
+      const chaves = Object.keys(dados).map(Number);
+      const novoID = chaves.length > 0 ? Math.max(...chaves) + 1 : 0;
+      
+      set(ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${novoID}`), {
+        m3u: "", yt: "", dias: [], inicio: "00:00:00", fim: "00:00:00", timestamp: Date.now()
+      });
+    }, { onlyOnce: true });
+  };
+</script>
+
+<style>
+/* SEU CSS ORIGINAL PRESERVADO */
+body { background:#111; color:#fff; font-family:Arial; padding: 20px; }
+#topBar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+#addBtn { background:#28a745; padding:10px 18px; border:none; color:white; border-radius:8px; cursor:pointer; }
+.card { background:#1b1b1b; padding:15px; border-radius:10px; margin-bottom:15px; border:1px solid #333; width:320px; }
+input, select { width:100%; margin-bottom:8px; padding:6px; background:#222; border:1px solid #555; color:white; }
+button { width:100%; padding:8px; border:none; color:white; border-radius:6px; margin-top:6px; cursor:pointer; }
+.saveBtn { background:#007bff; }
+.deleteBtn { background:#dc3545; }
+
+/* AJUSTE PARA OS CHECKBOXES */
+.dias-check { 
+  background: #222; 
+  padding: 10px; 
+  border-radius: 5px; 
+  margin-bottom: 10px; 
+  border: 1px solid #444;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.dias-check input { width: auto; margin-right: 5px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="topBar">
+  <h1>Admin Individual</h1>
+  <button id="addBtn" onclick="adicionarBloco()">+ Novo Bloco Individual</button>
+</div>
+<div id="lista">Carregando seus blocos…</div>
+</body>
+</html>
