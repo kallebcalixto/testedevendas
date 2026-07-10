@@ -812,29 +812,18 @@ function startYouTubeNow(b) {
     const id = b.ytlink.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-z0-9_-]{11})/); 
     if(id) ytplayer.src=`https://www.youtube.com/embed/${id[1]}?autoplay=1`; 
 }
-function stopYouTube(){ ytplayer.src=''; ytplayer.style.display='none'; }
-
-function startM3UNow(b) {
-    video.style.display = 'block';
-    if (Hls.isSupported()) {
-        if (hlsInstance) stopM3U();
-        hlsInstance = new Hls({ enableWorker: true, lowLatencyMode: true, manifestLoadingMaxRetry: 10, levelLoadingMaxRetry: 10 });
-        hlsInstance.loadSource(b.m3ulink); hlsInstance.attachMedia(video);
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); });
-        hlsInstance.on(Hls.Events.ERROR, function (event, data) {
-            if (data.fatal) {
-                switch (data.type) {
-                    case Hls.ErrorTypes.NETWORK_ERROR: hlsInstance.startLoad(); break;
-                    case Hls.ErrorTypes.MEDIA_ERROR: hlsInstance.recoverMediaError(); break;
-                    default: stopM3U(); window.proximoBloco(); break;
-                }
-            }
-        });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = b.m3ulink; video.addEventListener('loadedmetadata', () => video.play());
+        const videoId = id[1];
+        const urlAtual = ytplayer.src || "";
+        
+        // Se o iframe já está com este vídeo, apenas retomamos de onde pausou
+        if (urlAtual.includes(videoId)) {
+            ytplayer.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+        } else {
+            // Se for a primeira vez, carrega o vídeo permitindo o controle de pausa (enablejsapi=1)
+            ytplayer.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`;
+        }
     }
 }
-
 function stopM3U() { if (hlsInstance) { hlsInstance.detachMedia(); hlsInstance.destroy(); hlsInstance = null; } video.pause(); video.removeAttribute('src'); video.load(); }
 function detachTimers(){ if(timeupdateHandler) video.removeEventListener('timeupdate', timeupdateHandler); video.onended=null; }
 function proximoArquivoMesmoBloco(){ const b=blocos[idxBloco]; b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; tocarAtual(); }
