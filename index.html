@@ -213,9 +213,9 @@
    
   .bloco { position:relative; flex:0 0 260px; border:1px solid #2b2b2b; background:#171717; border-radius:10px; padding:12px; }
   .bloco h3 { margin:0 0 10px 0; font-size:15px; }
-  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
   .row input[type="time"] { width:130px; }
-  .hint { font-size:12px; color:#aaa; }
+  .hint { font-size:12px; color:#aaa; margin-top: 5px; }
   .badge { display:inline-block; padding:2px 8px; border-radius:999px; background:#2a2a2a; font-size:12px; margin-left:6px; }
   .running::before {
     content:"Em execução"; position:absolute; top:0; left:0; right:0;
@@ -404,6 +404,7 @@
               const d = dadosFirebase[i];
               novosBlocosAgendados.push({
                   tipo: 'youtube', 
+                  nome: d.nome || '',
                   arquivos: [], 
                   progresso: [],
                   tempo: 0, 
@@ -609,10 +610,20 @@ function anyPlayableBlocks(){ return blocos.some(b=>b && !b.removido); }
 
 window.adicionarBloco = function(tipo){
   if (tipo === 'youtube') return alert('Blocos YouTube / M3U são gerenciados apenas pelo painel Admin.');
-  const bloco = { tipo, arquivos: [], progresso: [], tempo: (tipo==='timer'||tipo==='pause'?300:0), sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: (tipo==='movie'?3:0), ytlink:'', m3ulink:'', diaSemana:'', horaInicio:'', horaFim:'', removido:false, _agendadoRodando:false, diasSelecionados: [], horarios: [] };
+  const bloco = { nome: '', tipo, arquivos: [], progresso: [], tempo: (tipo==='timer'||tipo==='pause'?300:0), sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: (tipo==='movie'?3:0), ytlink:'', m3ulink:'', diaSemana:'', horaInicio:'', horaFim:'', removido:false, _agendadoRodando:false, diasSelecionados: [], horarios: [] };
   const i = blocos.push(bloco)-1;
   renderizarBloco(i, bloco);
   atualizarGrade();
+}
+
+window.definirNomeBloco = function(i, valor) {
+    blocos[i].nome = valor;
+    const badgeText = blocos[i].tipo==='timer'?'Tempo Fixo':blocos[i].tipo==='movie'?'Filmes':blocos[i].tipo==='pause'?'Pausa':'YouTube / M3U';
+    const titulo = document.querySelector(`#bloco-${i} h3`);
+    if(titulo) {
+       titulo.innerHTML = `Bloco ${i+1} ${valor ? '- ' + valor : ''} <span class="badge">${badgeText}</span>`;
+    }
+    atualizarGrade();
 }
 
 function renderizarBloco(i, bloco){
@@ -620,17 +631,24 @@ function renderizarBloco(i, bloco){
   card.className='bloco'; card.id=`bloco-${i}`;
   const isTimer = bloco.tipo === 'timer';
   const isYoutubeM3U = bloco.tipo === 'youtube';
+  const nomeDisplay = bloco.nome ? ` - ${bloco.nome}` : '';
   card.innerHTML = `
-    <h3>Bloco ${i+1} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':bloco.tipo==='movie'?'Filmes':bloco.tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
+    <h3 id="titulo-bloco-${i}">Bloco ${i+1}${nomeDisplay} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':bloco.tipo==='movie'?'Filmes':bloco.tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
+    
+    <div class="row">
+      <label>Nome:</label>
+      <input type="text" placeholder="Ex: Jaspion" value="${bloco.nome || ''}" onchange="definirNomeBloco(${i}, this.value)" style="width:145px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 6px;">
+    </div>
+    
     <div class="row">
       ${(isTimer||bloco.tipo==='movie') ? `<label>Pasta:</label><input type="file" webkitdirectory directory multiple onchange="carregarArquivos(${i}, this.files)">`:''}
-     ${isTimer ? `
+      ${isTimer ? `
         <label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempo(${i}, this.value)">
         <div style="margin-top:10px; width:100%; background:#222; padding:8px; border-radius:5px;"><label>Dias da Semana:</label><br><div style="display:grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size:11px;">
             ${['domingo','segunda','terca','quarta','quinta','sexta','sabado'].map(d => `<label style="cursor:pointer;"><input type="checkbox" ${bloco.diasSelecionados && bloco.diasSelecionados.includes(d) ? 'checked' : ''} onchange="toggleDia(${i}, '${d}')"> ${d.charAt(0).toUpperCase() + d.slice(1)}</label>`).join('')}
          </div></div>
         <div style="margin-top:10px; width:100% text-align: left;"><label>Horários Programados:</label><div id="lista-horarios-${i}">${(bloco.horarios || []).map((h, idx) => `<div style="display:flex; gap:5px; margin-bottom:5px;"><input type="time" step="1" value="${h.inicio}" oninput="editHora(${i}, ${idx}, 'inicio', this.value)" style="width:85px;"><input type="time" step="1" value="${h.fim}" oninput="editHora(${i}, ${idx}, 'fim', this.value)" style="width:85px;"><button onclick="removeHora(${i}, ${idx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px;">X</button></div>`).join('')}</div><button onclick="addHora(${i})" style="font-size:11px; width:100%; margin-top:5px; background:#1976d2; color:white; border-radius:5px; padding:5px;">+ Adicionar Horário</button></div>
-     `:''}
+      `:''}
       ${bloco.tipo==='pause' ? `<label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempo(${i}, this.value)">`:''}
       ${bloco.tipo==='movie' ? `<label>Limite:</label><input type="number" min="1" value="${bloco.limitePorCiclo||3}" onchange="definirLimite(${i}, this.value)"><div style="margin-top:8px; width:100%;"><button class="mini-btn" onclick="voltarArquivo(${i})">⏮ Voltar vídeo</button><button class="mini-btn" onclick="pularArquivo(${i})">⏭ Pular vídeo</button></div>`:''}
       ${isYoutubeM3U ? `<label>Início:</label><input type="time" step="1" value="${bloco.horaInicio||''}" disabled><label>Fim:</label><input type="time" step="1" value="${bloco.horaFim||''}" disabled>`:''}
@@ -781,23 +799,80 @@ function attachHandlersFor(b){
   
   video.onended = () => {
     b.arquivoAtual = (b.arquivoAtual + 1) % b.arquivos.length;
-    if (b.tipo === 'movie') { b._count = (b._count || 0) + 1; if (b._count >= b.limitePorCiclo) { b._count = 0; window.proximoBloco(); return; } }
+    if (b.tipo === 'movie') { 
+      b._count = (b._count || 0) + 1; 
+      atualizarInfoTempo(idxBloco); 
+      if (b._count >= b.limitePorCiclo) { 
+        b._count = 0; 
+        window.proximoBloco(); 
+        return; 
+      } 
+    } 
     tocarAtual();
   };
 }
 
-window.carregarArquivos = function(i, fileList){
+function obterDuracao(url) {
+  return new Promise((resolve) => {
+    const tempVid = document.createElement('video');
+    tempVid.onloadedmetadata = () => { 
+        resolve(tempVid.duration); 
+        tempVid.removeAttribute('src'); 
+        tempVid.load(); 
+    };
+    tempVid.onerror = () => { resolve(0); };
+    tempVid.src = url;
+  });
+}
+
+window.atualizarInfoTempo = function(i) {
+  const b = blocos[i];
+  if (!b || !b.arquivos) return;
+  let infoText = b.arquivos.length + " arquivos.";
+  
+  if (b.tipo === 'movie') {
+    let limite = b.limitePorCiclo || 3;
+    let start = b.arquivoAtual || 0;
+    let sum = 0;
+    let count = 0;
+    for(let j=0; j < b.arquivos.length && count < limite; j++) {
+       let idx = (start + j) % b.arquivos.length;
+       sum += (b.arquivos[idx].duration || 0);
+       count++;
+    }
+    infoText += "<br><span style='color:#ffd700; font-size:11px;'>Tempo p/ rodar os " + count + ": " + fmt(sum) + "</span>";
+  } else if (b.tipo === 'timer') {
+    let sum = b.arquivos.reduce((a, c) => a + (c.duration || 0), 0);
+    infoText += "<br><span style='color:#ffd700; font-size:11px;'>Duração total da pasta: " + fmt(sum) + "</span>";
+  }
+  
+  const infoEl = document.getElementById(`info-${i}`);
+  if(infoEl) infoEl.innerHTML = infoText;
+}
+
+window.carregarArquivos = async function(i, fileList){
   const validExtensions = ['.mp4', '.webm', '.ogg', '.mkv', '.mov'];
   const files = Array.from(fileList).filter(f => validExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
-  blocos[i].arquivos = files.map(f => ({ url: URL.createObjectURL(f), file: f }));
+  blocos[i].arquivos = files.map(f => ({ url: URL.createObjectURL(f), file: f, duration: 0 }));
   blocos[i].progresso = blocos[i].arquivos.map(()=>0);
-  document.getElementById(`info-${i}`).textContent = files.length + " arquivos.";
+  document.getElementById(`info-${i}`).innerHTML = files.length + " arquivos. <br><span style='color:#ffd700; font-size:11px;'>Calculando tempos...</span>";
   atualizarGrade();
+
+  // Calcular em background sem travar o PC
+  for (let j = 0; j < blocos[i].arquivos.length; j++) {
+     try {
+       blocos[i].arquivos[j].duration = await obterDuracao(blocos[i].arquivos[j].url);
+     } catch(e) {
+       blocos[i].arquivos[j].duration = 0;
+     }
+  }
+  atualizarInfoTempo(i);
 }
+
 window.definirTempo = function(i,v){ blocos[i].tempo=timeToSec(v); atualizarGrade(); }
-window.definirLimite = function(i,v){ blocos[i].limitePorCiclo=parseInt(v); atualizarGrade(); }
-window.pularArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; if(idxBloco===i) tocarAtual(); } }
-window.voltarArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual-1+b.arquivos.length)%b.arquivos.length; if(idxBloco===i) tocarAtual(); } }
+window.definirLimite = function(i,v){ blocos[i].limitePorCiclo=parseInt(v); atualizarInfoTempo(i); atualizarGrade(); }
+window.pularArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
+window.voltarArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual-1+b.arquivos.length)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
 window.removerBloco = function(i){ blocos[i].removido=true; document.getElementById(`bloco-${i}`).remove(); window.proximoBloco(); }
 
 window.iniciar = function(){ sistemaIniciado = true; idxBloco=0; tocarAtual(); }
@@ -812,26 +887,45 @@ function startYouTubeNow(b) {
     const id = b.ytlink.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-z0-9_-]{11})/); 
     if(id) ytplayer.src=`https://www.youtube.com/embed/${id[1]}?autoplay=1`; 
 }
-        const videoId = id[1];
-        const urlAtual = ytplayer.src || "";
-        
-        // Se o iframe já está com este vídeo, apenas retomamos de onde pausou
-        if (urlAtual.includes(videoId)) {
-            ytplayer.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
-        } else {
-            // Se for a primeira vez, carrega o vídeo permitindo o controle de pausa (enablejsapi=1)
-            ytplayer.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`;
-        }
+function stopYouTube(){ ytplayer.src=''; ytplayer.style.display='none'; }
+
+function startM3UNow(b) {
+    video.style.display = 'block';
+    if (Hls.isSupported()) {
+        if (hlsInstance) stopM3U();
+        hlsInstance = new Hls({ enableWorker: true, lowLatencyMode: true, manifestLoadingMaxRetry: 10, levelLoadingMaxRetry: 10 });
+        hlsInstance.loadSource(b.m3ulink); hlsInstance.attachMedia(video);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); });
+        hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+            if (data.fatal) {
+                switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR: hlsInstance.startLoad(); break;
+                    case Hls.ErrorTypes.MEDIA_ERROR: hlsInstance.recoverMediaError(); break;
+                    default: stopM3U(); window.proximoBloco(); break;
+                }
+            }
+        });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = b.m3ulink; video.addEventListener('loadedmetadata', () => video.play());
     }
 }
+
 function stopM3U() { if (hlsInstance) { hlsInstance.detachMedia(); hlsInstance.destroy(); hlsInstance = null; } video.pause(); video.removeAttribute('src'); video.load(); }
 function detachTimers(){ if(timeupdateHandler) video.removeEventListener('timeupdate', timeupdateHandler); video.onended=null; }
-function proximoArquivoMesmoBloco(){ const b=blocos[idxBloco]; b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; tocarAtual(); }
+function proximoArquivoMesmoBloco(){ 
+  const b=blocos[idxBloco]; 
+  b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; 
+  if(b.tipo === 'timer') atualizarInfoTempo(idxBloco);
+  tocarAtual(); 
+}
 window.resizePlayer = function(){ const w=document.getElementById('playerWidth').value, h=document.getElementById('playerHeight').value; video.style.width=w+'px'; video.style.height=h+'px'; ytplayer.style.width=w+'px'; ytplayer.style.height=h+'px'; }
 window.salvarProgramacao = function(){ const blob=new Blob([JSON.stringify(blocos)],{type:"application/json"}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download="programacao.json"; a.click(); }
 window.carregarProgramacao = function(input){ const reader=new FileReader(); reader.onload=e=>{ blocos=JSON.parse(e.target.result); blocosEl.innerHTML=""; blocos.forEach((b,i)=>renderizarBloco(i,b)); atualizarGrade(); }; reader.readAsText(input.files[0]); }
 window.blocoAnterior = function(){ idxBloco=(idxBloco-1+blocos.length)%blocos.length; tocarAtual(); }
-function atualizarGrade(){ gradeEl.textContent = blocos.filter(b=>!b.removido).map((b,i)=>`Bloco ${i+1}: ${b.tipo} ${b.horaInicio?'('+b.horaInicio+')':''}`).join('\n'); }
+
+function atualizarGrade(){ 
+  gradeEl.textContent = blocos.filter(b=>!b.removido).map((b,i)=>`Bloco ${i+1}${b.nome ? ' ('+b.nome+')' : ''}: ${b.tipo} ${b.horaInicio?'('+b.horaInicio+')':''}`).join('\n'); 
+}
 
 window.toggleDia = function(i, dia) { if (!blocos[i].diasSelecionados) blocos[i].diasSelecionados = []; const idx = blocos[i].diasSelecionados.indexOf(dia); if (idx === -1) blocos[i].diasSelecionados.push(dia); else blocos[i].diasSelecionados.splice(idx, 1); }
 window.addHora = function(i) { if (!blocos[i].horarios) blocos[i].horarios = []; blocos[i].horarios.push({ inicio: "00:00:00", fim: "00:00:00" }); const container = document.getElementById(`lista-horarios-${i}`); const div = document.createElement('div'); const idx = blocos[i].horarios.length - 1; div.style = "display:flex; gap:5px; margin-bottom:5px;"; div.innerHTML = `<input type="time" step="1" value="00:00:00" oninput="editHora(${i}, ${idx}, 'inicio', this.value)" style="width:85px;"><input type="time" step="1" value="00:00:00" oninput="editHora(${i}, ${idx}, 'fim', this.value)" style="width:85px;"><button onclick="removeHora(${i}, ${idx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px;">X</button>`; container.appendChild(div); }
