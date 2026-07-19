@@ -483,7 +483,11 @@
   <div id="conteudo-player" style="display:none;">
     <div class="wrap">
       
-      <div class="movel" style="top: 20px; right: 20px; display: flex; gap: 10px; z-index: 10000;">
+      <div class="movel" style="top: 20px; right: 20px; display: flex; gap: 10px; z-index: 10000; align-items: center; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 8px; border: 1px solid #333;">
+          <div style="display: flex; flex-direction: column; align-items: center; margin-right: 10px;">
+              <label style="font-size: 10px; color: #ffd700; font-weight: bold; margin-bottom: 2px;">REINÍCIO DIÁRIO:</label>
+              <input type="time" id="horarioReinicio" onchange="salvarHorarioReinicio(this.value)" style="background:#000; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 6px; font-size: 12px; cursor: pointer;">
+          </div>
           <button class="btn-admin" onclick="window.open('admin.html', '_blank')">⚙️ ABRIR ADMIN</button>
           <button onclick="fazerLogout()" style="background:#b71c1c; font-weight: bold;">🚪 SAIR</button>
       </div>
@@ -573,6 +577,41 @@ let blocoAnteriorProgresso = 0;
 let blocoAnteriorPaused = false;
 let hlsInstance = null;
 let sistemaIniciado = false;
+
+// --- SISTEMA DE REINÍCIO DIÁRIO ---
+window.salvarHorarioReinicio = function(valor) {
+    localStorage.setItem('kbs_horario_reinicio', valor);
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+    const horarioSalvo = localStorage.getItem('kbs_horario_reinicio');
+    if (horarioSalvo) {
+        const inputReinicio = document.getElementById('horarioReinicio');
+        if (inputReinicio) inputReinicio.value = horarioSalvo;
+    }
+});
+
+let ultimoReinicio = "";
+setInterval(() => {
+    const inputReinicio = document.getElementById('horarioReinicio');
+    if (!inputReinicio || !inputReinicio.value) return;
+
+    const agora = new Date();
+    const horaAtual = agora.toTimeString().split(' ')[0].substring(0, 5); // Ex: "07:00"
+    const dataHoje = agora.toDateString(); 
+    
+    const chaveReinicio = dataHoje + "-" + horaAtual;
+
+    // Checa se a hora atual é igual à que foi marcada E se já não rodou hoje neste exato minuto
+    if (horaAtual === inputReinicio.value && ultimoReinicio !== chaveReinicio) {
+        ultimoReinicio = chaveReinicio;
+        console.log("Executando reinício diário agendado para as: " + horaAtual);
+        if (blocos.length > 0) {
+            window.iniciar(); // Reinicia o ciclo e dá o Play no primeiro bloco
+        }
+    }
+}, 1000);
+// -----------------------------------
 
 function atualizarLogos(url) {
   const logo1 = document.getElementById('letreiro-logo-img');
