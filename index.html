@@ -573,10 +573,29 @@ let idxBloco = 0;
 let timeupdateHandler = null;
 let pauseTimer = null;
 let blocoAnteriorIdx = -1;
-let blocoAnteriorProgresso = 0;
 let blocoAnteriorPaused = false;
 let hlsInstance = null;
 let sistemaIniciado = false;
+
+// --- SISTEMA DE PRESERVAÇÃO DE PROGRESSO ---
+function salvarProgressoAtual() {
+  if (!sistemaIniciado || idxBloco < 0 || idxBloco >= blocos.length) return;
+  const b = blocos[idxBloco];
+  if (!b) return;
+
+  if (b.tipo === 'youtube') {
+     if (b._ytLastPlayTimestamp) {
+        const elapsed = (Date.now() - b._ytLastPlayTimestamp) / 1000;
+        b._ytSavedTime = (b._ytSavedTime || 0) + Math.floor(elapsed);
+        b._ytLastPlayTimestamp = 0;
+     }
+  } else if (b.tipo === 'timer' || b.tipo === 'movie') {
+     if (video && !video.ended && b.arquivos && b.arquivos.length > 0 && typeof b.arquivoAtual !== 'undefined') {
+        b.progresso[b.arquivoAtual] = video.currentTime;
+     }
+  }
+}
+// -------------------------------------------
 
 // --- SISTEMA DE REINÍCIO DIÁRIO ---
 window.salvarHorarioReinicio = function(valor) {
@@ -597,17 +616,14 @@ setInterval(() => {
     if (!inputReinicio || !inputReinicio.value) return;
 
     const agora = new Date();
-    const horaAtual = agora.toTimeString().split(' ')[0].substring(0, 5); // Ex: "07:00"
+    const horaAtual = agora.toTimeString().split(' ')[0].substring(0, 5);
     const dataHoje = agora.toDateString(); 
-    
     const chaveReinicio = dataHoje + "-" + horaAtual;
 
-    // Checa se a hora atual é igual à que foi marcada E se já não rodou hoje neste exato minuto
     if (horaAtual === inputReinicio.value && ultimoReinicio !== chaveReinicio) {
         ultimoReinicio = chaveReinicio;
-        console.log("Executando reinício diário agendado para as: " + horaAtual);
         if (blocos.length > 0) {
-            window.iniciar(); // Reinicia o ciclo e dá o Play no primeiro bloco
+            window.iniciar(); 
         }
     }
 }, 1000);
@@ -725,15 +741,22 @@ function verificarAgendados() {
     const b = blocos[indiceParaRodar];
     if (!b._agendadoRodando) {
       if (sistemaIniciado && idxBloco !== indiceParaRodar && !blocos[idxBloco]._agendadoRodando) {
-        blocoAnteriorIdx = idxBloco; blocoAnteriorProgresso = video.currentTime; blocoAnteriorPaused = video.paused;
+        salvarProgressoAtual();
+        blocoAnteriorIdx = idxBloco; 
+        blocoAnteriorPaused = video.paused;
       }
       blocos.forEach(bl => bl._agendadoRodando = false);
-      b._agendadoRodando = true; idxBloco = indiceParaRodar; sistemaIniciado = true; tocarAtual();
+      b._agendadoRodando = true; 
+      idxBloco = indiceParaRodar; 
+      sistemaIniciado = true; 
+      tocarAtual();
     }
   } else {
     const agendadoQueEstavaRodando = blocos.find(b => b._agendadoRodando);
     if (agendadoQueEstavaRodando) {
+      salvarProgressoAtual();
       agendadoQueEstavaRodando._agendadoRodando = false;
+      
       if (blocoAnteriorIdx !== -1) {
         idxBloco = blocoAnteriorIdx; 
         blocoAnteriorIdx = -1; 
@@ -743,10 +766,7 @@ function verificarAgendados() {
         
         tocarAtual();
         
-        if (blocos[idxBloco] && blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
-          video.currentTime = blocoAnteriorProgresso;
-          if (blocoAnteriorPaused) video.pause();
-        }
+        if (blocoAnteriorPaused) video.pause();
       } else { 
         window.proximoBloco(); 
       }
@@ -796,12 +816,17 @@ function tocarAtual() {
   video.style.backgroundColor = '#000000';
 
   const novaUrl = b.arquivos[b.arquivoAtual].url;
+  const tempoAlvo = b.progresso[b.arquivoAtual] || 0;
+
   if (video.src !== novaUrl) {
     video.src = novaUrl;
+    video.addEventListener('loadedmetadata', function handler() {
+        video.currentTime = tempoAlvo;
+        video.removeEventListener('loadedmetadata', handler);
+    });
+  } else {
+    video.currentTime = tempoAlvo;
   }
-  
-  const tempoAlvo = b.progresso[b.arquivoAtual] || 0;
-  video.currentTime = tempoAlvo;
   
   if (tempoAlvo === 0) {
     video.style.opacity = '1';
@@ -813,6 +838,7 @@ function tocarAtual() {
 }
 
 function pularParaProximo() {
+  salvarProgressoAtual();
   idxBloco = (idxBloco + 1) % blocos.length;
   setTimeout(() => { tocarAtual(); }, 0);
 }
@@ -837,6 +863,7 @@ function attachHandlersFor(b){
   }
   
   video.onended = () => {
+    b.progresso[b.arquivoAtual] = 0; // Limpa o tempo salvo para começar do 0 da próxima vez
     b.arquivoAtual = (b.arquivoAtual + 1) % b.arquivos.length;
     if (b.tipo === 'movie') { 
       b._count = (b._count || 0) + 1; 
@@ -897,7 +924,6 @@ window.carregarArquivos = async function(i, fileList){
   document.getElementById(`info-${i}`).innerHTML = files.length + " arquivos. <br><span style='color:#ffd700; font-size:11px;'>Calculando tempos...</span>";
   atualizarGrade();
 
-  // Calcular em background sem travar o PC
   for (let j = 0; j < blocos[i].arquivos.length; j++) {
      try {
        blocos[i].arquivos[j].duration = await obterDuracao(blocos[i].arquivos[j].url);
@@ -910,12 +936,28 @@ window.carregarArquivos = async function(i, fileList){
 
 window.definirTempo = function(i,v){ blocos[i].tempo=timeToSec(v); atualizarGrade(); }
 window.definirLimite = function(i,v){ blocos[i].limitePorCiclo=parseInt(v); atualizarInfoTempo(i); atualizarGrade(); }
-window.pularArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
-window.voltarArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual-1+b.arquivos.length)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
+window.pularArquivo = function(i){ 
+    const b=blocos[i]; 
+    if(b.arquivos.length>0){ 
+        b.progresso[b.arquivoAtual] = 0; 
+        b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; 
+        atualizarInfoTempo(i); 
+        if(idxBloco===i) tocarAtual(); 
+    } 
+}
+window.voltarArquivo = function(i){ 
+    const b=blocos[i]; 
+    if(b.arquivos.length>0){ 
+        b.progresso[b.arquivoAtual] = 0;
+        b.arquivoAtual=(b.arquivoAtual-1+b.arquivos.length)%b.arquivos.length; 
+        atualizarInfoTempo(i); 
+        if(idxBloco===i) tocarAtual(); 
+    } 
+}
 window.removerBloco = function(i){ blocos[i].removido=true; document.getElementById(`bloco-${i}`).remove(); window.proximoBloco(); }
 
-window.iniciar = function(){ sistemaIniciado = true; idxBloco=0; tocarAtual(); }
-window.proximoBloco = function(){ idxBloco=(idxBloco+1)%blocos.length; tocarAtual(); }
+window.iniciar = function(){ salvarProgressoAtual(); sistemaIniciado = true; idxBloco=0; tocarAtual(); }
+window.proximoBloco = function(){ salvarProgressoAtual(); idxBloco=(idxBloco+1)%blocos.length; tocarAtual(); }
 window.pausar = function(){ video.pause(); }
 window.retomar = function(){ video.play(); }
 
@@ -924,7 +966,11 @@ function startYouTubeNow(b) {
     ytplayer.style.display = 'block'; 
     video.style.display = 'none'; 
     const id = b.ytlink.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-z0-9_-]{11})/); 
-    if(id) ytplayer.src=`https://www.youtube.com/embed/${id[1]}?autoplay=1`; 
+    if(id) {
+       let startParam = b._ytSavedTime ? `&start=${Math.floor(b._ytSavedTime)}` : '';
+       ytplayer.src=`https://www.youtube.com/embed/${id[1]}?autoplay=1${startParam}`;
+       b._ytLastPlayTimestamp = Date.now();
+    } 
 }
 function stopYouTube(){ ytplayer.src=''; ytplayer.style.display='none'; }
 
@@ -952,7 +998,8 @@ function startM3UNow(b) {
 function stopM3U() { if (hlsInstance) { hlsInstance.detachMedia(); hlsInstance.destroy(); hlsInstance = null; } video.pause(); video.removeAttribute('src'); video.load(); }
 function detachTimers(){ if(timeupdateHandler) video.removeEventListener('timeupdate', timeupdateHandler); video.onended=null; }
 function proximoArquivoMesmoBloco(){ 
-  const b=blocos[idxBloco]; 
+  const b=blocos[idxBloco];
+  b.progresso[b.arquivoAtual] = 0; 
   b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; 
   if(b.tipo === 'timer') atualizarInfoTempo(idxBloco);
   tocarAtual(); 
@@ -960,7 +1007,7 @@ function proximoArquivoMesmoBloco(){
 window.resizePlayer = function(){ const w=document.getElementById('playerWidth').value, h=document.getElementById('playerHeight').value; video.style.width=w+'px'; video.style.height=h+'px'; ytplayer.style.width=w+'px'; ytplayer.style.height=h+'px'; }
 window.salvarProgramacao = function(){ const blob=new Blob([JSON.stringify(blocos)],{type:"application/json"}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download="programacao.json"; a.click(); }
 window.carregarProgramacao = function(input){ const reader=new FileReader(); reader.onload=e=>{ blocos=JSON.parse(e.target.result); blocosEl.innerHTML=""; blocos.forEach((b,i)=>renderizarBloco(i,b)); atualizarGrade(); }; reader.readAsText(input.files[0]); }
-window.blocoAnterior = function(){ idxBloco=(idxBloco-1+blocos.length)%blocos.length; tocarAtual(); }
+window.blocoAnterior = function(){ salvarProgressoAtual(); idxBloco=(idxBloco-1+blocos.length)%blocos.length; tocarAtual(); }
 
 function atualizarGrade(){ 
   gradeEl.textContent = blocos.filter(b=>!b.removido).map((b,i)=>`Bloco ${i+1}${b.nome ? ' ('+b.nome+')' : ''}: ${b.tipo} ${b.horaInicio?'('+b.horaInicio+')':''}`).join('\n'); 
