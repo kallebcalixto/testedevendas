@@ -725,12 +725,17 @@ function verificarAgendados() {
 
   for (let i = 0; i < blocos.length; i++) {
     const b = blocos[i]; if (!b || b.removido) continue;
+    
+    // Checagem segura de agendamentos prioritários (YouTube)
     if (b.tipo === 'youtube') {
       const diaMatch = (b.diaSemana === "" || b.diaSemana.toLowerCase() === hoje);
       const dentroDoHorario = (b.horaInicio && b.horaFim && horaAtual >= b.horaInicio && horaAtual < b.horaFim);
       if (diaMatch && dentroDoHorario) { blocoEncontrado = true; indiceParaRodar = i; break; }
     }
+    
+    // Checagem de blocos de Tempo Fixo com horários estabelecidos
     if (b.tipo === 'timer' && b.horarios && b.horarios.length > 0) {
+      // CORREÇÃO: Se não há dias selecionados, considera todos os dias.
       const diaMatch = (!b.diasSelecionados || b.diasSelecionados.length === 0 || b.diasSelecionados.includes(hoje));
       const horarioMatch = b.horarios.some(h => horaAtual >= h.inicio && horaAtual < h.fim);
       if (diaMatch && horarioMatch) { blocoEncontrado = true; indiceParaRodar = i; break; }
@@ -740,11 +745,17 @@ function verificarAgendados() {
   if (blocoEncontrado) {
     const b = blocos[indiceParaRodar];
     if (!b._agendadoRodando) {
-      if (sistemaIniciado && idxBloco !== indiceParaRodar && !blocos[idxBloco]._agendadoRodando) {
+      
+      // ANTES de trocar de bloco, salva o progresso do bloco atual
+      if (sistemaIniciado && idxBloco !== indiceParaRodar) {
         salvarProgressoAtual();
-        blocoAnteriorIdx = idxBloco; 
-        blocoAnteriorPaused = video.paused;
+        // Se o bloco que estamos deixando NÃO é agendado (ex: um filme comum), guardamos para voltar depois
+        if (!blocos[idxBloco]._agendadoRodando) {
+           blocoAnteriorIdx = idxBloco; 
+           blocoAnteriorPaused = video.paused;
+        }
       }
+      
       blocos.forEach(bl => bl._agendadoRodando = false);
       b._agendadoRodando = true; 
       idxBloco = indiceParaRodar; 
@@ -752,11 +763,13 @@ function verificarAgendados() {
       tocarAtual();
     }
   } else {
+    // Caso nenhum bloco agendado deva rodar agora, verifica se algum estava rodando
     const agendadoQueEstavaRodando = blocos.find(b => b._agendadoRodando);
     if (agendadoQueEstavaRodando) {
-      salvarProgressoAtual();
+      salvarProgressoAtual(); // Salva o tempo do agendado antes dele sair de cena!
       agendadoQueEstavaRodando._agendadoRodando = false;
       
+      // Retorna ao programa original (ex: volta pro filme de onde parou)
       if (blocoAnteriorIdx !== -1) {
         idxBloco = blocoAnteriorIdx; 
         blocoAnteriorIdx = -1; 
@@ -783,9 +796,10 @@ function tocarAtual() {
   const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
   const horaAgora = agora.toTimeString().split(' ')[0];
 
-  if (b.tipo === 'timer') {
-    const diaMatch = b.diasSelecionados && b.diasSelecionados.includes(hoje);
-    const horarioMatch = b.horarios && b.horarios.some(h => horaAgora >= h.inicio && h.fim > horaAgora);
+  // CORREÇÃO: Pula o bloco se ele tem agendamento mas estamos fora da hora/dia correto.
+  if (b.tipo === 'timer' && b.horarios && b.horarios.length > 0) {
+    const diaMatch = (!b.diasSelecionados || b.diasSelecionados.length === 0 || b.diasSelecionados.includes(hoje));
+    const horarioMatch = b.horarios.some(h => horaAgora >= h.inicio && h.fim > horaAgora);
     if (!diaMatch || !horarioMatch) { pularParaProximo(); return; }
   }
   if (b.tipo === 'youtube') {
