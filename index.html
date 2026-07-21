@@ -723,23 +723,26 @@ function verificarAgendados() {
   const horaAtual = agora.toTimeString().split(' ')[0];
   let blocoEncontrado = false; let indiceParaRodar = -1;
 
+  // 1. PRIORIDADE MÁXIMA: Blocos de "Tempo Fixo" (usados como comercial/programação exata)
   for (let i = 0; i < blocos.length; i++) {
     const b = blocos[i]; if (!b || b.removido) continue;
-    
-    // Checagem segura de agendamentos prioritários (YouTube)
-    if (b.tipo === 'youtube') {
-      const diaMatch = (b.diaSemana === "" || b.diaSemana.toLowerCase() === hoje);
-      const dentroDoHorario = (b.horaInicio && b.horaFim && horaAtual >= b.horaInicio && horaAtual < b.horaFim);
-      if (diaMatch && dentroDoHorario) { blocoEncontrado = true; indiceParaRodar = i; break; }
-    }
-    
-    // Checagem de blocos de Tempo Fixo com horários estabelecidos
     if (b.tipo === 'timer' && b.horarios && b.horarios.length > 0) {
-      // CORREÇÃO: Se não há dias selecionados, considera todos os dias.
       const diaMatch = (!b.diasSelecionados || b.diasSelecionados.length === 0 || b.diasSelecionados.includes(hoje));
       const horarioMatch = b.horarios.some(h => horaAtual >= h.inicio && horaAtual < h.fim);
       if (diaMatch && horarioMatch) { blocoEncontrado = true; indiceParaRodar = i; break; }
     }
+  }
+
+  // 2. PRIORIDADE NORMAL: YouTube / M3U (Roda apenas se não houver um Tempo Fixo/Comercial agora)
+  if (!blocoEncontrado) {
+      for (let i = 0; i < blocos.length; i++) {
+        const b = blocos[i]; if (!b || b.removido) continue;
+        if (b.tipo === 'youtube') {
+          const diaMatch = (b.diaSemana === "" || b.diaSemana.toLowerCase() === hoje);
+          const dentroDoHorario = (b.horaInicio && b.horaFim && horaAtual >= b.horaInicio && horaAtual < b.horaFim);
+          if (diaMatch && dentroDoHorario) { blocoEncontrado = true; indiceParaRodar = i; break; }
+        }
+      }
   }
 
   if (blocoEncontrado) {
@@ -796,7 +799,7 @@ function tocarAtual() {
   const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
   const horaAgora = agora.toTimeString().split(' ')[0];
 
-  // CORREÇÃO: Pula o bloco se ele tem agendamento mas estamos fora da hora/dia correto.
+  // Ignora o agendamento se forçar play manual fora do horário (mantém a lógica original)
   if (b.tipo === 'timer' && b.horarios && b.horarios.length > 0) {
     const diaMatch = (!b.diasSelecionados || b.diasSelecionados.length === 0 || b.diasSelecionados.includes(hoje));
     const horarioMatch = b.horarios.some(h => horaAgora >= h.inicio && h.fim > horaAgora);
