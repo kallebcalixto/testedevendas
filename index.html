@@ -565,7 +565,7 @@
     </header>
   </div>
 
-<!-- ELEMENTO OCULTO PARA GERAR O LAYOUT DO PDF COM QUALIDADE PARA REDES SOCIAIS -->
+<!-- ELEMENTO OCULTO PARA GERAR O PDF DA GRADE -->
 <div id="pdf-template-container" style="display:none; position:absolute; left:-9999px; top:0; width:800px; background:#111; color:#fff; padding:40px; font-family:'Segoe UI', Arial, sans-serif; border-radius:12px;">
     <div style="text-align:center; border-bottom:3px solid #2e7d32; padding-bottom:20px; margin-bottom:25px;">
         <h1 style="font-size:32px; color:#2e7d32; margin:0 0 5px 0; text-transform:uppercase; font-weight:900;">KBS TV — Grade de Programação</h1>
@@ -593,7 +593,7 @@ let blocoAnteriorPaused = false;
 let hlsInstance = null;
 let sistemaIniciado = false;
 
-// --- FUNÇÃO PARA GERAR O PDF DA GRADE ---
+// --- FUNÇÃO CORRIGIDA PARA GERAR O PDF DA GRADE ---
 window.gerarPdfGrade = function() {
     const blocosValidos = blocos.filter(b => !b.removido);
     if (blocosValidos.length === 0) {
@@ -605,28 +605,44 @@ window.gerarPdfGrade = function() {
     containerPdf.innerHTML = '';
 
     blocosValidos.forEach((b, i) => {
-        const nomeBloco = b.nome ? b.nome : `Bloco ${i+1}`;
+        // Pega o nome atualizado diretamente do input na tela caso o usuário tenha digitado
+        const inputNomeEl = document.querySelector(`#bloco-${i} input[type="text"]`);
+        const nomeDigitado = inputNomeEl ? inputNomeEl.value : (b.nome || '');
+        const nomeBloco = nomeDigitado ? nomeDigitado : `Bloco ${i+1}`;
+        
         const tipoTexto = b.tipo === 'timer' ? 'Tempo Fixo' : b.tipo === 'movie' ? 'Filmes / Vídeos' : b.tipo === 'pause' ? 'Pausa' : 'YouTube / M3U';
         
         let listaArquivosHtml = '';
         if (b.arquivos && b.arquivos.length > 0) {
-            listaArquivosHtml = `<div style="margin-top:10px; font-size:13px; color:#ccc;"><strong>Programas / Vídeos na Pasta:</strong><ul style="margin:5px 0 0 20px; padding:0;">`;
+            listaArquivosHtml = `<div style="margin-top:10px; font-size:13px; color:#ccc;"><strong>Vídeos na Pasta (${b.arquivos.length}):</strong><ul style="margin:5px 0 0 20px; padding:0; max-height: 120px; overflow-y: auto;">`;
             b.arquivos.forEach(arq => {
-                let nomeLimpo = arq.file.name.replace(/\.[^/.]+$/, "");
+                let nomeArq = arq.file && arq.file.name ? arq.file.name : "Vídeo";
+                let nomeLimpo = nomeArq.replace(/\.[^/.]+$/, "");
                 listaArquivosHtml += `<li style="margin-bottom:3px;">🎬 ${nomeLimpo}</li>`;
             });
             listaArquivosHtml += `</ul></div>`;
         } else if (b.ytlink) {
-            listaArquivosHtml = `<div style="margin-top:8px; font-size:13px; color:#ff4d4d;">📺 Link YouTube: ${b.ytlink}</div>`;
+            listaArquivosHtml = `<div style="margin-top:8px; font-size:13px; color:#ff4d4d;">📺 YouTube: ${b.ytlink}</div>`;
         } else if (b.m3ulink) {
             listaArquivosHtml = `<div style="margin-top:8px; font-size:13px; color:#1976d2;">📡 Link M3U: ${b.m3ulink}</div>`;
+        } else {
+            listaArquivosHtml = `<div style="margin-top:8px; font-size:12px; color:#888;">Nenhuma pasta de vídeos selecionada neste bloco.</div>`;
         }
 
+        // Pega os horários dinamicamente (seja do objeto ou dos inputs na tela)
         let horarioStr = '';
         if (b.horaInicio && b.horaFim) {
             horarioStr = `🕒 ${b.horaInicio} às ${b.horaFim} ${b.diaSemana ? '(' + b.diaSemana.toUpperCase() + ')' : ''}`;
         } else if (b.horarios && b.horarios.length > 0) {
             horarioStr = `🕒 Horários: ` + b.horarios.map(h => `${h.inicio} - ${h.fim}`).join(', ');
+        } else {
+            horarioStr = `🕒 Ciclo contínuo / Automático`;
+        }
+
+        // Dias da semana selecionados
+        let diasStr = '';
+        if (b.diasSelecionados && b.diasSelecionados.length > 0) {
+            diasStr = `<div style="margin-top:5px; font-size:11px; color:#ffd700;">📅 Dias: ${b.diasSelecionados.join(', ').toUpperCase()}</div>`;
         }
 
         const divBloco = document.createElement('div');
@@ -636,6 +652,7 @@ window.gerarPdfGrade = function() {
                 <h3 style="margin:0; font-size:16px; color:#fff;">${i+1}. ${nomeBloco} <span style="background:#2e7d32; color:#fff; font-size:10px; padding:2px 8px; border-radius:10px; margin-left:8px;">${tipoTexto}</span></h3>
                 <span style="font-size:12px; color:#ffd700; font-weight:bold;">${horarioStr}</span>
             </div>
+            ${diasStr}
             ${listaArquivosHtml}
         `;
         containerPdf.appendChild(divBloco);
@@ -660,7 +677,7 @@ window.gerarPdfGrade = function() {
         elementoParaExportar.style.display = 'none';
     });
 };
-// ------------------------------------------
+// ----------------------------------------------------
 
 // --- SISTEMA DE REINÍCIO DIÁRIO ---
 window.salvarHorarioReinicio = function(valor) {
@@ -1050,7 +1067,7 @@ function atualizarGrade(){
 window.toggleDia = function(i, dia) { if (!blocos[i].diasSelecionados) blocos[i].diasSelecionados = []; const idx = blocos[i].diasSelecionados.indexOf(dia); if (idx === -1) blocos[i].diasSelecionados.push(dia); else blocos[i].diasSelecionados.splice(idx, 1); }
 window.addHora = function(i) { if (!blocos[i].horarios) blocos[i].horarios = []; blocos[i].horarios.push({ inicio: "00:00:00", fim: "00:00:00" }); const container = document.getElementById(`lista-horarios-${i}`); const div = document.createElement('div'); const idx = blocos[i].horarios.length - 1; div.style = "display:flex; gap:5px; margin-bottom:5px;"; div.innerHTML = `<input type="time" step="1" value="00:00:00" oninput="editHora(${i}, ${idx}, 'inicio', this.value)" style="width:85px;"><input type="time" step="1" value="00:00:00" oninput="editHora(${i}, ${idx}, 'fim', this.value)" style="width:85px;"><button onclick="removeHora(${i}, ${idx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px;">X</button>`; container.appendChild(div); }
 window.editHora = function(i, idx, campo, valor) { blocos[i].horarios[idx][campo] = valor; }
-window.removeHora = function(i, idx) { blocos[i].horarios.splice(idx, 1); const container = document.getElementById(`lista-horarios-${i}`); container.innerHTML = blocos[i].horarios.map((h, subIdx) => `<div style="display:flex; gap:5px; margin-bottom:5px;"><input type="time" step="1" value="${h.inicio}" oninput="editHora(${i}, ${subIdx}, 'inicio', this.value)" style="width:85px;"><input type="time" step="1" value="${h.fim}" oninput="editHora(${i}, ${subIdx}, 'fim', this.value)" style="width:85px;"><button onclick="removeHora(${i}, ${subIdx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px;">X</button></div>`).join(''); }
+window.removeHora = function(i, idx) { blocos[i].horarios.splice(idx, 1); const container = document.getElementById(`lista-horarios-${i}`); container.innerHTML = blocos[i].horarios.map((h, subIdx) => `<div style="display:flex; gap:5px; margin-bottom:5px;"><input type="time" step="1" value="${h.inicio}" oninput="editHora(${i}, ${subIdx}, 'inicio', this.value)" style="width:85px;"><input type="time" step="1" value="${h.fim}" oninput="edit` + `Hora(${i}, ${subIdx}, 'fim', this.value)" style="width:85px;"><button onclick="removeHora(${i}, ${subIdx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px;">X</button></div>`).join(''); }
 
 let isDragging = false; 
 let offsetX, offsetY; 
