@@ -578,7 +578,7 @@ let blocoAnteriorPaused = false;
 let hlsInstance = null;
 let sistemaIniciado = false;
 
-// Variáveis para guardar o progresso exato do YouTube quando pausado pelo bloco fixo
+// Controle de tempo do YouTube
 let ytTempoSalvo = 0;
 let ytUltimoPlayTimestamp = 0;
 
@@ -673,7 +673,7 @@ function renderizarBloco(i, bloco){
   const isYoutubeM3U = bloco.tipo === 'youtube';
   const nomeDisplay = bloco.nome ? ` - ${bloco.nome}` : '';
   card.innerHTML = `
-    <h3 id="titulo-bloco-${i}">Bloco ${i+1}${nomeDisplay} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':bloco.tipo==='movie'?'Filmes':bloco.tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
+    <h3 id="titulo-bloco-${i}">Bloco ${i+1}${nomeDisplay} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':blocos[i].tipo==='movie'?'Filmes':blocos[i].tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
     
     <div class="row">
       <label>Nome:</label>
@@ -708,7 +708,7 @@ function verificarAgendados() {
   const horaAtual = agora.toTimeString().split(' ')[0];
   let blocoEncontrado = false; let indiceParaRodar = -1;
 
-  // PRIORIDADE TOTAL PARA O BLOCO FIXO: se deu a hora dele, ele assume independente do YouTube
+  // 1. PRIORIDADE TOTAL PARA O BLOCO FIXO (Comercial ou Programa Fixo)
   for (let i = 0; i < blocos.length; i++) {
     const b = blocos[i]; if (!b || b.removido) continue;
     if (b.tipo === 'timer' && b.horarios && b.horarios.length > 0) {
@@ -718,7 +718,7 @@ function verificarAgendados() {
     }
   }
 
-  // Se não tem bloco fixo rodando agora, verifica o YouTube / M3U
+  // 2. SE NÃO TEM BLOCO FIXO AGORA, VERIFICA O YOUTUBE / M3U
   if (!blocoEncontrado) {
     for (let i = 0; i < blocos.length; i++) {
       const b = blocos[i]; if (!b || b.removido) continue;
@@ -734,11 +734,17 @@ function verificarAgendados() {
     const b = blocos[indiceParaRodar];
     if (!b._agendadoRodando) {
       if (sistemaIniciado && idxBloco !== indiceParaRodar && !blocos[idxBloco]._agendadoRodando) {
-        // Se o que estava rodando era o YouTube, salva o tempo que passou antes de fechar
+        // Se o que estava rodando era o YouTube, salva o tempo
         if (blocos[idxBloco].tipo === 'youtube' && ytUltimoPlayTimestamp > 0) {
           const decorrido = (Date.now() - ytUltimoPlayTimestamp) / 1000;
           ytTempoSalvo += Math.floor(decorrido);
           ytUltimoPlayTimestamp = 0;
+        } else {
+          // Se o que estava rodando era um Bloco Fixo ou Filme, salva o progresso do arquivo atual!
+          const atualBloco = blocos[idxBloco];
+          if (atualBloco && atualBloco.arquivos && atualBloco.arquivos.length > 0) {
+             atualBloco.progresso[atualBloco.arquivoAtual] = video.currentTime;
+          }
         }
         blocoAnteriorIdx = idxBloco; 
         blocoAnteriorProgresso = video.currentTime; 
@@ -760,12 +766,6 @@ function verificarAgendados() {
         
         tocarAtual();
         
-        if (blocos[idxBloco] && blocos[idxBloco].tipo !== 'youtube') {
-          if (blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
-            video.currentTime = blocoAnteriorProgresso;
-            if (blocoAnteriorPaused) video.pause();
-          }
-        }
       } else { 
         window.proximoBloco(); 
       }
@@ -819,6 +819,7 @@ function tocarAtual() {
     video.src = novaUrl;
   }
   
+  // Retoma do ponto salvo exato do arquivo (seja Bloco Fixo ou Filme)
   const tempoAlvo = b.progresso[b.arquivoAtual] || 0;
   video.currentTime = tempoAlvo;
   
@@ -856,6 +857,7 @@ function attachHandlersFor(b){
   }
   
   video.onended = () => {
+    b.progresso[b.arquivoAtual] = 0; // Limpa o progresso ao terminar o arquivo por completo
     b.arquivoAtual = (b.arquivoAtual + 1) % b.arquivos.length;
     if (b.tipo === 'movie') { 
       b._count = (b._count || 0) + 1; 
@@ -928,8 +930,8 @@ window.carregarArquivos = async function(i, fileList){
 
 window.definirTempo = function(i,v){ blocos[i].tempo=timeToSec(v); atualizarGrade(); }
 window.definirLimite = function(i,v){ blocos[i].limitePorCiclo=parseInt(v); atualizarInfoTempo(i); atualizarGrade(); }
-window.pularArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
-window.voltarArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual-1+b.arquivos.length)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
+window.pularArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.progresso[b.arquivoAtual]=0; b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
+window.voltarArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.progresso[b.arquivoAtual]=0; b.arquivoAtual=(b.arquivoAtual-1+b.arquivos.length)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
 window.removerBloco = function(i){ blocos[i].removido=true; document.getElementById(`bloco-${i}`).remove(); window.proximoBloco(); }
 
 window.iniciar = function(){ sistemaIniciado = true; idxBloco=0; ytTempoSalvo = 0; ytUltimoPlayTimestamp = 0; tocarAtual(); }
@@ -983,6 +985,7 @@ function stopM3U() { if (hlsInstance) { hlsInstance.detachMedia(); hlsInstance.d
 function detachTimers(){ if(timeupdateHandler) video.removeEventListener('timeupdate', timeupdateHandler); video.onended=null; }
 function proximoArquivoMesmoBloco(){ 
   const b=blocos[idxBloco]; 
+  b.progresso[b.arquivoAtual] = 0;
   b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; 
   if(b.tipo === 'timer') atualizarInfoTempo(idxBloco);
   tocarAtual(); 
