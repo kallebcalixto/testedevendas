@@ -578,6 +578,9 @@ let blocoAnteriorPaused = false;
 let hlsInstance = null;
 let sistemaIniciado = false;
 
+// Pilha para suportar múltiplos níveis de interrupção (Programa -> Comercial -> Comercial do Comercial, etc.)
+let pilhaBlocosInterrompidos = [];
+
 // Controle de tempo do YouTube
 let ytTempoSalvo = 0;
 let ytUltimoPlayTimestamp = 0;
@@ -708,7 +711,7 @@ function verificarAgendados() {
   const horaAtual = agora.toTimeString().split(' ')[0];
   let blocoEncontrado = false; let indiceParaRodar = -1;
 
-  // 1. PRIORIDADE TOTAL PARA O BLOCO FIXO (Comercial ou Programa Fixo)
+  // 1. BUSCA BLOCO FIXO ATIVO NO HORÁRIO (Comerciais ou Programas Fixos)
   for (let i = 0; i < blocos.length; i++) {
     const b = blocos[i]; if (!b || b.removido) continue;
     if (b.tipo === 'timer' && b.horarios && b.horarios.length > 0) {
@@ -732,40 +735,50 @@ function verificarAgendados() {
 
   if (blocoEncontrado) {
     const b = blocos[indiceParaRodar];
-    if (!b._agendadoRodando) {
-      if (sistemaIniciado && idxBloco !== indiceParaRodar && !blocos[idxBloco]._agendadoRodando) {
+    // Se o bloco encontrado for diferente do que está rodando, precisamos interromper o atual!
+    if (idxBloco !== indiceParaRodar) {
+      if (sistemaIniciado) {
         // Se o que estava rodando era o YouTube, salva o tempo
         if (blocos[idxBloco].tipo === 'youtube' && ytUltimoPlayTimestamp > 0) {
           const decorrido = (Date.now() - ytUltimoPlayTimestamp) / 1000;
           ytTempoSalvo += Math.floor(decorrido);
           ytUltimoPlayTimestamp = 0;
         } else {
-          // Se o que estava rodando era um Bloco Fixo ou Filme, salva o progresso do arquivo atual!
+          // Se o que estava rodando era Bloco Fixo ou Filme, salva o progresso do arquivo atual
           const atualBloco = blocos[idxBloco];
           if (atualBloco && atualBloco.arquivos && atualBloco.arquivos.length > 0) {
              atualBloco.progresso[atualBloco.arquivoAtual] = video.currentTime;
           }
         }
-        blocoAnteriorIdx = idxBloco; 
-        blocoAnteriorProgresso = video.currentTime; 
-        blocoAnteriorPaused = video.paused;
+        
+        // Empilha o bloco anterior para garantirmos que ele voltará exatamente de onde parou após o término da interrupção
+        pilhaBlocosInterrompidos.push({
+           idx: idxBloco,
+           progresso: video.currentTime,
+           paused: video.paused
+        });
       }
+      
       blocos.forEach(bl => bl._agendadoRodando = false);
-      b._agendadoRodando = true; idxBloco = indiceParaRodar; sistemaIniciado = true; tocarAtual();
+      b._agendadoRodando = true; 
+      idxBloco = indiceParaRodar; 
+      sistemaIniciado = true; 
+      tocarAtual();
     }
   } else {
+    // Caso nenhum bloco agendado deva rodar agora, verificamos se temos algum bloco interrompido na pilha para retomar
     const agendadoQueEstavaRodando = blocos.find(b => b._agendadoRodando);
     if (agendadoQueEstavaRodando) {
       agendadoQueEstavaRodando._agendadoRodando = false;
-      if (blocoAnteriorIdx !== -1) {
-        idxBloco = blocoAnteriorIdx; 
-        blocoAnteriorIdx = -1; 
+      
+      if (pilhaBlocosInterrompidos.length > 0) {
+        const anterior = pilhaBlocosInterrompidos.pop();
+        idxBloco = anterior.idx; 
         
         video.style.opacity = '0';
         video.style.backgroundColor = '#000000';
         
         tocarAtual();
-        
       } else { 
         window.proximoBloco(); 
       }
@@ -819,7 +832,6 @@ function tocarAtual() {
     video.src = novaUrl;
   }
   
-  // Retoma do ponto salvo exato do arquivo (seja Bloco Fixo ou Filme)
   const tempoAlvo = b.progresso[b.arquivoAtual] || 0;
   video.currentTime = tempoAlvo;
   
@@ -857,7 +869,7 @@ function attachHandlersFor(b){
   }
   
   video.onended = () => {
-    b.progresso[b.arquivoAtual] = 0; // Limpa o progresso ao terminar o arquivo por completo
+    b.progresso[b.arquivoAtual] = 0; 
     b.arquivoAtual = (b.arquivoAtual + 1) % b.arquivos.length;
     if (b.tipo === 'movie') { 
       b._count = (b._count || 0) + 1; 
@@ -934,7 +946,7 @@ window.pularArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b
 window.voltarArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.progresso[b.arquivoAtual]=0; b.arquivoAtual=(b.arquivoAtual-1+b.arquivos.length)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
 window.removerBloco = function(i){ blocos[i].removido=true; document.getElementById(`bloco-${i}`).remove(); window.proximoBloco(); }
 
-window.iniciar = function(){ sistemaIniciado = true; idxBloco=0; ytTempoSalvo = 0; ytUltimoPlayTimestamp = 0; tocarAtual(); }
+window.iniciar = function(){ sistemaIniciado = true; idxBloco=0; ytTempoSalvo = 0; ytUltimoPlayTimestamp = 0; pilhaBlocosInterrompidos = []; tocarAtual(); }
 window.proximoBloco = function(){ idxBloco=(idxBloco+1)%blocos.length; tocarAtual(); }
 window.pausar = function(){ video.pause(); }
 window.retomar = function(){ video.play(); }
