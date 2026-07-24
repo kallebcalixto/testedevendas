@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <title>Player Programado — KBS TV</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<!-- Biblioteca para gerar o PDF da Grade -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root { 
     color-scheme: dark; 
@@ -538,6 +540,7 @@
             <button class="btn-sec" onclick="adicionarBloco('timer')">+ Bloco (Tempo Fixo)</button>
             <button class="btn-sec" onclick="adicionarBloco('movie')">+ Bloco (Filmes)</button>
             <button class="btn-sec" onclick="adicionarBloco('pause')">+ Bloco (Pausa)</button>
+            <button class="btn-pri" onclick="gerarPdfGrade()" style="background: #e65100; font-weight: bold;">📄 Baixar Grade em PDF (Redes Sociais)</button>
             <button class="btn-sec" onclick="salvarProgramacao()">💾 Salvar</button>
             <button class="btn-sec" onclick="document.getElementById('fileInput').click()">📂 Carregar</button>
             <input type="file" id="fileInput" style="display:none" accept="application/json" onchange="carregarProgramacao(this)">
@@ -562,6 +565,18 @@
     </header>
   </div>
 
+<!-- ELEMENTO OCULTO PARA GERAR O LAYOUT DO PDF COM QUALIDADE PARA REDES SOCIAIS -->
+<div id="pdf-template-container" style="display:none; position:absolute; left:-9999px; top:0; width:800px; background:#111; color:#fff; padding:40px; font-family:'Segoe UI', Arial, sans-serif; border-radius:12px;">
+    <div style="text-align:center; border-bottom:3px solid #2e7d32; padding-bottom:20px; margin-bottom:25px;">
+        <h1 style="font-size:32px; color:#2e7d32; margin:0 0 5px 0; text-transform:uppercase; font-weight:900;">KBS TV — Grade de Programação</h1>
+        <p style="color:#aaa; font-size:14px; margin:0;">Programação oficial atualizada</p>
+    </div>
+    <div id="pdf-lista-blocos" style="display:flex; flex-direction:column; gap:15px;"></div>
+    <div style="margin-top:30px; text-align:center; font-size:12px; color:#666; border-top:1px solid #222; padding-top:15px;">
+        Gerado automaticamente pelo Player KBS TV 📺
+    </div>
+</div>
+
 <script>
 const video = document.getElementById('player');
 const ytplayer = document.getElementById('ytplayer');
@@ -578,9 +593,74 @@ let blocoAnteriorPaused = false;
 let hlsInstance = null;
 let sistemaIniciado = false;
 
-// Variável para salvar o segundo exato onde o YouTube parou
-let ytTempoSalvo = 0;
-let ytUltimoPlayTimestamp = 0;
+// --- FUNÇÃO PARA GERAR O PDF DA GRADE ---
+window.gerarPdfGrade = function() {
+    const blocosValidos = blocos.filter(b => !b.removido);
+    if (blocosValidos.length === 0) {
+        alert("Não há blocos cadastrados na programação para gerar o PDF.");
+        return;
+    }
+
+    const containerPdf = document.getElementById('pdf-lista-blocos');
+    containerPdf.innerHTML = '';
+
+    blocosValidos.forEach((b, i) => {
+        const nomeBloco = b.nome ? b.nome : `Bloco ${i+1}`;
+        const tipoTexto = b.tipo === 'timer' ? 'Tempo Fixo' : b.tipo === 'movie' ? 'Filmes / Vídeos' : b.tipo === 'pause' ? 'Pausa' : 'YouTube / M3U';
+        
+        let listaArquivosHtml = '';
+        if (b.arquivos && b.arquivos.length > 0) {
+            listaArquivosHtml = `<div style="margin-top:10px; font-size:13px; color:#ccc;"><strong>Programas / Vídeos na Pasta:</strong><ul style="margin:5px 0 0 20px; padding:0;">`;
+            b.arquivos.forEach(arq => {
+                let nomeLimpo = arq.file.name.replace(/\.[^/.]+$/, "");
+                listaArquivosHtml += `<li style="margin-bottom:3px;">🎬 ${nomeLimpo}</li>`;
+            });
+            listaArquivosHtml += `</ul></div>`;
+        } else if (b.ytlink) {
+            listaArquivosHtml = `<div style="margin-top:8px; font-size:13px; color:#ff4d4d;">📺 Link YouTube: ${b.ytlink}</div>`;
+        } else if (b.m3ulink) {
+            listaArquivosHtml = `<div style="margin-top:8px; font-size:13px; color:#1976d2;">📡 Link M3U: ${b.m3ulink}</div>`;
+        }
+
+        let horarioStr = '';
+        if (b.horaInicio && b.horaFim) {
+            horarioStr = `🕒 ${b.horaInicio} às ${b.horaFim} ${b.diaSemana ? '(' + b.diaSemana.toUpperCase() + ')' : ''}`;
+        } else if (b.horarios && b.horarios.length > 0) {
+            horarioStr = `🕒 Horários: ` + b.horarios.map(h => `${h.inicio} - ${h.fim}`).join(', ');
+        }
+
+        const divBloco = document.createElement('div');
+        divBloco.style = "background:#1a1a1a; border:1px solid #333; border-left: 5px solid #2e7d32; padding:15px; border-radius:8px;";
+        divBloco.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; font-size:16px; color:#fff;">${i+1}. ${nomeBloco} <span style="background:#2e7d32; color:#fff; font-size:10px; padding:2px 8px; border-radius:10px; margin-left:8px;">${tipoTexto}</span></h3>
+                <span style="font-size:12px; color:#ffd700; font-weight:bold;">${horarioStr}</span>
+            </div>
+            ${listaArquivosHtml}
+        `;
+        containerPdf.appendChild(divBloco);
+    });
+
+    const elementoParaExportar = document.getElementById('pdf-template-container');
+    elementoParaExportar.style.display = 'block';
+
+    const opcoes = {
+        margin:       10,
+        filename:     'grade-programacao-kbstv.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().from(elementoParaExportar).set(opcoes).save().then(() => {
+        elementoParaExportar.style.display = 'none';
+    }).catch(err => {
+        console.error(err);
+        alert("Erro ao gerar o PDF.");
+        elementoParaExportar.style.display = 'none';
+    });
+};
+// ------------------------------------------
 
 // --- SISTEMA DE REINÍCIO DIÁRIO ---
 window.salvarHorarioReinicio = function(valor) {
@@ -674,7 +754,7 @@ function renderizarBloco(i, bloco){
   const isYoutubeM3U = bloco.tipo === 'youtube';
   const nomeDisplay = bloco.nome ? ` - ${bloco.nome}` : '';
   card.innerHTML = `
-    <h3 id="titulo-bloco-${i}">Bloco ${i+1}${nomeDisplay} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':blocos[i].tipo==='movie'?'Filmes':bloco.tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
+    <h3 id="titulo-bloco-${i}">Bloco ${i+1}${nomeDisplay} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':bloco.tipo==='movie'?'Filmes':bloco.tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
     
     <div class="row">
       <label>Nome:</label>
@@ -682,17 +762,17 @@ function renderizarBloco(i, bloco){
     </div>
     
     <div class="row">
-      ${(isTimer||bloco.tipo==='movie') ? `<label>Pasta:</label><input type="file" webkitdirectory directory multiple onchange="carregarArquivos(${i}, this.files)">`:''}
-      ${isTimer ? `
+       ${(isTimer||bloco.tipo==='movie') ? `<label>Pasta:</label><input type="file" webkitdirectory directory multiple onchange="carregarArquivos(${i}, this.files)">`:''}
+       ${isTimer ? `
         <label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempo(${i}, this.value)">
         <div style="margin-top:10px; width:100%; background:#222; padding:8px; border-radius:5px;"><label>Dias da Semana:</label><br><div style="display:grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size:11px;">
             ${['domingo','segunda','terca','quarta','quinta','sexta','sabado'].map(d => `<label style="cursor:pointer;"><input type="checkbox" ${bloco.diasSelecionados && bloco.diasSelecionados.includes(d) ? 'checked' : ''} onchange="toggleDia(${i}, '${d}')"> ${d.charAt(0).toUpperCase() + d.slice(1)}</label>`).join('')}
          </div></div>
         <div style="margin-top:10px; width:100% text-align: left;"><label>Horários Programados:</label><div id="lista-horarios-${i}">${(bloco.horarios || []).map((h, idx) => `<div style="display:flex; gap:5px; margin-bottom:5px;"><input type="time" step="1" value="${h.inicio}" oninput="editHora(${i}, ${idx}, 'inicio', this.value)" style="width:85px;"><input type="time" step="1" value="${h.fim}" oninput="editHora(${i}, ${idx}, 'fim', this.value)" style="width:85px;"><button onclick="removeHora(${i}, ${idx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px;">X</button></div>`).join('')}</div><button onclick="addHora(${i})" style="font-size:11px; width:100%; margin-top:5px; background:#1976d2; color:white; border-radius:5px; padding:5px;">+ Adicionar Horário</button></div>
       `:''}
-      ${bloco.tipo==='pause' ? `<label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempo(${i}, this.value)">`:''}
-      ${bloco.tipo==='movie' ? `<label>Limite:</label><input type="number" min="1" value="${bloco.limitePorCiclo||3}" onchange="definirLimite(${i}, this.value)"><div style="margin-top:8px; width:100%;"><button class="mini-btn" onclick="voltarArquivo(${i})">⏮ Voltar vídeo</button><button class="mini-btn" onclick="pularArquivo(${i})">⏭ Pular vídeo</button></div>`:''}
-      ${isYoutubeM3U ? `<label>Início:</label><input type="time" step="1" value="${bloco.horaInicio||''}" disabled><label>Fim:</label><input type="time" step="1" value="${bloco.horaFim||''}" disabled>`:''}
+       ${bloco.tipo==='pause' ? `<label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempo(${i}, this.value)">`:''}
+       ${bloco.tipo==='movie' ? `<label>Limite:</label><input type="number" min="1" value="${bloco.limitePorCiclo||3}" onchange="definirLimite(${i}, this.value)"><div style="margin-top:8px; width:100%;"><button class="mini-btn" onclick="voltarArquivo(${i})">⏮ Voltar vídeo</button><button class="mini-btn" onclick="pularArquivo(${i})">⏭ Pular vídeo</button></div>`:''}
+       ${isYoutubeM3U ? `<label>Início:</label><input type="time" step="1" value="${bloco.horaInicio||''}" disabled><label>Fim:</label><input type="time" step="1" value="${bloco.horaFim||''}" disabled>`:''}
     </div>
     <div class="hint" id="info-${i}">${isYoutubeM3U?'Agendamento Admin':bloco.arquivos.length+' arquivos.'}</div>
     <button onclick="removerBloco(${i})" style="margin-top:8px;background:#b71c1c; width:100%;">🗑 Remover</button>
@@ -727,15 +807,7 @@ function verificarAgendados() {
     const b = blocos[indiceParaRodar];
     if (!b._agendadoRodando) {
       if (sistemaIniciado && idxBloco !== indiceParaRodar && !blocos[idxBloco]._agendadoRodando) {
-        // Se o bloco atual for YouTube, salva o tempo decorrido antes de sair
-        if (blocos[idxBloco].tipo === 'youtube' && ytUltimoPlayTimestamp > 0) {
-          const decorrido = (Date.now() - ytUltimoPlayTimestamp) / 1000;
-          ytTempoSalvo += Math.floor(decorrido);
-          ytUltimoPlayTimestamp = 0;
-        }
-        blocoAnteriorIdx = idxBloco; 
-        blocoAnteriorProgresso = video.currentTime; 
-        blocoAnteriorPaused = video.paused;
+        blocoAnteriorIdx = idxBloco; blocoAnteriorProgresso = video.currentTime; blocoAnteriorPaused = video.paused;
       }
       blocos.forEach(bl => bl._agendadoRodando = false);
       b._agendadoRodando = true; idxBloco = indiceParaRodar; sistemaIniciado = true; tocarAtual();
@@ -753,11 +825,9 @@ function verificarAgendados() {
         
         tocarAtual();
         
-        if (blocos[idxBloco] && blocos[idxBloco].tipo !== 'youtube') {
-          if (blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
-            video.currentTime = blocoAnteriorProgresso;
-            if (blocoAnteriorPaused) video.pause();
-          }
+        if (blocos[idxBloco] && blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
+          video.currentTime = blocoAnteriorProgresso;
+          if (blocoAnteriorPaused) video.pause();
         }
       } else { 
         window.proximoBloco(); 
@@ -776,7 +846,7 @@ function tocarAtual() {
   const horaAgora = agora.toTimeString().split(' ')[0];
 
   if (b.tipo === 'timer') {
-    const diaMatch = (!b.diasSelecionados || b.diasSelecionados.length === 0 || b.diasSelecionados.includes(hoje));
+    const diaMatch = b.diasSelecionados && b.diasSelecionados.includes(hoje);
     const horarioMatch = b.horarios && b.horarios.some(h => horaAgora >= h.inicio && h.fim > horaAgora);
     if (!diaMatch || !horarioMatch) { pularParaProximo(); return; }
   }
@@ -911,9 +981,9 @@ window.carregarArquivos = async function(i, fileList){
 
   for (let j = 0; j < blocos[i].arquivos.length; j++) {
      try {
-       blocos[i].arquivos[j].duration = await obterDuracao(blocos[i].arquivos[j].url);
+      blocos[i].arquivos[j].duration = await obterDuracao(blocos[i].arquivos[j].url);
      } catch(e) {
-       blocos[i].arquivos[j].duration = 0;
+      blocos[i].arquivos[j].duration = 0;
      }
   }
   atualizarInfoTempo(i);
@@ -925,7 +995,7 @@ window.pularArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b
 window.voltarArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual-1+b.arquivos.length)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
 window.removerBloco = function(i){ blocos[i].removido=true; document.getElementById(`bloco-${i}`).remove(); window.proximoBloco(); }
 
-window.iniciar = function(){ sistemaIniciado = true; idxBloco=0; ytTempoSalvo = 0; ytUltimoPlayTimestamp = 0; tocarAtual(); }
+window.iniciar = function(){ sistemaIniciado = true; idxBloco=0; tocarAtual(); }
 window.proximoBloco = function(){ idxBloco=(idxBloco+1)%blocos.length; tocarAtual(); }
 window.pausar = function(){ video.pause(); }
 window.retomar = function(){ video.play(); }
@@ -935,21 +1005,9 @@ function startYouTubeNow(b) {
     ytplayer.style.display = 'block'; 
     video.style.display = 'none'; 
     const id = b.ytlink.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-z0-9_-]{11})/); 
-    if(id) {
-       let startParam = ytTempoSalvo > 0 ? `&start=${Math.floor(ytTempoSalvo)}` : '';
-       ytplayer.src = `https://www.youtube.com/embed/${id[1]}?autoplay=1${startParam}`;
-       ytUltimoPlayTimestamp = Date.now();
-    }
+    if(id) ytplayer.src=`https://www.youtube.com/embed/${id[1]}?autoplay=1`; 
 }
-function stopYouTube(){ 
-    if (ytUltimoPlayTimestamp > 0) {
-        const decorrido = (Date.now() - ytUltimoPlayTimestamp) / 1000;
-        ytTempoSalvo += Math.floor(decorrido);
-        ytUltimoPlayTimestamp = 0;
-    }
-    ytplayer.src=''; 
-    ytplayer.style.display='none'; 
-}
+function stopYouTube(){ ytplayer.src=''; ytplayer.style.display='none'; }
 
 function startM3UNow(b) {
     video.style.display = 'block';
