@@ -572,13 +572,13 @@ let blocos = [];
 let idxBloco = 0;
 let timeupdateHandler = null;
 let pauseTimer = null;
+let blocoAnteriorIdx = -1;
+let blocoAnteriorProgresso = 0;
+let blocoAnteriorPaused = false;
 let hlsInstance = null;
 let sistemaIniciado = false;
 
-// Pilha para armazenar o bloco interrompido (Programa -> Comercial -> Volta pro Programa)
-let pilhaBlocosInterrompidos = [];
-
-// Controle de tempo do YouTube
+// Variáveis para controlar o tempo do YouTube
 let ytTempoSalvo = 0;
 let ytUltimoPlayTimestamp = 0;
 
@@ -601,14 +601,17 @@ setInterval(() => {
     if (!inputReinicio || !inputReinicio.value) return;
 
     const agora = new Date();
-    const horaAtual = agora.toTimeString().split(' ')[0].substring(0, 5); 
+    const horaAtual = agora.toTimeString().split(' ')[0].substring(0, 5); // Ex: "07:00"
     const dataHoje = agora.toDateString(); 
+    
     const chaveReinicio = dataHoje + "-" + horaAtual;
 
+    // Checa se a hora atual é igual à que foi marcada E se já não rodou hoje neste exato minuto
     if (horaAtual === inputReinicio.value && ultimoReinicio !== chaveReinicio) {
         ultimoReinicio = chaveReinicio;
+        console.log("Executando reinício diário agendado para as: " + horaAtual);
         if (blocos.length > 0) {
-            window.iniciar(); 
+            window.iniciar(); // Reinicia o ciclo e dá o Play no primeiro bloco
         }
     }
 }, 1000);
@@ -673,7 +676,7 @@ function renderizarBloco(i, bloco){
   const isYoutubeM3U = bloco.tipo === 'youtube';
   const nomeDisplay = bloco.nome ? ` - ${bloco.nome}` : '';
   card.innerHTML = `
-    <h3 id="titulo-bloco-${i}">Bloco ${i+1}${nomeDisplay} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':blocos[i].tipo==='movie'?'Filmes':blocos[i].tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
+    <h3 id="titulo-bloco-${i}">Bloco ${i+1}${nomeDisplay} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':bloco.tipo==='movie'?'Filmes':bloco.tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
     
     <div class="row">
       <label>Nome:</label>
@@ -702,77 +705,65 @@ function renderizarBloco(i, bloco){
 setInterval(()=>{ verificarAgendados(); }, 1000);
 
 function verificarAgendados() {
-  if (blocos.length === 0 || !sistemaIniciado) return;
+  if (blocos.length === 0) return;
   const agora = new Date();
   const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
   const horaAtual = agora.toTimeString().split(' ')[0];
+  let blocoEncontrado = false; let indiceParaRodar = -1;
 
-  let indiceBlocoAtivoAgora = -1;
-
-  // 1. Verifica se há algum Bloco Fixo (timer) no horário exato
   for (let i = 0; i < blocos.length; i++) {
-    const b = blocos[i]; 
-    if (!b || b.removido) continue;
+    const b = blocos[i]; if (!b || b.removido) continue;
+    if (b.tipo === 'youtube') {
+      const diaMatch = (b.diaSemana === "" || b.diaSemana.toLowerCase() === hoje);
+      const dentroDoHorario = (b.horaInicio && b.horaFim && horaAtual >= b.horaInicio && horaAtual < b.horaFim);
+      if (diaMatch && dentroDoHorario) { blocoEncontrado = true; indiceParaRodar = i; break; }
+    }
     if (b.tipo === 'timer' && b.horarios && b.horarios.length > 0) {
       const diaMatch = (!b.diasSelecionados || b.diasSelecionados.length === 0 || b.diasSelecionados.includes(hoje));
       const horarioMatch = b.horarios.some(h => horaAtual >= h.inicio && horaAtual < h.fim);
-      if (diaMatch && horarioMatch) { 
-        indiceBlocoAtivoAgora = i; 
-        break; // Encontrou o bloco fixo do momento (ex: comercial ou programa programado)
-      }
+      if (diaMatch && horarioMatch) { blocoEncontrado = true; indiceParaRodar = i; break; }
     }
   }
 
-  // 2. Se nenhum bloco fixo estiver ativo agora, verifica YouTube / M3U
-  if (indiceBlocoAtivoAgora === -1) {
-    for (let i = 0; i < blocos.length; i++) {
-      const b = blocos[i]; 
-      if (!b || b.removido) continue;
-      if (b.tipo === 'youtube') {
-        if (!b.horaInicio || !b.horaFim) continue; // SEGURANÇA: Se não tiver horário de início e fim, ele JAMAIS vai iniciar sozinho
+  if (blocoEncontrado) {
+    const b = blocos[indiceParaRodar];
+    if (!b._agendadoRodando) {
+      if (sistemaIniciado && idxBloco !== indiceParaRodar && !blocos[idxBloco]._agendadoRodando) {
+        blocoAnteriorIdx = idxBloco;
+        // SALVA O PROGRESSO SE FOR VÍDEO LOCAL
+        blocoAnteriorProgresso = video.currentTime;
+        blocoAnteriorPaused = video.paused;
         
-        const diaMatch = (b.diaSemana === "" || b.diaSemana.toLowerCase() === hoje);
-        const dentroDoHorario = (horaAtual >= b.horaInicio && horaAtual < b.horaFim);
-        if (diaMatch && dentroDoHorario) { 
-          indiceBlocoAtivoAgora = i; 
-          break; 
+        // SALVA O PROGRESSO SE FOR YOUTUBE
+        if (blocos[idxBloco].tipo === 'youtube' && blocos[idxBloco].ytlink && ytUltimoPlayTimestamp > 0) {
+            const decorrido = (Date.now() - ytUltimoPlayTimestamp) / 1000;
+            ytTempoSalvo += Math.floor(decorrido);
+            ytUltimoPlayTimestamp = 0;
         }
       }
-    }
-  }
-
-  // Se encontramos um bloco que DEVE estar rodando neste horário exato:
-  if (indiceBlocoAtivoAgora !== -1) {
-    // Se ele for diferente do que está rodando atualmente na tela, fazemos a interrupção/troca
-    if (idxBloco !== indiceBlocoAtivoAgora) {
-      
-      // Salva o progresso do que estava rodando antes de sair
-      if (blocos[idxBloco].tipo === 'youtube' && ytUltimoPlayTimestamp > 0) {
-        const decorrido = (Date.now() - ytUltimoPlayTimestamp) / 1000;
-        ytTempoSalvo += Math.floor(decorrido);
-        ytUltimoPlayTimestamp = 0;
-      } else {
-        const atualBloco = blocos[idxBloco];
-        if (atualBloco && atualBloco.arquivos && atualBloco.arquivos.length > 0) {
-           atualBloco.progresso[atualBloco.arquivoAtual] = video.currentTime;
-        }
-      }
-
-      // Salva na pilha de interrupções
-      pilhaBlocosInterrompidos.push({
-         idx: idxBloco
-      });
-
-      idxBloco = indiceBlocoAtivoAgora;
-      tocarAtual();
+      blocos.forEach(bl => bl._agendadoRodando = false);
+      b._agendadoRodando = true; idxBloco = indiceParaRodar; sistemaIniciado = true; tocarAtual();
     }
   } else {
-    // Se o horário programado de blocos fixos/YouTube acabou, mas temos um bloco na pilha de interrupção, voltamos para ele
-    if (pilhaBlocosInterrompidos.length > 0) {
-      const anterior = pilhaBlocosInterrompidos.pop();
-      if (idxBloco !== anterior.idx) {
-        idxBloco = anterior.idx;
+    const agendadoQueEstavaRodando = blocos.find(b => b._agendadoRodando);
+    if (agendadoQueEstavaRodando) {
+      agendadoQueEstavaRodando._agendadoRodando = false;
+      if (blocoAnteriorIdx !== -1) {
+        idxBloco = blocoAnteriorIdx; 
+        blocoAnteriorIdx = -1; 
+        
+        video.style.opacity = '0';
+        video.style.backgroundColor = '#000000';
+        
         tocarAtual();
+        
+        // RETOMA O PROGRESSO DO VÍDEO LOCAL (se aplicável)
+        if (blocos[idxBloco] && blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
+          video.currentTime = blocoAnteriorProgresso;
+          if (blocoAnteriorPaused) video.pause();
+        }
+      } else { 
+        window.proximoBloco(); 
       }
     }
   }
@@ -788,12 +779,11 @@ function tocarAtual() {
   const horaAgora = agora.toTimeString().split(' ')[0];
 
   if (b.tipo === 'timer') {
-    const diaMatch = (!b.diasSelecionados || b.diasSelecionados.length === 0 || b.diasSelecionados.includes(hoje));
+    const diaMatch = b.diasSelecionados && b.diasSelecionados.includes(hoje);
     const horarioMatch = b.horarios && b.horarios.some(h => horaAgora >= h.inicio && h.fim > horaAgora);
     if (!diaMatch || !horarioMatch) { pularParaProximo(); return; }
   }
   if (b.tipo === 'youtube') {
-    if (!b.horaInicio || !b.horaFim) { pularParaProximo(); return; } // SEGURANÇA: Bloqueia YouTube/M3U sem horário
     const diaMatchAdmin = (b.diaSemana === "" || b.diaSemana.toLowerCase() === hoje);
     const dentroDoHorarioAdmin = (horaAgora >= b.horaInicio && horaAgora < b.horaFim);
     if (!diaMatchAdmin || !dentroDoHorarioAdmin) { pularParaProximo(); return; }
@@ -845,8 +835,15 @@ function pularParaProximo() {
 function attachHandlersFor(b){
   detachTimers();
   
-  video.onseeked = () => { video.style.opacity = '1'; };
-  video.onplaying = () => { if (video.currentTime > 0) { video.style.opacity = '1'; } };
+  video.onseeked = () => {
+    video.style.opacity = '1';
+  };
+
+  video.onplaying = () => {
+    if (video.currentTime > 0) {
+      video.style.opacity = '1';
+    }
+  };
 
   if (b.tipo === 'timer') {
     let start = video.currentTime;
@@ -855,7 +852,6 @@ function attachHandlersFor(b){
   }
   
   video.onended = () => {
-    b.progresso[b.arquivoAtual] = 0; 
     b.arquivoAtual = (b.arquivoAtual + 1) % b.arquivos.length;
     if (b.tipo === 'movie') { 
       b._count = (b._count || 0) + 1; 
@@ -916,6 +912,7 @@ window.carregarArquivos = async function(i, fileList){
   document.getElementById(`info-${i}`).innerHTML = files.length + " arquivos. <br><span style='color:#ffd700; font-size:11px;'>Calculando tempos...</span>";
   atualizarGrade();
 
+  // Calcular em background sem travar o PC
   for (let j = 0; j < blocos[i].arquivos.length; j++) {
      try {
        blocos[i].arquivos[j].duration = await obterDuracao(blocos[i].arquivos[j].url);
@@ -928,11 +925,17 @@ window.carregarArquivos = async function(i, fileList){
 
 window.definirTempo = function(i,v){ blocos[i].tempo=timeToSec(v); atualizarGrade(); }
 window.definirLimite = function(i,v){ blocos[i].limitePorCiclo=parseInt(v); atualizarInfoTempo(i); atualizarGrade(); }
-window.pularArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.progresso[b.arquivoAtual]=0; b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
-window.voltarArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.progresso[b.arquivoAtual]=0; b.arquivoAtual=(b.arquivoAtual-1+b.arquivos.length)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
+window.pularArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
+window.voltarArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual-1+b.arquivos.length)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
 window.removerBloco = function(i){ blocos[i].removido=true; document.getElementById(`bloco-${i}`).remove(); window.proximoBloco(); }
 
-window.iniciar = function(){ sistemaIniciado = true; idxBloco=0; ytTempoSalvo = 0; ytUltimoPlayTimestamp = 0; pilhaBlocosInterrompidos = []; tocarAtual(); }
+window.iniciar = function(){ 
+    sistemaIniciado = true; 
+    idxBloco=0; 
+    ytTempoSalvo = 0; // Zera o tempo salvo do YouTube ao reiniciar
+    ytUltimoPlayTimestamp = 0;
+    tocarAtual(); 
+}
 window.proximoBloco = function(){ idxBloco=(idxBloco+1)%blocos.length; tocarAtual(); }
 window.pausar = function(){ video.pause(); }
 window.retomar = function(){ video.play(); }
@@ -943,6 +946,7 @@ function startYouTubeNow(b) {
     video.style.display = 'none'; 
     const id = b.ytlink.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-z0-9_-]{11})/); 
     if(id) {
+       // Se o YouTube foi pausado antes, retoma de onde parou usando ytTempoSalvo
        let startParam = ytTempoSalvo > 0 ? `&start=${Math.floor(ytTempoSalvo)}` : '';
        ytplayer.src = `https://www.youtube.com/embed/${id[1]}?autoplay=1${startParam}`;
        ytUltimoPlayTimestamp = Date.now();
@@ -983,7 +987,6 @@ function stopM3U() { if (hlsInstance) { hlsInstance.detachMedia(); hlsInstance.d
 function detachTimers(){ if(timeupdateHandler) video.removeEventListener('timeupdate', timeupdateHandler); video.onended=null; }
 function proximoArquivoMesmoBloco(){ 
   const b=blocos[idxBloco]; 
-  b.progresso[b.arquivoAtual] = 0;
   b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; 
   if(b.tipo === 'timer') atualizarInfoTempo(idxBloco);
   tocarAtual(); 
