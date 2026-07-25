@@ -729,8 +729,10 @@ function verificarAgendados() {
       const b = blocos[i]; 
       if (!b || b.removido) continue;
       if (b.tipo === 'youtube') {
+        if (!b.horaInicio || !b.horaFim) continue; // SEGURANÇA: Se não tiver horário de início e fim, ele JAMAIS vai iniciar sozinho
+        
         const diaMatch = (b.diaSemana === "" || b.diaSemana.toLowerCase() === hoje);
-        const dentroDoHorario = (b.horaInicio && b.horaFim && horaAtual >= b.horaInicio && horaAtual < b.horaFim);
+        const dentroDoHorario = (horaAtual >= b.horaInicio && horaAtual < b.horaFim);
         if (diaMatch && dentroDoHorario) { 
           indiceBlocoAtivoAgora = i; 
           break; 
@@ -780,6 +782,22 @@ function tocarAtual() {
   if (!anyPlayableBlocks()) return;
   const b = blocos[idxBloco]; 
   if (!b || b.removido) { pularParaProximo(); return; }
+
+  const agora = new Date();
+  const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
+  const horaAgora = agora.toTimeString().split(' ')[0];
+
+  if (b.tipo === 'timer') {
+    const diaMatch = (!b.diasSelecionados || b.diasSelecionados.length === 0 || b.diasSelecionados.includes(hoje));
+    const horarioMatch = b.horarios && b.horarios.some(h => horaAgora >= h.inicio && h.fim > horaAgora);
+    if (!diaMatch || !horarioMatch) { pularParaProximo(); return; }
+  }
+  if (b.tipo === 'youtube') {
+    if (!b.horaInicio || !b.horaFim) { pularParaProximo(); return; } // SEGURANÇA: Bloqueia YouTube/M3U sem horário
+    const diaMatchAdmin = (b.diaSemana === "" || b.diaSemana.toLowerCase() === hoje);
+    const dentroDoHorarioAdmin = (horaAgora >= b.horaInicio && horaAgora < b.horaFim);
+    if (!diaMatchAdmin || !dentroDoHorarioAdmin) { pularParaProximo(); return; }
+  }
 
   document.querySelectorAll('.bloco').forEach(el => el.classList.remove('running'));
   clearTimeout(pauseTimer); 
