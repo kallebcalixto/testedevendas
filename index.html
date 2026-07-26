@@ -266,7 +266,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-  import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBzzQg4fMWQm82aOu2xM2huVPvHeyitFxQ",
@@ -285,57 +285,41 @@
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
 
+  setPersistence(auth, browserLocalPersistence).catch((error) => console.error(error));
+
   window.fazerLoginGoogle = () => {
-    signInWithPopup(auth, provider)
+    setPersistence(auth, browserLocalPersistence)
+      .then(() => signInWithPopup(auth, provider))
       .then((result) => {
         if (result && result.user) {
           const user = result.user;
           document.getElementById('tela-login').style.display = 'none';
-          
           const playerRef = ref(db, `usuarios/${user.uid}/player_m3u/0`);
           get(playerRef).then((snapshot) => {
             if (!snapshot.exists()) {
-              set(playerRef, {
-                dia: "segunda", inicio: "12:00", fim: "13:00",
-                m3u: "https://srv4.zcast.com.br/samircalixto/samircalixto/playlist.m3u8",
-                yt: "", timestamp: Date.now()
-              });
+              set(playerRef, { dia: "segunda", inicio: "12:00", fim: "13:00", m3u: "https://srv4.zcast.com.br/samircalixto/samircalixto/playlist.m3u8", yt: "", timestamp: Date.now() });
             }
           });
         }
       })
-      .catch(err => {
-        console.error(err);
-        alert("Erro ao conectar com Google. Verifique os bloqueadores ou permissões do seu navegador.");
-      });
+      .catch(err => alert("Erro ao conectar com Google. Verifique os bloqueadores ou permissões."));
   };
 
   window.ativarTeste7Dias = () => {
     const user = auth.currentUser;
     if (!user) return;
-
     const configRef = ref(db, `usuarios/${user.uid}/config`);
     get(configRef).then((snapshot) => {
       const config = snapshot.val() || {};
-      if (config.testeUtilizado) {
-        alert("Desculpe, este e-mail já utilizou o período de 7 dias de teste grátis.");
-        return;
-      }
-
+      if (config.testeUtilizado) { alert("Desculpe, este e-mail já utilizou o período de 7 dias de teste grátis."); return; }
       const seteDiasEmMilisegundos = Date.now() + (7 * 24 * 60 * 60 * 1000);
-      
-      set(configRef, {
-        expiracao: seteDiasEmMilisegundos,
-        testeUtilizado: true
-      }).then(() => {
-        alert("Teste de 7 dias ativado com sucesso! Aproveite o seu player.");
-      }).catch(err => alert("Erro ao ativar teste: " + err.message));
+      set(configRef, { expiracao: seteDiasEmMilisegundos, testeUtilizado: true })
+      .then(() => alert("Teste de 7 dias ativado com sucesso! Aproveite o seu player."))
+      .catch(err => alert("Erro ao ativar teste: " + err.message));
     });
   };
 
-  window.fazerLogout = () => {
-    signOut(auth).then(() => { location.reload(); }).catch(err => alert("Erro ao sair: " + err.message));
-  };
+  window.fazerLogout = () => { signOut(auth).then(() => location.reload()).catch(err => alert("Erro ao sair: " + err.message)); };
 
   onAuthStateChanged(auth, (user) => {
     if (user) {
@@ -343,13 +327,9 @@
       onValue(ref(db, `usuarios/${user.uid}/config`), snap => {
         const config = snap.val() || { expiracao: 0, testeUtilizado: false };
         const agora = Date.now();
-        
         const btnTeste = document.getElementById('btn-teste-7dias');
-        if (config.testeUtilizado) {
-          if (btnTeste) btnTeste.style.display = 'none';
-        } else {
-          if (btnTeste) btnTeste.style.display = 'flex';
-        }
+        if (config.testeUtilizado) { if (btnTeste) btnTeste.style.display = 'none'; } 
+        else { if (btnTeste) btnTeste.style.display = 'flex'; }
 
         if (config.expiracao < agora) {
           document.getElementById('tela-pagamento').style.display = 'flex';
@@ -396,8 +376,6 @@
   window.iniciarLeituraFirebase = function(referenciaDinamica) {
       window._firebase_onValue(referenciaDinamica, snap => {
           const dadosFirebase = snap.val() || {};
-          
-          // Mapeia e salva as propriedades para não reiniciar indevidamente
           let blocoAtual = blocos[idxBloco];
           let idPlaying = null;
           if (blocoAtual) {
@@ -407,65 +385,38 @@
                   idPlaying = 'local_' + idxBloco;
               }
           }
-
           let blocosManter = blocos.filter(b => b.tipo !== 'youtube' && b._firebaseIndex === undefined);
           let novosBlocosAgendados = [];
 
           Object.keys(dadosFirebase).forEach(i => {
               const d = dadosFirebase[i];
-              
-              // Verifica se já estava tocando antes da edição no admin (para evitar reiniciar)
               const blocoAntigo = blocos.find(b => b._firebaseIndex === i);
               const ytMudou = blocoAntigo && (blocoAntigo.ytlink !== (d.yt || ''));
               const m3uMudou = blocoAntigo && (blocoAntigo.m3ulink !== (d.m3u || ''));
-              // Se a URL mudou, ele deve reiniciar para pegar a nova. Se não, mantemos o estado executando.
               const estavaRodando = (blocoAntigo && !ytMudou && !m3uMudou) ? blocoAntigo._agendadoRodando : false;
 
               novosBlocosAgendados.push({
-                  tipo: 'youtube', 
-                  nome: d.nome || '',
-                  arquivos: [], 
-                  progresso: [],
-                  tempo: 0, 
-                  sessaoRestante: 0, 
-                  pauseRestante: 0,
-                  arquivoAtual: 0, 
-                  limitePorCiclo: 0,
-                  ytlink: d.yt || '', 
-                  m3ulink: d.m3u || '', 
-                  diaSemana: d.dias || d.dia || [], // Aceitando a array de múltiplos dias do novo admin
-                  horaInicio: d.inicio || '', 
-                  horaFim: d.fim || '',
-                  removido: false, 
-                  _agendadoRodando: estavaRodando, 
-                  _firebaseIndex: i 
+                  tipo: 'youtube', nome: d.nome || '', arquivos: [], progresso: [], tempo: 0, sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: 0,
+                  ytlink: d.yt || '', m3ulink: d.m3u || '', diaSemana: d.dias || d.dia || [], horaInicio: d.inicio || '', horaFim: d.fim || '', removido: false, _agendadoRodando: estavaRodando, _firebaseIndex: i 
               });
           });
-
           blocos = [...blocosManter, ...novosBlocosAgendados];
           
-          // Se um bloco estava rodando, recupera o index correto dele para manter tocando
-          if (idPlaying) {
-              if (idPlaying.startsWith('fb_')) {
-                  const fbId = idPlaying.split('_')[1];
-                  const novoIndex = blocos.findIndex(b => b._firebaseIndex === fbId);
-                  if (novoIndex !== -1) {
-                      idxBloco = novoIndex;
-                  }
-              }
+          if (idPlaying && idPlaying.startsWith('fb_')) {
+              const fbId = idPlaying.split('_')[1];
+              const novoIndex = blocos.findIndex(b => b._firebaseIndex === fbId);
+              if (novoIndex !== -1) { idxBloco = novoIndex; }
           }
           
           blocosEl.innerHTML = '';
           blocos.forEach((b, i) => {
               renderizarBloco(i, b);
-              // Reaplica a marcação visual no bloco que está rodando
               if (i === idxBloco && b._agendadoRodando) {
                   const card = document.getElementById(`bloco-${i}`);
                   if (card) card.classList.add('running');
               }
           });
           atualizarGrade();
-          
           if (idxBloco >= blocos.length) idxBloco = 0;
       });
   };
@@ -474,14 +425,12 @@
 
 <body>
   <div id="tela-pagamento">
-    <!-- Resto da tela de pagamento continua igual -->
     <div class="painel-premium">
       <div class="status-badge">Sinal Interrompido</div>
       <h2>Acesso Expirado</h2>
       <p>Sua licença KBS TV chegou ao fim. Selecione um plano abaixo ou ative seu teste gratuito para liberar o player:</p>
       <button id="btn-teste-7dias" class="btn-plano-premium destaque" onclick="ativarTeste7Dias()" style="background: linear-gradient(145deg, #1b5e20, #2e7d32); border-color: var(--gold);">
-        <span class="nome">🎁 Ativar 7 Dias de Teste</span>
-        <span class="preco">GRÁTIS</span>
+        <span class="nome">🎁 Ativar 7 Dias de Teste</span><span class="preco">GRÁTIS</span>
       </button>
       <button class="btn-plano-premium" onclick="gerarPix(29.90)"><span class="nome">Plano Mensal</span><span class="preco">R$ 29,90</span></button>
       <button class="btn-plano-premium destaque" onclick="gerarPix(230.90)"><span class="nome">Plano Semestral 🌟</span><span class="preco">R$ 230,90</span></button>
@@ -505,7 +454,8 @@
   <div id="conteudo-player" style="display:none;">
     <div class="wrap">
       
-      <div class="movel" style="top: 20px; right: 20px; display: flex; gap: 10px; z-index: 10000; align-items: center; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 8px; border: 1px solid #333;">
+      <!-- ADICIONADO ID: movel-topo-direito -->
+      <div id="movel-topo-direito" class="movel" style="top: 20px; right: 20px; display: flex; gap: 10px; z-index: 10000; align-items: center; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 8px; border: 1px solid #333;">
           <div style="display: flex; flex-direction: column; align-items: center; margin-right: 10px;">
               <label style="font-size: 10px; color: #ffd700; font-weight: bold; margin-bottom: 2px;">REINÍCIO DIÁRIO:</label>
               <input type="time" id="horarioReinicio" onchange="salvarHorarioReinicio(this.value)" style="background:#000; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 6px; font-size: 12px; cursor: pointer;">
@@ -515,7 +465,8 @@
       </div>
 
       <div class="top">
-        <div class="movel" style="left: 20px; top: 100px; z-index: 5000 !important;">
+        <!-- ADICIONADO ID: movel-area-player -->
+        <div id="movel-area-player" class="movel" style="left: 20px; top: 100px; z-index: 5000 !important;">
           
           <div id="letreiro-kbs-auto" onmousedown="startDrag(event)">
             <img id="letreiro-logo-img" src="">
@@ -546,7 +497,8 @@
           </div>
         </div>
 
-        <div class="movel" style="left: 550px; top: 100px;">
+        <!-- ADICIONADO ID: movel-controles-direito -->
+        <div id="movel-controles-direito" class="movel" style="left: 550px; top: 100px;">
           <div style="background:#1a1a1a; padding:15px; border-radius:10px; border:1px solid #333; width: 300px;">
               <label style="font-size:11px; color:#2e7d32; font-weight:bold;">URL DO BRIDGE (NODE.JS):</label>
               <input type="text" id="bridgeUrl" value="ws://localhost:8080" style="width:100%; background:#000; border:1px solid #444; color:#fff; padding:8px; margin:5px 0; border-radius:5px;">
@@ -578,7 +530,8 @@
       <div id="blocos" class="grid movel" style="top: 450px; left: 20px;"></div>
     </div>
 
-    <header class="movel" style="bottom: 80px; left: 20px; width: 90%;">
+    <!-- ADICIONADO ID: movel-header -->
+    <header id="movel-header" class="movel" style="bottom: 80px; left: 20px; width: 90%;">
       <h1>📺 Grade de Programação</h1>
       <div id="grade">Carregando programação do administrador...</div>
     </header>
@@ -600,20 +553,47 @@ let blocoAnteriorPaused = false;
 let hlsInstance = null;
 let sistemaIniciado = false;
 
-// Variáveis para guardar o progresso exato do YouTube quando pausado pelo bloco fixo
 let ytTempoSalvo = 0;
 let ytUltimoPlayTimestamp = 0;
 
-// --- SISTEMA DE REINÍCIO DIÁRIO ---
-window.salvarHorarioReinicio = function(valor) {
-    localStorage.setItem('kbs_horario_reinicio', valor);
-};
+// --- FUNÇÃO NOVA: RESTAURA O LAYOUT SALVO ---
+window.aplicarLayout = function(posicoes) {
+  if (!posicoes) return;
+  Object.keys(posicoes).forEach(id => {
+    if(id === 'player-size') {
+      const w = posicoes[id].width;
+      const h = posicoes[id].height;
+      if(w && h) {
+        document.getElementById('playerWidth').value = w;
+        document.getElementById('playerHeight').value = h;
+        window.resizePlayer();
+      }
+      return;
+    }
+    const el = document.getElementById(id);
+    if (el) {
+      if (posicoes[id].top !== undefined) el.style.top = posicoes[id].top;
+      if (posicoes[id].left !== undefined) el.style.left = posicoes[id].left;
+      if (posicoes[id].right !== undefined) el.style.right = posicoes[id].right;
+      if (posicoes[id].bottom !== undefined) el.style.bottom = posicoes[id].bottom;
+    }
+  });
+}
+
+// --- SISTEMA DE REINÍCIO DIÁRIO & LAYOUT AUTOMÁTICO ---
+window.salvarHorarioReinicio = function(valor) { localStorage.setItem('kbs_horario_reinicio', valor); };
 
 window.addEventListener('DOMContentLoaded', () => {
     const horarioSalvo = localStorage.getItem('kbs_horario_reinicio');
     if (horarioSalvo) {
         const inputReinicio = document.getElementById('horarioReinicio');
         if (inputReinicio) inputReinicio.value = horarioSalvo;
+    }
+    
+    // Carrega automaticamente o layout assim que o player abre
+    const layoutSalvo = localStorage.getItem('kbs_layout');
+    if (layoutSalvo) {
+        window.aplicarLayout(JSON.parse(layoutSalvo));
     }
 });
 
@@ -629,12 +609,9 @@ setInterval(() => {
 
     if (horaAtual === inputReinicio.value && ultimoReinicio !== chaveReinicio) {
         ultimoReinicio = chaveReinicio;
-        if (blocos.length > 0) {
-            window.iniciar(); 
-        }
+        if (blocos.length > 0) { window.iniciar(); }
     }
 }, 1000);
-// -----------------------------------
 
 function atualizarLogos(url) {
   const logo1 = document.getElementById('letreiro-logo-img');
@@ -643,8 +620,7 @@ function atualizarLogos(url) {
     logo1.src = url; logo1.style.display = 'block';
     logo2.src = url; logo2.style.display = 'block';
   } else {
-    logo1.style.display = 'none';
-    logo2.style.display = 'none';
+    logo1.style.display = 'none'; logo2.style.display = 'none';
   }
 }
 
@@ -656,10 +632,8 @@ function gerenciarBannerKBS() {
     let nomeLimpo = nomeBruto.split(/DUBLADO|convertido|DVDRip|XviD|_00|1080p|720p/i)[0].replace(/^[\s.]+/, "").trim();
     if(nomeLimpo.endsWith('.')) nomeLimpo = nomeLimpo.slice(0, -1);
     document.getElementById('letreiro-texto-arquivo').innerText = "EXIBINDO: " + nomeLimpo;
-    
     const urlLogo = document.getElementById('logoUrl').value;
     atualizarLogos(urlLogo);
-
     banner.style.display = 'flex';
     setTimeout(() => { banner.style.display = 'none'; }, 20000); 
   }
@@ -682,9 +656,7 @@ window.definirNomeBloco = function(i, valor) {
     blocos[i].nome = valor;
     const badgeText = blocos[i].tipo==='timer'?'Tempo Fixo':blocos[i].tipo==='movie'?'Filmes':blocos[i].tipo==='pause'?'Pausa':'YouTube / M3U';
     const titulo = document.querySelector(`#bloco-${i} h3`);
-    if(titulo) {
-       titulo.innerHTML = `Bloco ${i+1} ${valor ? '- ' + valor : ''} <span class="badge">${badgeText}</span>`;
-    }
+    if(titulo) { titulo.innerHTML = `Bloco ${i+1} ${valor ? '- ' + valor : ''} <span class="badge">${badgeText}</span>`; }
     atualizarGrade();
 }
 
@@ -696,12 +668,7 @@ function renderizarBloco(i, bloco){
   const nomeDisplay = bloco.nome ? ` - ${bloco.nome}` : '';
   card.innerHTML = `
     <h3 id="titulo-bloco-${i}">Bloco ${i+1}${nomeDisplay} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':bloco.tipo==='movie'?'Filmes':bloco.tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
-    
-    <div class="row">
-      <label>Nome:</label>
-      <input type="text" placeholder="Ex: Jaspion" value="${bloco.nome || ''}" onchange="definirNomeBloco(${i}, this.value)" style="width:145px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 6px;">
-    </div>
-    
+    <div class="row"><label>Nome:</label><input type="text" placeholder="Ex: Jaspion" value="${bloco.nome || ''}" onchange="definirNomeBloco(${i}, this.value)" style="width:145px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 6px;"></div>
     <div class="row">
       ${(isTimer||bloco.tipo==='movie') ? `<label>Pasta:</label><input type="file" webkitdirectory directory multiple onchange="carregarArquivos(${i}, this.files)">`:''}
       ${isTimer ? `
@@ -730,7 +697,6 @@ function verificarAgendados() {
   const horaAtual = agora.toTimeString().split(' ')[0];
   let blocoEncontrado = false; let indiceParaRodar = -1;
 
-  // PRIORIDADE TOTAL PARA O BLOCO FIXO: se deu a hora dele, ele assume independente do YouTube
   for (let i = 0; i < blocos.length; i++) {
     const b = blocos[i]; if (!b || b.removido) continue;
     if (b.tipo === 'timer' && b.horarios && b.horarios.length > 0) {
@@ -740,19 +706,13 @@ function verificarAgendados() {
     }
   }
 
-  // Se não tem bloco fixo rodando agora, verifica o YouTube / M3U
   if (!blocoEncontrado) {
     for (let i = 0; i < blocos.length; i++) {
       const b = blocos[i]; if (!b || b.removido) continue;
       if (b.tipo === 'youtube') {
         let diaMatch = false;
-        // Tratamento adaptado para o novo array do admin
-        if (Array.isArray(b.diaSemana)) {
-            diaMatch = b.diaSemana.length === 0 || b.diaSemana.includes(hoje);
-        } else {
-            diaMatch = (b.diaSemana === "" || (typeof b.diaSemana === 'string' && b.diaSemana.toLowerCase() === hoje));
-        }
-
+        if (Array.isArray(b.diaSemana)) { diaMatch = b.diaSemana.length === 0 || b.diaSemana.includes(hoje); } 
+        else { diaMatch = (b.diaSemana === "" || (typeof b.diaSemana === 'string' && b.diaSemana.toLowerCase() === hoje)); }
         const dentroDoHorario = (b.horaInicio && b.horaFim && horaAtual >= b.horaInicio && horaAtual < b.horaFim);
         if (diaMatch && dentroDoHorario) { blocoEncontrado = true; indiceParaRodar = i; break; }
       }
@@ -763,15 +723,12 @@ function verificarAgendados() {
     const b = blocos[indiceParaRodar];
     if (!b._agendadoRodando) {
       if (sistemaIniciado && idxBloco !== indiceParaRodar && !blocos[idxBloco]._agendadoRodando) {
-        // Se o que estava rodando era o YouTube, salva o tempo que passou antes de fechar
         if (blocos[idxBloco].tipo === 'youtube' && ytUltimoPlayTimestamp > 0) {
           const decorrido = (Date.now() - ytUltimoPlayTimestamp) / 1000;
           ytTempoSalvo += Math.floor(decorrido);
           ytUltimoPlayTimestamp = 0;
         }
-        blocoAnteriorIdx = idxBloco; 
-        blocoAnteriorProgresso = video.currentTime; 
-        blocoAnteriorPaused = video.paused;
+        blocoAnteriorIdx = idxBloco; blocoAnteriorProgresso = video.currentTime; blocoAnteriorPaused = video.paused;
       }
       blocos.forEach(bl => bl._agendadoRodando = false);
       b._agendadoRodando = true; idxBloco = indiceParaRodar; sistemaIniciado = true; tocarAtual();
@@ -781,23 +738,16 @@ function verificarAgendados() {
     if (agendadoQueEstavaRodando) {
       agendadoQueEstavaRodando._agendadoRodando = false;
       if (blocoAnteriorIdx !== -1) {
-        idxBloco = blocoAnteriorIdx; 
-        blocoAnteriorIdx = -1; 
-        
-        video.style.opacity = '0';
-        video.style.backgroundColor = '#000000';
-        
+        idxBloco = blocoAnteriorIdx; blocoAnteriorIdx = -1; 
+        video.style.opacity = '0'; video.style.backgroundColor = '#000000';
         tocarAtual();
-        
         if (blocos[idxBloco] && blocos[idxBloco].tipo !== 'youtube') {
           if (blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
             video.currentTime = blocoAnteriorProgresso;
             if (blocoAnteriorPaused) video.pause();
           }
         }
-      } else { 
-        window.proximoBloco(); 
-      }
+      } else { window.proximoBloco(); }
     }
   }
 }
@@ -818,24 +768,18 @@ function tocarAtual() {
   }
   if (b.tipo === 'youtube') {
     let diaMatchAdmin = false;
-    if (Array.isArray(b.diaSemana)) {
-        diaMatchAdmin = b.diaSemana.length === 0 || b.diaSemana.includes(hoje);
-    } else {
-        diaMatchAdmin = (b.diaSemana === "" || (typeof b.diaSemana === 'string' && b.diaSemana.toLowerCase() === hoje));
-    }
+    if (Array.isArray(b.diaSemana)) { diaMatchAdmin = b.diaSemana.length === 0 || b.diaSemana.includes(hoje); } 
+    else { diaMatchAdmin = (b.diaSemana === "" || (typeof b.diaSemana === 'string' && b.diaSemana.toLowerCase() === hoje)); }
     const dentroDoHorarioAdmin = (horaAgora >= b.horaInicio && horaAgora < b.horaFim);
     if (!diaMatchAdmin || !dentroDoHorarioAdmin) { pularParaProximo(); return; }
   }
 
   document.querySelectorAll('.bloco').forEach(el => el.classList.remove('running'));
-  clearTimeout(pauseTimer); 
-  detachTimers(); 
+  clearTimeout(pauseTimer); detachTimers(); 
   
   if (b.tipo !== 'youtube') {
-    stopM3U(); 
-    stopYouTube();
-    ytplayer.style.display = 'none'; 
-    video.style.display = 'block';
+    stopM3U(); stopYouTube();
+    ytplayer.style.display = 'none'; video.style.display = 'block';
   }
 
   const card = document.getElementById(`bloco-${idxBloco}`); 
@@ -849,39 +793,21 @@ function tocarAtual() {
   video.style.backgroundColor = '#000000';
 
   const novaUrl = b.arquivos[b.arquivoAtual].url;
-  if (video.src !== novaUrl) {
-    video.src = novaUrl;
-  }
+  if (video.src !== novaUrl) { video.src = novaUrl; }
   
   const tempoAlvo = b.progresso[b.arquivoAtual] || 0;
   video.currentTime = tempoAlvo;
-  
-  if (tempoAlvo === 0) {
-    video.style.opacity = '1';
-  }
-
+  if (tempoAlvo === 0) { video.style.opacity = '1'; }
   video.play().catch(() => {});
-  attachHandlersFor(b);
-  gerenciarBannerKBS();
+  attachHandlersFor(b); gerenciarBannerKBS();
 }
 
-function pularParaProximo() {
-  idxBloco = (idxBloco + 1) % blocos.length;
-  setTimeout(() => { tocarAtual(); }, 0);
-}
+function pularParaProximo() { idxBloco = (idxBloco + 1) % blocos.length; setTimeout(() => { tocarAtual(); }, 0); }
 
 function attachHandlersFor(b){
   detachTimers();
-  
-  video.onseeked = () => {
-    video.style.opacity = '1';
-  };
-
-  video.onplaying = () => {
-    if (video.currentTime > 0) {
-      video.style.opacity = '1';
-    }
-  };
+  video.onseeked = () => { video.style.opacity = '1'; };
+  video.onplaying = () => { if (video.currentTime > 0) { video.style.opacity = '1'; } };
 
   if (b.tipo === 'timer') {
     let start = video.currentTime;
@@ -892,13 +818,8 @@ function attachHandlersFor(b){
   video.onended = () => {
     b.arquivoAtual = (b.arquivoAtual + 1) % b.arquivos.length;
     if (b.tipo === 'movie') { 
-      b._count = (b._count || 0) + 1; 
-      atualizarInfoTempo(idxBloco); 
-      if (b._count >= b.limitePorCiclo) { 
-        b._count = 0; 
-        window.proximoBloco(); 
-        return; 
-      } 
+      b._count = (b._count || 0) + 1; atualizarInfoTempo(idxBloco); 
+      if (b._count >= b.limitePorCiclo) { b._count = 0; window.proximoBloco(); return; } 
     } 
     tocarAtual();
   };
@@ -907,11 +828,7 @@ function attachHandlersFor(b){
 function obterDuracao(url) {
   return new Promise((resolve) => {
     const tempVid = document.createElement('video');
-    tempVid.onloadedmetadata = () => { 
-        resolve(tempVid.duration); 
-        tempVid.removeAttribute('src'); 
-        tempVid.load(); 
-    };
+    tempVid.onloadedmetadata = () => { resolve(tempVid.duration); tempVid.removeAttribute('src'); tempVid.load(); };
     tempVid.onerror = () => { resolve(0); };
     tempVid.src = url;
   });
@@ -925,19 +842,15 @@ window.atualizarInfoTempo = function(i) {
   if (b.tipo === 'movie') {
     let limite = b.limitePorCiclo || 3;
     let start = b.arquivoAtual || 0;
-    let sum = 0;
-    let count = 0;
+    let sum = 0; let count = 0;
     for(let j=0; j < b.arquivos.length && count < limite; j++) {
-       let idx = (start + j) % b.arquivos.length;
-       sum += (b.arquivos[idx].duration || 0);
-       count++;
+       let idx = (start + j) % b.arquivos.length; sum += (b.arquivos[idx].duration || 0); count++;
     }
     infoText += "<br><span style='color:#ffd700; font-size:11px;'>Tempo p/ rodar os " + count + ": " + fmt(sum) + "</span>";
   } else if (b.tipo === 'timer') {
     let sum = b.arquivos.reduce((a, c) => a + (c.duration || 0), 0);
     infoText += "<br><span style='color:#ffd700; font-size:11px;'>Duração total da pasta: " + fmt(sum) + "</span>";
   }
-  
   const infoEl = document.getElementById(`info-${i}`);
   if(infoEl) infoEl.innerHTML = infoText;
 }
@@ -951,11 +864,8 @@ window.carregarArquivos = async function(i, fileList){
   atualizarGrade();
 
   for (let j = 0; j < blocos[i].arquivos.length; j++) {
-     try {
-       blocos[i].arquivos[j].duration = await obterDuracao(blocos[i].arquivos[j].url);
-     } catch(e) {
-       blocos[i].arquivos[j].duration = 0;
-     }
+     try { blocos[i].arquivos[j].duration = await obterDuracao(blocos[i].arquivos[j].url); } 
+     catch(e) { blocos[i].arquivos[j].duration = 0; }
   }
   atualizarInfoTempo(i);
 }
@@ -965,7 +875,6 @@ window.definirLimite = function(i,v){ blocos[i].limitePorCiclo=parseInt(v); atua
 window.pularArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
 window.voltarArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual-1+b.arquivos.length)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
 window.removerBloco = function(i){ blocos[i].removido=true; document.getElementById(`bloco-${i}`).remove(); window.proximoBloco(); }
-
 window.iniciar = function(){ sistemaIniciado = true; idxBloco=0; ytTempoSalvo = 0; ytUltimoPlayTimestamp = 0; tocarAtual(); }
 window.proximoBloco = function(){ idxBloco=(idxBloco+1)%blocos.length; tocarAtual(); }
 window.pausar = function(){ video.pause(); }
@@ -973,8 +882,7 @@ window.retomar = function(){ video.play(); }
 
 function startYouTubeNow(b) {
     if (video) { video.pause(); }
-    ytplayer.style.display = 'block'; 
-    video.style.display = 'none'; 
+    ytplayer.style.display = 'block'; video.style.display = 'none'; 
     const id = b.ytlink.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-z0-9_-]{11})/); 
     if(id) {
        let startParam = ytTempoSalvo > 0 ? `&start=${Math.floor(ytTempoSalvo)}` : '';
@@ -982,14 +890,13 @@ function startYouTubeNow(b) {
        ytUltimoPlayTimestamp = Date.now();
     }
 }
+
 function stopYouTube(){ 
     if (ytUltimoPlayTimestamp > 0) {
         const decorrido = (Date.now() - ytUltimoPlayTimestamp) / 1000;
-        ytTempoSalvo += Math.floor(decorrido);
-        ytUltimoPlayTimestamp = 0;
+        ytTempoSalvo += Math.floor(decorrido); ytUltimoPlayTimestamp = 0;
     }
-    ytplayer.src=''; 
-    ytplayer.style.display='none'; 
+    ytplayer.src=''; ytplayer.style.display='none'; 
 }
 
 function startM3UNow(b) {
@@ -1016,170 +923,128 @@ function startM3UNow(b) {
 function stopM3U() { if (hlsInstance) { hlsInstance.detachMedia(); hlsInstance.destroy(); hlsInstance = null; } video.pause(); video.removeAttribute('src'); video.load(); }
 function detachTimers(){ if(timeupdateHandler) video.removeEventListener('timeupdate', timeupdateHandler); video.onended=null; }
 function proximoArquivoMesmoBloco(){ 
-  const b=blocos[idxBloco]; 
-  b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; 
+  const b=blocos[idxBloco]; b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; 
   if(b.tipo === 'timer') atualizarInfoTempo(idxBloco);
   tocarAtual(); 
 }
+
 window.resizePlayer = function(){ const w=document.getElementById('playerWidth').value, h=document.getElementById('playerHeight').value; video.style.width=w+'px'; video.style.height=h+'px'; ytplayer.style.width=w+'px'; ytplayer.style.height=h+'px'; }
-window.salvarProgramacao = function(){ const blob=new Blob([JSON.stringify(blocos)],{type:"application/json"}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download="programacao.json"; a.click(); }
-window.carregarProgramacao = function(input){ const reader=new FileReader(); reader.onload=e=>{ blocos=JSON.parse(e.target.result); blocosEl.innerHTML=""; blocos.forEach((b,i)=>renderizarBloco(i,b)); atualizarGrade(); }; reader.readAsText(input.files[0]); }
+
+// --- ATUALIZADO: SALVA O LAYOUT E OS BLOCOS ---
+window.salvarProgramacao = function(){ 
+  const posicoes = {};
+  document.querySelectorAll('.movel, #letreiro-kbs-auto, #banner-somente-logo').forEach(el => {
+    if(el.id) { posicoes[el.id] = { top: el.style.top, left: el.style.left, right: el.style.right, bottom: el.style.bottom }; }
+  });
+  posicoes['player-size'] = { width: document.getElementById('playerWidth').value, height: document.getElementById('playerHeight').value };
+
+  // Salva no navegador direto (evita precisar importar o json todo dia)
+  localStorage.setItem('kbs_layout', JSON.stringify(posicoes));
+
+  const exportData = { blocos: blocos, layout: posicoes };
+  const blob = new Blob([JSON.stringify(exportData)], {type:"application/json"}); 
+  const a = document.createElement('a'); 
+  a.href = URL.createObjectURL(blob); 
+  a.download = "programacao.json"; 
+  a.click(); 
+}
+
+// --- ATUALIZADO: CARREGA ARQUIVO E MANTÉM COMPATIBILIDADE COM SEUS BACKUPS ANTIGOS ---
+window.carregarProgramacao = function(input){ 
+  const reader = new FileReader(); 
+  reader.onload = e => { 
+    const data = JSON.parse(e.target.result); 
+    
+    // Checa se o arquivo é antigo (só os blocos) ou o novo (blocos + posições)
+    if (Array.isArray(data)) {
+        blocos = data;
+    } else {
+        blocos = data.blocos || [];
+        if (data.layout) {
+            window.aplicarLayout(data.layout);
+            localStorage.setItem('kbs_layout', JSON.stringify(data.layout));
+        }
+    }
+    
+    blocosEl.innerHTML=""; 
+    blocos.forEach((b,i)=>renderizarBloco(i,b)); 
+    atualizarGrade(); 
+  }; 
+  reader.readAsText(input.files[0]); 
+}
+
 window.blocoAnterior = function(){ idxBloco=(idxBloco-1+blocos.length)%blocos.length; tocarAtual(); }
 
-function atualizarGrade(){ 
-  gradeEl.textContent = blocos.filter(b=>!b.removido).map((b,i)=>`Bloco ${i+1}${b.nome ? ' ('+b.nome+')' : ''}: ${b.tipo} ${b.horaInicio?'('+b.horaInicio+')':''}`).join('\n'); 
-}
+function atualizarGrade(){ gradeEl.textContent = blocos.filter(b=>!b.removido).map((b,i)=>`Bloco ${i+1}${b.nome ? ' ('+b.nome+')' : ''}: ${b.tipo} ${b.horaInicio?'('+b.horaInicio+')':''}`).join('\n'); }
 
 window.toggleDia = function(i, dia) { if (!blocos[i].diasSelecionados) blocos[i].diasSelecionados = []; const idx = blocos[i].diasSelecionados.indexOf(dia); if (idx === -1) blocos[i].diasSelecionados.push(dia); else blocos[i].diasSelecionados.splice(idx, 1); }
 window.addHora = function(i) { if (!blocos[i].horarios) blocos[i].horarios = []; blocos[i].horarios.push({ inicio: "00:00:00", fim: "00:00:00" }); const container = document.getElementById(`lista-horarios-${i}`); const div = document.createElement('div'); const idx = blocos[i].horarios.length - 1; div.style = "display:flex; gap:5px; margin-bottom:5px;"; div.innerHTML = `<input type="time" step="1" value="00:00:00" oninput="editHora(${i}, ${idx}, 'inicio', this.value)" style="width:85px;"><input type="time" step="1" value="00:00:00" oninput="editHora(${i}, ${idx}, 'fim', this.value)" style="width:85px;"><button onclick="removeHora(${i}, ${idx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px;">X</button>`; container.appendChild(div); }
 window.editHora = function(i, idx, campo, valor) { blocos[i].horarios[idx][campo] = valor; }
 window.removeHora = function(i, idx) { blocos[i].horarios.splice(idx, 1); const container = document.getElementById(`lista-horarios-${i}`); container.innerHTML = blocos[i].horarios.map((h, subIdx) => `<div style="display:flex; gap:5px; margin-bottom:5px;"><input type="time" step="1" value="${h.inicio}" oninput="editHora(${i}, ${subIdx}, 'inicio', this.value)" style="width:85px;"><input type="time" step="1" value="${h.fim}" oninput="editHora(${i}, ${subIdx}, 'fim', this.value)" style="width:85px;"><button onclick="removeHora(${i}, ${subIdx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px;">X</button></div>`).join(''); }
 
-let isDragging = false; 
-let offsetX, offsetY; 
-let activeElement = null;
+let isDragging = false; let offsetX, offsetY; let activeElement = null;
 
 window.startDrag = function(e) { 
-    isDragging = true; 
-    activeElement = e.currentTarget;
+    isDragging = true; activeElement = e.currentTarget;
     offsetX = e.clientX - activeElement.getBoundingClientRect().left; 
     offsetY = e.clientY - activeElement.getBoundingClientRect().top; 
     document.addEventListener('mousemove', onDrag); 
     document.addEventListener('mouseup', stopDrag); 
 };
-
 function onDrag(e) { 
     if (!isDragging || !activeElement) return; 
     const container = activeElement.parentElement.getBoundingClientRect(); 
-    let x = e.clientX - container.left - offsetX; 
-    let y = e.clientY - container.top - offsetY; 
-    activeElement.style.left = x + 'px'; 
-    activeElement.style.top = y + 'px'; 
+    let x = e.clientX - container.left - offsetX; let y = e.clientY - container.top - offsetY; 
+    activeElement.style.left = x + 'px'; activeElement.style.top = y + 'px'; 
 }
+function stopDrag() { isDragging = false; activeElement = null; document.removeEventListener('mousemove', onDrag); }
 
-function stopDrag() { 
-    isDragging = false; 
-    activeElement = null;
-    document.removeEventListener('mousemove', onDrag); 
-}
-
-let mediaRecorder;
-let socket;
+let mediaRecorder; let socket;
 
 window.toggleStream = async function() {
-    const btn = document.getElementById('btnStream');
-    const led = document.getElementById('statusLed');
-    const url = document.getElementById('bridgeUrl').value;
-    const playerEl = document.getElementById('player');
-
+    const btn = document.getElementById('btnStream'); const led = document.getElementById('statusLed'); const url = document.getElementById('bridgeUrl').value; const playerEl = document.getElementById('player');
     if (!mediaRecorder || mediaRecorder.state === "inactive") {
         try {
-            const stream = await navigator.mediaDevices.getDisplayMedia({
-                video: { displaySurface: "browser", frameRate: 20 },
-                audio: true,
-                preferCurrentTab: true
-            });
-            
-            if (!!window.CropTarget) {
-              const target = await CropTarget.fromElement(playerEl);
-              const [videoTrack] = stream.getVideoTracks();
-              await videoTrack.cropTo(target);
-            }
-            
+            const stream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: "browser", frameRate: 20 }, audio: true, preferCurrentTab: true });
+            if (!!window.CropTarget) { const target = await CropTarget.fromElement(playerEl); const [videoTrack] = stream.getVideoTracks(); await videoTrack.cropTo(target); }
             socket = new WebSocket(url);
-            
             socket.onopen = () => {
-                mediaRecorder = new MediaRecorder(stream, { 
-                    mimeType: 'video/webm; codecs=vp8,opus',
-                    videoBitsPerSecond: 450000 
-                });
-                mediaRecorder.ondataavailable = (e) => { 
-                    if (e.data.size > 0 && socket.readyState === WebSocket.OPEN) {
-                        socket.send(e.data); 
-                    }
-                };
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp8,opus', videoBitsPerSecond: 450000 });
+                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0 && socket.readyState === WebSocket.OPEN) { socket.send(e.data); } };
                 mediaRecorder.start(100); 
-                btn.innerText = "⏹ PARAR TRANSMISSÃO";
-                btn.style.background = "#2e7d32";
-                led.style.background = "#00ff00";
+                btn.innerText = "⏹ PARAR TRANSMISSÃO"; btn.style.background = "#2e7d32"; led.style.background = "#00ff00";
             };
             socket.onclose = () => resetStreamUI(btn, led);
             socket.onerror = () => { alert("Erro de conexão."); resetStreamUI(btn, led); };
-            stream.getVideoTracks()[0].onended = () => {
-                if(mediaRecorder) mediaRecorder.stop();
-                if(socket) socket.close();
-                resetStreamUI(btn, led);
-            };
-        } catch (err) { 
-            console.error(err);
-            alert("Erro: Certifique-se de escolher 'Separador do Chrome' e a aba deste player."); 
-        }
-    } else {
-        mediaRecorder.stop();
-        if(socket) socket.close();
-        resetStreamUI(btn, led);
-    }
+            stream.getVideoTracks()[0].onended = () => { if(mediaRecorder) mediaRecorder.stop(); if(socket) socket.close(); resetStreamUI(btn, led); };
+        } catch (err) { console.error(err); alert("Erro: Certifique-se de escolher 'Separador do Chrome' e a aba deste player."); }
+    } else { mediaRecorder.stop(); if(socket) socket.close(); resetStreamUI(btn, led); }
 };
-
-function resetStreamUI(btn, led) { 
-    btn.innerText = "🔴 INICIAR TRANSMISSÃO"; 
-    btn.style.background = "#b71c1c"; 
-    led.style.background = "#444"; 
-}
+function resetStreamUI(btn, led) { btn.innerText = "🔴 INICIAR TRANSMISSÃO"; btn.style.background = "#b71c1c"; led.style.background = "#444"; }
 
 let layoutTravado = true;
-const btnTrava = document.createElement('button');
-btnTrava.id = 'btn-trava-layout';
-btnTrava.innerHTML = '🔒 Layout Travado';
-btnTrava.className = 'layout-travado';
-document.body.appendChild(btnTrava);
+const btnTrava = document.createElement('button'); btnTrava.id = 'btn-trava-layout'; btnTrava.innerHTML = '🔒 Layout Travado'; btnTrava.className = 'layout-travado'; document.body.appendChild(btnTrava);
 
 btnTrava.onclick = () => {
   layoutTravado = !layoutTravado;
-  if (layoutTravado) {
-    btnTrava.innerHTML = '🔒 Layout Travado';
-    btnTrava.className = 'layout-travado';
-    document.body.classList.remove('modo-edicao');
-  } else {
-    btnTrava.innerHTML = '🔓 Layout Livre';
-    btnTrava.className = 'layout-destravado';
-    document.body.classList.add('modo-edicao');
-  }
+  if (layoutTravado) { btnTrava.innerHTML = '🔒 Layout Travado'; btnTrava.className = 'layout-travado'; document.body.classList.remove('modo-edicao'); } 
+  else { btnTrava.innerHTML = '🔓 Layout Livre'; btnTrava.className = 'layout-destravado'; document.body.classList.add('modo-edicao'); }
 };
 
 document.addEventListener('mousedown', (e) => {
   if (layoutTravado) return;
   const target = e.target.closest('.movel');
-  if (!target) return;
-  if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-
-  let shiftX = e.clientX - target.getBoundingClientRect().left;
-  let shiftY = e.clientY - target.getBoundingClientRect().top;
-
-  function moveAt(pageX, pageY) {
-    target.style.left = pageX - shiftX + 'px';
-    target.style.top = pageY - shiftY + 'px';
-  }
+  if (!target || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  let shiftX = e.clientX - target.getBoundingClientRect().left; let shiftY = e.clientY - target.getBoundingClientRect().top;
+  function moveAt(pageX, pageY) { target.style.left = pageX - shiftX + 'px'; target.style.top = pageY - shiftY + 'px'; }
   function onMouseMove(event) { moveAt(event.pageX, event.pageY); }
   document.addEventListener('mousemove', onMouseMove);
-  document.onmouseup = function() {
-    document.removeEventListener('mousemove', onMouseMove);
-    document.onmouseup = null;
-  };
+  document.onmouseup = function() { document.removeEventListener('mousemove', onMouseMove); document.onmouseup = null; };
 });
 document.addEventListener('dragstart', (e) => { if (e.target.closest('.movel')) e.preventDefault(); });
 
 const player = document.getElementById('player');
-function limparPlayer() {
-  if (player) {
-    player.controls = false; 
-    const shadow = player.shadowRoot;
-    if (shadow) {
-      const loading = shadow.querySelector('.media-loading-indicator');
-      if (loading) loading.style.display = 'none';
-    }
-  }
-}
+function limparPlayer() { if (player) { player.controls = false; const shadow = player.shadowRoot; if (shadow) { const loading = shadow.querySelector('.media-loading-indicator'); if (loading) loading.style.display = 'none'; } } }
 setInterval(limparPlayer, 500);
 </script>
 </body>
