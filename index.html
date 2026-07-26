@@ -397,11 +397,30 @@
       window._firebase_onValue(referenciaDinamica, snap => {
           const dadosFirebase = snap.val() || {};
           
-          let blocosManter = blocos.filter(b => b.tipo !== 'youtube' && !b._firebaseIndex);
+          // Mapeia e salva as propriedades para não reiniciar indevidamente
+          let blocoAtual = blocos[idxBloco];
+          let idPlaying = null;
+          if (blocoAtual) {
+              if (blocoAtual.tipo === 'youtube' && blocoAtual._firebaseIndex !== undefined) {
+                  idPlaying = 'fb_' + blocoAtual._firebaseIndex;
+              } else {
+                  idPlaying = 'local_' + idxBloco;
+              }
+          }
+
+          let blocosManter = blocos.filter(b => b.tipo !== 'youtube' && b._firebaseIndex === undefined);
           let novosBlocosAgendados = [];
 
           Object.keys(dadosFirebase).forEach(i => {
               const d = dadosFirebase[i];
+              
+              // Verifica se já estava tocando antes da edição no admin (para evitar reiniciar)
+              const blocoAntigo = blocos.find(b => b._firebaseIndex === i);
+              const ytMudou = blocoAntigo && (blocoAntigo.ytlink !== (d.yt || ''));
+              const m3uMudou = blocoAntigo && (blocoAntigo.m3ulink !== (d.m3u || ''));
+              // Se a URL mudou, ele deve reiniciar para pegar a nova. Se não, mantemos o estado executando.
+              const estavaRodando = (blocoAntigo && !ytMudou && !m3uMudou) ? blocoAntigo._agendadoRodando : false;
+
               novosBlocosAgendados.push({
                   tipo: 'youtube', 
                   nome: d.nome || '',
@@ -414,19 +433,37 @@
                   limitePorCiclo: 0,
                   ytlink: d.yt || '', 
                   m3ulink: d.m3u || '', 
-                  diaSemana: d.dia || '', 
+                  diaSemana: d.dias || d.dia || [], // Aceitando a array de múltiplos dias do novo admin
                   horaInicio: d.inicio || '', 
                   horaFim: d.fim || '',
                   removido: false, 
-                  _agendadoRodando: false, 
+                  _agendadoRodando: estavaRodando, 
                   _firebaseIndex: i 
               });
           });
 
           blocos = [...blocosManter, ...novosBlocosAgendados];
           
+          // Se um bloco estava rodando, recupera o index correto dele para manter tocando
+          if (idPlaying) {
+              if (idPlaying.startsWith('fb_')) {
+                  const fbId = idPlaying.split('_')[1];
+                  const novoIndex = blocos.findIndex(b => b._firebaseIndex === fbId);
+                  if (novoIndex !== -1) {
+                      idxBloco = novoIndex;
+                  }
+              }
+          }
+          
           blocosEl.innerHTML = '';
-          blocos.forEach((b, i) => renderizarBloco(i, b));
+          blocos.forEach((b, i) => {
+              renderizarBloco(i, b);
+              // Reaplica a marcação visual no bloco que está rodando
+              if (i === idxBloco && b._agendadoRodando) {
+                  const card = document.getElementById(`bloco-${i}`);
+                  if (card) card.classList.add('running');
+              }
+          });
           atualizarGrade();
           
           if (idxBloco >= blocos.length) idxBloco = 0;
@@ -437,33 +474,19 @@
 
 <body>
   <div id="tela-pagamento">
+    <!-- Resto da tela de pagamento continua igual -->
     <div class="painel-premium">
       <div class="status-badge">Sinal Interrompido</div>
       <h2>Acesso Expirado</h2>
       <p>Sua licença KBS TV chegou ao fim. Selecione um plano abaixo ou ative seu teste gratuito para liberar o player:</p>
-      
       <button id="btn-teste-7dias" class="btn-plano-premium destaque" onclick="ativarTeste7Dias()" style="background: linear-gradient(145deg, #1b5e20, #2e7d32); border-color: var(--gold);">
         <span class="nome">🎁 Ativar 7 Dias de Teste</span>
         <span class="preco">GRÁTIS</span>
       </button>
-
-      <button class="btn-plano-premium" onclick="gerarPix(29.90)">
-        <span class="nome">Plano Mensal</span>
-        <span class="preco">R$ 29,90</span>
-      </button>
-
-      <button class="btn-plano-premium destaque" onclick="gerarPix(230.90)">
-        <span class="nome">Plano Semestral 🌟</span>
-        <span class="preco">R$ 230,90</span>
-      </button>
-
-      <button class="btn-plano-premium" onclick="gerarPix(1.00)">
-        <span class="nome">Plano Anual</span>
-        <span class="preco">R$ 349,90</span>
-      </button>
-
+      <button class="btn-plano-premium" onclick="gerarPix(29.90)"><span class="nome">Plano Mensal</span><span class="preco">R$ 29,90</span></button>
+      <button class="btn-plano-premium destaque" onclick="gerarPix(230.90)"><span class="nome">Plano Semestral 🌟</span><span class="preco">R$ 230,90</span></button>
+      <button class="btn-plano-premium" onclick="gerarPix(1.00)"><span class="nome">Plano Anual</span><span class="preco">R$ 349,90</span></button>
       <div id="qrcode-container"></div>
-      
       <button onclick="fazerLogout()" style="background:none; border:none; color:#555; text-decoration:underline; cursor:pointer; margin-top:20px; font-size:13px;">Alternar conta de usuário</button>
     </div>
   </div>
@@ -472,7 +495,6 @@
     <div class="card-login">
       <h2>KBS TV</h2>
       <p>Área de Acesso do Cliente</p>
-      
       <button onclick="fazerLoginGoogle()" style="background:#db4437; padding: 16px; font-size: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(219,68,55,0.2); transition: all 0.2s; cursor: pointer; border: none; color: white;">
         <svg style="width:20px; height:20px; fill:white;" viewBox="0 0 24 24"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 6.133 1 1.18 5.925 1.18 12s4.953 11 11.06 11c6.373 0 10.596-4.477 10.596-10.75 0-.725-.078-1.275-.173-1.615H12.24z"/></svg>
         ENTRAR COM O GMAIL
@@ -723,7 +745,14 @@ function verificarAgendados() {
     for (let i = 0; i < blocos.length; i++) {
       const b = blocos[i]; if (!b || b.removido) continue;
       if (b.tipo === 'youtube') {
-        const diaMatch = (b.diaSemana === "" || b.diaSemana.toLowerCase() === hoje);
+        let diaMatch = false;
+        // Tratamento adaptado para o novo array do admin
+        if (Array.isArray(b.diaSemana)) {
+            diaMatch = b.diaSemana.length === 0 || b.diaSemana.includes(hoje);
+        } else {
+            diaMatch = (b.diaSemana === "" || (typeof b.diaSemana === 'string' && b.diaSemana.toLowerCase() === hoje));
+        }
+
         const dentroDoHorario = (b.horaInicio && b.horaFim && horaAtual >= b.horaInicio && horaAtual < b.horaFim);
         if (diaMatch && dentroDoHorario) { blocoEncontrado = true; indiceParaRodar = i; break; }
       }
@@ -788,7 +817,12 @@ function tocarAtual() {
     if (!diaMatch || !horarioMatch) { pularParaProximo(); return; }
   }
   if (b.tipo === 'youtube') {
-    const diaMatchAdmin = (b.diaSemana === "" || b.diaSemana.toLowerCase() === hoje);
+    let diaMatchAdmin = false;
+    if (Array.isArray(b.diaSemana)) {
+        diaMatchAdmin = b.diaSemana.length === 0 || b.diaSemana.includes(hoje);
+    } else {
+        diaMatchAdmin = (b.diaSemana === "" || (typeof b.diaSemana === 'string' && b.diaSemana.toLowerCase() === hoje));
+    }
     const dentroDoHorarioAdmin = (horaAgora >= b.horaInicio && horaAgora < b.horaFim);
     if (!diaMatchAdmin || !dentroDoHorarioAdmin) { pularParaProximo(); return; }
   }
