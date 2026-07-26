@@ -61,7 +61,11 @@
       diasHTML += '</div>';
 
       card.innerHTML = `
-        <h3>Bloco ${i}</h3>
+        <h3>${b.nome ? b.nome : 'Bloco ' + i}</h3>
+        
+        <label>Nome de identificação:</label>
+        <input id="nome-${i}" value="${b.nome || ''}" placeholder="Ex: Programação da Manhã">
+
         <label>Link M3U:</label>
         <input id="m3u-${i}" value="${b.m3u || ''}">
         <label>Link YouTube:</label>
@@ -91,6 +95,7 @@
 
     const caminho = ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${i}`);
     set(caminho, {
+      nome: document.getElementById("nome-" + i).value, // SALVANDO O NOME
       m3u: document.getElementById("m3u-" + i).value,
       yt: document.getElementById("yt-" + i).value,
       dias: diasMarcados, // Salvando como array
@@ -98,7 +103,7 @@
       fim: document.getElementById("fim-" + i).value,
       timestamp: Date.now()
     });
-    alert("✔ Salvo com múltiplos dias e segundos!");
+    alert("✔ Salvo com múltiplos dias, segundos e nome!");
   };
 
   window.apagar = function(i) {
@@ -113,22 +118,33 @@
       const novoID = chaves.length > 0 ? Math.max(...chaves) + 1 : 0;
       
       set(ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${novoID}`), {
-        m3u: "", yt: "", dias: [], inicio: "00:00:00", fim: "00:00:00", timestamp: Date.now()
+        nome: "", m3u: "", yt: "", dias: [], inicio: "00:00:00", fim: "00:00:00", timestamp: Date.now()
       });
     }, { onlyOnce: true });
   };
 </script>
 
 <style>
-/* SEU CSS ORIGINAL PRESERVADO */
+/* SEU CSS ORIGINAL PRESERVADO (Com leves adaptações para o layout lado a lado) */
 body { background:#111; color:#fff; font-family:Arial; padding: 20px; }
 #topBar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
 #addBtn { background:#28a745; padding:10px 18px; border:none; color:white; border-radius:8px; cursor:pointer; }
-.card { background:#1b1b1b; padding:15px; border-radius:10px; margin-bottom:15px; border:1px solid #333; width:320px; }
-input, select { width:100%; margin-bottom:8px; padding:6px; background:#222; border:1px solid #555; color:white; }
+
+/* MUDANÇA AQUI: Layout lado a lado com flexbox */
+#lista {
+  display: flex;
+  flex-wrap: wrap; /* Faz os blocos quebrarem a linha se não couber na tela */
+  gap: 20px; /* Espaçamento entre os blocos */
+}
+
+/* O margin-bottom foi retirado pois o gap acima já resolve o espaço */
+.card { background:#1b1b1b; padding:15px; border-radius:10px; border:1px solid #333; width:320px; }
+
+input, select { width:100%; margin-bottom:8px; padding:6px; background:#222; border:1px solid #555; color:white; box-sizing: border-box;}
 button { width:100%; padding:8px; border:none; color:white; border-radius:6px; margin-top:6px; cursor:pointer; }
 .saveBtn { background:#007bff; }
 .deleteBtn { background:#dc3545; }
+h3 { margin-top: 0; color: #aaa; text-align: center; border-bottom: 1px solid #333; padding-bottom: 10px; }
 
 /* AJUSTE PARA OS CHECKBOXES */
 .dias-check { 
