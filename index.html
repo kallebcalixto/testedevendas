@@ -629,8 +629,10 @@ function gerenciarBannerKBS() {
   const banner = document.getElementById('letreiro-kbs-auto');
   if (b && b.arquivos && b.arquivos[b.arquivoAtual]) {
     const nomeBruto = b.arquivos[b.arquivoAtual].file.name;
-    let nomeLimpo = nomeBruto.split(/DUBLADO|convertido|DVDRip|XviD|_00|1080p|720p/i)[0].replace(/^[\s.]+/, "").trim();
+    // Omitindo a extensão do arquivo (.mp4, .mkv, etc) junto com outras sujeiras de nome
+    let nomeLimpo = nomeBruto.split(/\.(mp4|mkv|avi|webm|ogg|mov)$/i)[0].split(/DUBLADO|convertido|DVDRip|XviD|_00|1080p|720p/i)[0].replace(/^[\s.]+/, "").trim();
     if(nomeLimpo.endsWith('.')) nomeLimpo = nomeLimpo.slice(0, -1);
+    
     document.getElementById('letreiro-texto-arquivo').innerText = "EXIBINDO: " + nomeLimpo;
     const urlLogo = document.getElementById('logoUrl').value;
     atualizarLogos(urlLogo);
