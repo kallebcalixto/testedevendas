@@ -260,6 +260,27 @@
     pointer-events: none;
     display: none;
   }
+
+  /* ESTILOS PARA O BOTÃO PISCANTE DE RENOVAÇÃO */
+  @keyframes piscarVermelho {
+    0% { background-color: #d32f2f; box-shadow: 0 0 5px #ff0000; }
+    50% { background-color: #ff1744; box-shadow: 0 0 20px #ff5252; transform: scale(1.02); }
+    100% { background-color: #d32f2f; box-shadow: 0 0 5px #ff0000; }
+  }
+  .btn-renovar-alerta {
+    background-color: #d32f2f;
+    color: white;
+    border: 2px solid #fff;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 11px;
+    cursor: pointer;
+    animation: piscarVermelho 1s infinite;
+    text-transform: uppercase;
+    text-align: center;
+    display: inline-block;
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
@@ -331,6 +352,9 @@
         if (config.testeUtilizado) { if (btnTeste) btnTeste.style.display = 'none'; } 
         else { if (btnTeste) btnTeste.style.display = 'flex'; }
 
+        // Atualiza a contagem e verifica o botão de renovação em tempo real
+        atualizarContadorPlano(config.expiracao);
+
         if (config.expiracao < agora) {
           document.getElementById('tela-pagamento').style.display = 'flex';
           document.getElementById('conteudo-player').style.display = 'none';
@@ -347,6 +371,58 @@
       document.getElementById('tela-pagamento').style.display = 'none';
     }
   });
+
+  // Função para abrir o painel de planos ao clicar no botão de renovar piscando
+  window.abrirTelaPagamento = function() {
+    document.getElementById('tela-pagamento').style.display = 'flex';
+  };
+
+  // Função que calcula a regressiva e controla os 5 dias finais
+  function atualizarContadorPlano(expiracaoMs) {
+    const containerContador = document.getElementById('contador-plano-container');
+    if (!containerContador) return;
+
+    if (!expiracaoMs || expiracaoMs <= Date.now()) {
+      containerContador.innerHTML = `<span style="color:#ff4d4d; font-size:11px; font-weight:bold;">PLANO EXPIRADO</span>`;
+      return;
+    }
+
+    const diffMs = expiracaoMs - Date.now();
+    const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const horas = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const segundos = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+    // Se faltar 5 dias ou menos, mostra o botão vermelho piscando
+    if (dias <= 5) {
+      containerContador.innerHTML = `
+        <button class="btn-renovar-alerta" onclick="abrirTelaPagamento()">
+          ⚠️ Clique aqui para renovar seu plano (${dias}d ${horas}h)
+        </button>
+      `;
+    } else {
+      containerContador.innerHTML = `
+        <div style="font-size: 10px; color: #ffd700; font-weight: bold; margin-bottom: 2px; text-align: center;">PLANO RESTANTE:</div>
+        <div style="font-size: 11px; color: #fff; font-weight: bold;">${dias}d ${horas}h ${minutos}m ${segundos}s</div>
+      `;
+    }
+  }
+
+  // Intervalo de atualização do contador a cada 1 segundo
+  setInterval(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+    get(ref(db, `usuarios/${user.uid}/config`)).then(snap => {
+      const config = snap.val();
+      if (config && config.expiracao) {
+        atualizarContadorPlano(config.expiracao);
+        if (config.expiracao < Date.now()) {
+          document.getElementById('tela-pagamento').style.display = 'flex';
+          document.getElementById('conteudo-player').style.display = 'none';
+        }
+      }
+    });
+  }, 1000);
 
   window.gerarPix = async (valorPlano) => {
     const container = document.getElementById('qrcode-container');
@@ -434,7 +510,7 @@
       </button>
       <button class="btn-plano-premium" onclick="gerarPix(29.90)"><span class="nome">Plano Mensal</span><span class="preco">R$ 29,90</span></button>
       <button class="btn-plano-premium destaque" onclick="gerarPix(230.90)"><span class="nome">Plano Semestral 🌟</span><span class="preco">R$ 230,90</span></button>
-      <button class="btn-plano-premium" onclick="gerarPix(1.00)"><span class="nome">Plano Anual</span><span class="preco">R$ 349,90</span></button>
+      <button class="btn-plano-premium" onclick="gerarPix(349.90)"><span class="nome">Plano Anual</span><span class="preco">R$ 349,90</span></button>
       <div id="qrcode-container"></div>
       <button onclick="fazerLogout()" style="background:none; border:none; color:#555; text-decoration:underline; cursor:pointer; margin-top:20px; font-size:13px;">Alternar conta de usuário</button>
     </div>
@@ -454,18 +530,23 @@
   <div id="conteudo-player" style="display:none;">
     <div class="wrap">
       
-      <!-- ADICIONADO ID: movel-topo-direito -->
+      <!-- TOPO DIREITO: REINÍCIO, CONTADOR DE DIAS/RENOVAÇÃO, ADMIN E SAIR -->
       <div id="movel-topo-direito" class="movel" style="top: 20px; right: 20px; display: flex; gap: 10px; z-index: 10000; align-items: center; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 8px; border: 1px solid #333;">
-          <div style="display: flex; flex-direction: column; align-items: center; margin-right: 10px;">
+          <div style="display: flex; flex-direction: column; align-items: center; margin-right: 5px;">
               <label style="font-size: 10px; color: #ffd700; font-weight: bold; margin-bottom: 2px;">REINÍCIO DIÁRIO:</label>
               <input type="time" id="horarioReinicio" onchange="salvarHorarioReinicio(this.value)" style="background:#000; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 6px; font-size: 12px; cursor: pointer;">
           </div>
+          
+          <!-- CONTADOR DE DIAS / BOTÃO DE RENOVAÇÃO -->
+          <div id="contador-plano-container" style="display: flex; flex-direction: column; align-items: center; margin-right: 5px; min-width: 130px;">
+              <!-- Gerenciado dinamicamente via JS -->
+          </div>
+
           <button class="btn-admin" onclick="window.open('admin.html', '_blank')">⚙️ ABRIR ADMIN</button>
           <button onclick="fazerLogout()" style="background:#b71c1c; font-weight: bold;">🚪 SAIR</button>
       </div>
 
       <div class="top">
-        <!-- ADICIONADO ID: movel-area-player -->
         <div id="movel-area-player" class="movel" style="left: 20px; top: 100px; z-index: 5000 !important;">
           
           <div id="letreiro-kbs-auto" onmousedown="startDrag(event)">
@@ -497,7 +578,6 @@
           </div>
         </div>
 
-        <!-- ADICIONADO ID: movel-controles-direito -->
         <div id="movel-controles-direito" class="movel" style="left: 550px; top: 100px;">
           <div style="background:#1a1a1a; padding:15px; border-radius:10px; border:1px solid #333; width: 300px;">
               <label style="font-size:11px; color:#2e7d32; font-weight:bold;">URL DO BRIDGE (NODE.JS):</label>
@@ -530,7 +610,6 @@
       <div id="blocos" class="grid movel" style="top: 450px; left: 20px;"></div>
     </div>
 
-    <!-- ADICIONADO ID: movel-header -->
     <header id="movel-header" class="movel" style="bottom: 80px; left: 20px; width: 90%;">
       <h1>📺 Grade de Programação</h1>
       <div id="grade">Carregando programação do administrador...</div>
@@ -556,7 +635,6 @@ let sistemaIniciado = false;
 let ytTempoSalvo = 0;
 let ytUltimoPlayTimestamp = 0;
 
-// --- FUNÇÃO NOVA: RESTAURA O LAYOUT SALVO ---
 window.aplicarLayout = function(posicoes) {
   if (!posicoes) return;
   Object.keys(posicoes).forEach(id => {
@@ -580,7 +658,6 @@ window.aplicarLayout = function(posicoes) {
   });
 }
 
-// --- SISTEMA DE REINÍCIO DIÁRIO & LAYOUT AUTOMÁTICO ---
 window.salvarHorarioReinicio = function(valor) { localStorage.setItem('kbs_horario_reinicio', valor); };
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -590,7 +667,6 @@ window.addEventListener('DOMContentLoaded', () => {
         if (inputReinicio) inputReinicio.value = horarioSalvo;
     }
     
-    // Carrega automaticamente o layout assim que o player abre
     const layoutSalvo = localStorage.getItem('kbs_layout');
     if (layoutSalvo) {
         window.aplicarLayout(JSON.parse(layoutSalvo));
@@ -629,7 +705,6 @@ function gerenciarBannerKBS() {
   const banner = document.getElementById('letreiro-kbs-auto');
   if (b && b.arquivos && b.arquivos[b.arquivoAtual]) {
     const nomeBruto = b.arquivos[b.arquivoAtual].file.name;
-    // Omitindo a extensão do arquivo (.mp4, .mkv, etc) junto com outras sujeiras de nome
     let nomeLimpo = nomeBruto.split(/\.(mp4|mkv|avi|webm|ogg|mov)$/i)[0].split(/DUBLADO|convertido|DVDRip|XviD|_00|1080p|720p/i)[0].replace(/^[\s.]+/, "").trim();
     if(nomeLimpo.endsWith('.')) nomeLimpo = nomeLimpo.slice(0, -1);
     
@@ -669,7 +744,7 @@ function renderizarBloco(i, bloco){
   const isYoutubeM3U = bloco.tipo === 'youtube';
   const nomeDisplay = bloco.nome ? ` - ${bloco.nome}` : '';
   card.innerHTML = `
-    <h3 id="titulo-bloco-${i}">Bloco ${i+1}${nomeDisplay} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':bloco.tipo==='movie'?'Filmes':bloco.tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
+    <h3 id="titulo-bloco-${i}">Bloco ${i+1}${nomeDisplay} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':bloco.tipo==='movie'?'Filmes':blocos[i].tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
     <div class="row"><label>Nome:</label><input type="text" placeholder="Ex: Jaspion" value="${bloco.nome || ''}" onchange="definirNomeBloco(${i}, this.value)" style="width:145px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 6px;"></div>
     <div class="row">
       ${(isTimer||bloco.tipo==='movie') ? `<label>Pasta:</label><input type="file" webkitdirectory directory multiple onchange="carregarArquivos(${i}, this.files)">`:''}
@@ -932,7 +1007,6 @@ function proximoArquivoMesmoBloco(){
 
 window.resizePlayer = function(){ const w=document.getElementById('playerWidth').value, h=document.getElementById('playerHeight').value; video.style.width=w+'px'; video.style.height=h+'px'; ytplayer.style.width=w+'px'; ytplayer.style.height=h+'px'; }
 
-// --- ATUALIZADO: SALVA O LAYOUT E OS BLOCOS ---
 window.salvarProgramacao = function(){ 
   const posicoes = {};
   document.querySelectorAll('.movel, #letreiro-kbs-auto, #banner-somente-logo').forEach(el => {
@@ -940,7 +1014,6 @@ window.salvarProgramacao = function(){
   });
   posicoes['player-size'] = { width: document.getElementById('playerWidth').value, height: document.getElementById('playerHeight').value };
 
-  // Salva no navegador direto (evita precisar importar o json todo dia)
   localStorage.setItem('kbs_layout', JSON.stringify(posicoes));
 
   const exportData = { blocos: blocos, layout: posicoes };
@@ -951,13 +1024,11 @@ window.salvarProgramacao = function(){
   a.click(); 
 }
 
-// --- ATUALIZADO: CARREGA ARQUIVO E MANTÉM COMPATIBILIDADE COM SEUS BACKUPS ANTIGOS ---
 window.carregarProgramacao = function(input){ 
   const reader = new FileReader(); 
   reader.onload = e => { 
     const data = JSON.parse(e.target.result); 
     
-    // Checa se o arquivo é antigo (só os blocos) ou o novo (blocos + posições)
     if (Array.isArray(data)) {
         blocos = data;
     } else {
