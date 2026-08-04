@@ -28,10 +28,20 @@
     z-index: 10;
     transition: outline 0.2s;
   }
+  
+  /* CLASSE PARA REDIMENSIONAR (CLICAR E ARRASTAR O CANTO) */
+  .redimensionavel {
+    overflow: auto; 
+    box-sizing: border-box;
+  }
   .modo-edicao .movel {
     outline: 2px dashed var(--primary-color);
     background: rgba(46, 125, 50, 0.05);
   }
+  .modo-edicao .redimensionavel {
+    resize: both; /* Ativa a alça de redimensionamento apenas no modo edição */
+  }
+
   #btn-trava-layout {
     position: fixed;
     bottom: 20px;
@@ -130,35 +140,14 @@
     box-shadow: 0 5px 15px rgba(46, 125, 50, 0.2);
   }
 
-  .btn-plano-premium .nome {
-    font-weight: bold;
-    font-size: 16px;
-    text-transform: uppercase;
-  }
-
-  .btn-plano-premium .preco {
-    color: var(--primary-color);
-    font-weight: 900;
-    font-size: 18px;
-  }
-
-  .btn-plano-premium.destaque {
-    border-color: var(--gold);
-  }
-  .btn-plano-premium.destaque .preco {
-    color: var(--gold);
-  }
+  .btn-plano-premium .nome { font-weight: bold; font-size: 16px; text-transform: uppercase; }
+  .btn-plano-premium .preco { color: var(--primary-color); font-weight: 900; font-size: 18px; }
+  .btn-plano-premium.destaque { border-color: var(--gold); }
+  .btn-plano-premium.destaque .preco { color: var(--gold); }
 
   #qrcode-container {
-    margin-top: 25px;
-    background: #000;
-    padding: 20px;
-    border-radius: 16px;
-    border: 1px solid #222;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
+    margin-top: 25px; background: #000; padding: 20px; border-radius: 16px;
+    border: 1px solid #222; display: flex; flex-direction: column; align-items: center; gap: 10px;
   }
 
   #tela-login {
@@ -172,9 +161,13 @@
   .card-login h2 { margin-bottom: 10px; color: #2e7d32; font-weight: 900; }
   .card-login p { color: #888; font-size: 14px; margin-bottom: 25px; }
 
-  header { padding:16px 20px; background:#1b1b1b; border-top:1px solid #2a2a2a; }
-  header h1 { margin:0 0 6px 0; font-size:18px; }
-  #grade { white-space:pre-line; font-size:13px; color:#ddd; max-height:220px; overflow-y:auto; }
+  header { 
+    padding:16px 20px; background:#1b1b1b; border:1px solid #2a2a2a; 
+    display: flex; flex-direction: column; border-radius: 10px;
+  }
+  header h1 { margin:0 0 6px 0; font-size:18px; flex-shrink: 0; }
+  #grade { white-space:pre-line; font-size:13px; color:#ddd; flex-grow: 1; overflow-y:auto; }
+  
   .wrap { max-width:1200px; margin:0 auto; padding:20px; }
   .top { display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; justify-content:center; }
 
@@ -203,12 +196,10 @@
     flex-wrap:wrap; 
     gap:12px; 
     margin-top:18px; 
-    max-height:400px; 
     overflow-y: auto !important; 
     overflow-x: hidden;
     padding-right: 10px;
-    width: auto;
-    max-width: 90vw;
+    padding-bottom: 15px; /* espaço para o ícone de redimensionar */
   }
    
   .bloco { position:relative; flex:0 0 260px; border:1px solid #2b2b2b; background:#171717; border-radius:10px; padding:12px; }
@@ -238,48 +229,20 @@
   #letreiro-texto-arquivo { pointer-events: none; }
 
   #banner-somente-logo {
-    position: absolute; 
-    top: 60px; 
-    left: 20px; 
-    z-index: 1001;
-    cursor: move;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    resize: both; 
-    width: 80px;   
-    height: 80px; 
-    min-width: 20px;
-    min-height: 20px;
+    position: absolute; top: 60px; left: 20px; z-index: 1001; cursor: move; display: flex; align-items: center;
+    justify-content: center; overflow: hidden; resize: both; width: 80px; height: 80px; min-width: 20px; min-height: 20px;
   }
-  #img-banner-fixo {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    pointer-events: none;
-    display: none;
-  }
+  #img-banner-fixo { width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none; }
 
-  /* ESTILOS PARA O BOTÃO PISCANTE DE RENOVAÇÃO */
   @keyframes piscarVermelho {
     0% { background-color: #d32f2f; box-shadow: 0 0 5px #ff0000; }
     50% { background-color: #ff1744; box-shadow: 0 0 20px #ff5252; transform: scale(1.02); }
     100% { background-color: #d32f2f; box-shadow: 0 0 5px #ff0000; }
   }
   .btn-renovar-alerta {
-    background-color: #d32f2f;
-    color: white;
-    border: 2px solid #fff;
-    padding: 5px 12px;
-    border-radius: 6px;
-    font-weight: bold;
-    font-size: 11px;
-    cursor: pointer;
-    animation: piscarVermelho 1s infinite;
-    text-transform: uppercase;
-    text-align: center;
-    display: inline-block;
+    background-color: #d32f2f; color: white; border: 2px solid #fff; padding: 5px 12px; border-radius: 6px;
+    font-weight: bold; font-size: 11px; cursor: pointer; animation: piscarVermelho 1s infinite;
+    text-transform: uppercase; text-align: center; display: inline-block;
   }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -352,7 +315,6 @@
         if (config.testeUtilizado) { if (btnTeste) btnTeste.style.display = 'none'; } 
         else { if (btnTeste) btnTeste.style.display = 'flex'; }
 
-        // Atualiza a contagem e verifica o botão de renovação em tempo real
         atualizarContadorPlano(config.expiracao);
 
         if (config.expiracao < agora) {
@@ -372,28 +334,23 @@
     }
   });
 
-  // Função para abrir o painel de planos ao clicar no botão de renovar piscando
   window.abrirTelaPagamento = function() {
     document.getElementById('tela-pagamento').style.display = 'flex';
   };
 
-  // Função que calcula a regressiva e controla os 5 dias finais
   function atualizarContadorPlano(expiracaoMs) {
     const containerContador = document.getElementById('contador-plano-container');
     if (!containerContador) return;
-
     if (!expiracaoMs || expiracaoMs <= Date.now()) {
       containerContador.innerHTML = `<span style="color:#ff4d4d; font-size:11px; font-weight:bold;">PLANO EXPIRADO</span>`;
       return;
     }
-
     const diffMs = expiracaoMs - Date.now();
     const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const horas = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
     const segundos = Math.floor((diffMs % (1000 * 60)) / 1000);
 
-    // Se faltar 5 dias ou menos, mostra o botão vermelho piscando
     if (dias <= 5) {
       containerContador.innerHTML = `
         <button class="btn-renovar-alerta" onclick="abrirTelaPagamento()">
@@ -408,7 +365,6 @@
     }
   }
 
-  // Intervalo de atualização do contador a cada 1 segundo
   setInterval(() => {
     const user = auth.currentUser;
     if (!user) return;
@@ -501,6 +457,7 @@
 
 <body>
   <div id="tela-pagamento">
+    <!-- Restante da tela de pagamento -->
     <div class="painel-premium">
       <div class="status-badge">Sinal Interrompido</div>
       <h2>Acesso Expirado</h2>
@@ -520,8 +477,7 @@
     <div class="card-login">
       <h2>KBS TV</h2>
       <p>Área de Acesso do Cliente</p>
-      <button onclick="fazerLoginGoogle()" style="background:#db4437; padding: 16px; font-size: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(219,68,55,0.2); transition: all 0.2s; cursor: pointer; border: none; color: white;">
-        <svg style="width:20px; height:20px; fill:white;" viewBox="0 0 24 24"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 6.133 1 1.18 5.925 1.18 12s4.953 11 11.06 11c6.373 0 10.596-4.477 10.596-10.75 0-.725-.078-1.275-.173-1.615H12.24z"/></svg>
+      <button onclick="fazerLoginGoogle()" style="background:#db4437; padding: 16px; font-size: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; border-radius: 8px; border: none; color: white;">
         ENTRAR COM O GMAIL
       </button>
     </div>
@@ -530,19 +486,16 @@
   <div id="conteudo-player" style="display:none;">
     <div class="wrap">
       
-      <!-- TOPO DIREITO: REINÍCIO, CONTADOR DE DIAS/RENOVAÇÃO, ADMIN E SAIR -->
-      <div id="movel-topo-direito" class="movel" style="top: 20px; right: 20px; display: flex; gap: 10px; z-index: 10000; align-items: center; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 8px; border: 1px solid #333;">
+      <!-- TOPO DIREITO: REINÍCIO, ADMIN E SAIR -->
+      <div id="movel-topo-direito" class="movel redimensionavel" style="top: 20px; right: 20px; width: 420px; display: flex; gap: 10px; z-index: 10000; align-items: center; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 8px; border: 1px solid #333;">
           <div style="display: flex; flex-direction: column; align-items: center; margin-right: 5px;">
               <label style="font-size: 10px; color: #ffd700; font-weight: bold; margin-bottom: 2px;">REINÍCIO DIÁRIO:</label>
               <input type="time" id="horarioReinicio" onchange="salvarHorarioReinicio(this.value)" style="background:#000; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 6px; font-size: 12px; cursor: pointer;">
           </div>
           
-          <!-- CONTADOR DE DIAS / BOTÃO DE RENOVAÇÃO -->
-          <div id="contador-plano-container" style="display: flex; flex-direction: column; align-items: center; margin-right: 5px; min-width: 130px;">
-              <!-- Gerenciado dinamicamente via JS -->
-          </div>
+          <div id="contador-plano-container" style="display: flex; flex-direction: column; align-items: center; margin-right: 5px; min-width: 130px;"></div>
 
-          <button class="btn-admin" onclick="window.open('admin.html', '_blank')">⚙️ ABRIR ADMIN</button>
+          <button class="btn-admin" onclick="window.open('admin.html', '_blank')">⚙️ ADMIN</button>
           <button onclick="fazerLogout()" style="background:#b71c1c; font-weight: bold;">🚪 SAIR</button>
       </div>
 
@@ -569,6 +522,7 @@
             <button onclick="proximoBloco()">⏭ Próximo bloco</button>
           </div>
 
+          <!-- Player usa lógica numérica para manter a proporção perfeitamente -->
           <div class="player-resize-controls" style="margin-top:10px; display:flex; gap:8px; align-items:center;">
             <label>Largura:</label>
             <input type="number" id="playerWidth" value="500" style="width:70px;">
@@ -578,39 +532,39 @@
           </div>
         </div>
 
-        <div id="movel-controles-direito" class="movel" style="left: 550px; top: 100px;">
-          <div style="background:#1a1a1a; padding:15px; border-radius:10px; border:1px solid #333; width: 300px;">
+        <div id="movel-controles-direito" class="movel redimensionavel" style="left: 550px; top: 100px; width: 340px;">
+          <div style="background:#1a1a1a; padding:15px; border-radius:10px; border:1px solid #333; width: 100%; box-sizing: border-box;">
               <label style="font-size:11px; color:#2e7d32; font-weight:bold;">URL DO BRIDGE (NODE.JS):</label>
-              <input type="text" id="bridgeUrl" value="ws://localhost:8080" style="width:100%; background:#000; border:1px solid #444; color:#fff; padding:8px; margin:5px 0; border-radius:5px;">
+              <input type="text" id="bridgeUrl" value="ws://localhost:8080" style="width:100%; background:#000; border:1px solid #444; color:#fff; padding:8px; margin:5px 0; border-radius:5px; box-sizing: border-box;">
               <div style="display:flex; gap:10px; align-items:center;">
                   <button id="btnStream" onclick="toggleStream()" style="background:#b71c1c; flex:1; font-weight:bold;">🔴 INICIAR TRANSMISSÃO</button>
                   <div id="statusLed" style="width:12px; height:12px; background:#444; border-radius:50%;"></div>
               </div>
           </div>
 
-          <div style="margin-top:15px; display: flex; flex-direction: column; gap: 5px; width: 330px;">
+          <div style="margin-top:15px; display: flex; flex-direction: column; gap: 5px; width: 100%; box-sizing: border-box;">
             <button class="btn-sec" onclick="adicionarBloco('timer')">+ Bloco (Tempo Fixo)</button>
             <button class="btn-sec" onclick="adicionarBloco('movie')">+ Bloco (Filmes)</button>
             <button class="btn-sec" onclick="adicionarBloco('pause')">+ Bloco (Pausa)</button>
-            <button class="btn-sec" onclick="salvarProgramacao()">💾 Salvar</button>
+            <button class="btn-sec" onclick="salvarProgramacao()">💾 Salvar Tudo (Tamanho e Posição)</button>
             <button class="btn-sec" onclick="document.getElementById('fileInput').click()">📂 Carregar</button>
             <input type="file" id="fileInput" style="display:none" accept="application/json" onchange="carregarProgramacao(this)">
           </div>
 
-          <div style="margin-top:15px; background:#222; padding:15px; border-radius:8px; border:1px solid #333; width: 300px;">
+          <div style="margin-top:15px; background:#222; padding:15px; border-radius:8px; border:1px solid #333; width: 100%; box-sizing: border-box;">
             <label style="font-size:11px; color:#ffd700; display:block; margin-bottom:5px; font-weight:bold;">CONFIGURAÇÃO DE BANNERS:</label>
             <div style="margin-bottom:10px;">
               <label style="font-size:10px; display:block; color:#aaa;">LINK DA LOGO (BANNER FIXO):</label>
-              <input type="text" id="logoUrl" oninput="atualizarLogos(this.value)" placeholder="Cole o link da imagem .png aqui" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:8px; border-radius:5px;">
+              <input type="text" id="logoUrl" oninput="atualizarLogos(this.value)" placeholder="Cole o link da imagem .png aqui" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:8px; border-radius:5px; box-sizing: border-box;">
             </div>
           </div>
         </div>
       </div>
       
-      <div id="blocos" class="grid movel" style="top: 450px; left: 20px;"></div>
+      <div id="blocos" class="grid movel redimensionavel" style="top: 480px; left: 20px; width: 850px; height: 350px;"></div>
     </div>
 
-    <header id="movel-header" class="movel" style="bottom: 80px; left: 20px; width: 90%;">
+    <header id="movel-header" class="movel redimensionavel" style="bottom: 80px; left: 20px; width: 800px; height: 250px;">
       <h1>📺 Grade de Programação</h1>
       <div id="grade">Carregando programação do administrador...</div>
     </header>
@@ -654,6 +608,10 @@ window.aplicarLayout = function(posicoes) {
       if (posicoes[id].left !== undefined) el.style.left = posicoes[id].left;
       if (posicoes[id].right !== undefined) el.style.right = posicoes[id].right;
       if (posicoes[id].bottom !== undefined) el.style.bottom = posicoes[id].bottom;
+      
+      // Aplica tamanhos redimensionados
+      if (posicoes[id].width !== undefined) el.style.width = posicoes[id].width;
+      if (posicoes[id].height !== undefined) el.style.height = posicoes[id].height;
     }
   });
 }
@@ -1010,7 +968,16 @@ window.resizePlayer = function(){ const w=document.getElementById('playerWidth')
 window.salvarProgramacao = function(){ 
   const posicoes = {};
   document.querySelectorAll('.movel, #letreiro-kbs-auto, #banner-somente-logo').forEach(el => {
-    if(el.id) { posicoes[el.id] = { top: el.style.top, left: el.style.left, right: el.style.right, bottom: el.style.bottom }; }
+    if(el.id) { 
+      posicoes[el.id] = { 
+        top: el.style.top, 
+        left: el.style.left, 
+        right: el.style.right, 
+        bottom: el.style.bottom,
+        width: el.style.width,
+        height: el.style.height
+      }; 
+    }
   });
   posicoes['player-size'] = { width: document.getElementById('playerWidth').value, height: document.getElementById('playerHeight').value };
 
@@ -1057,6 +1024,7 @@ window.removeHora = function(i, idx) { blocos[i].horarios.splice(idx, 1); const 
 
 let isDragging = false; let offsetX, offsetY; let activeElement = null;
 
+// Lógica de Movimentação dos banners menores (logo e letreiro)
 window.startDrag = function(e) { 
     isDragging = true; activeElement = e.currentTarget;
     offsetX = e.clientX - activeElement.getBoundingClientRect().left; 
@@ -1104,11 +1072,21 @@ btnTrava.onclick = () => {
   else { btnTrava.innerHTML = '🔓 Layout Livre'; btnTrava.className = 'layout-destravado'; document.body.classList.add('modo-edicao'); }
 };
 
+// Movimentação principal das janelas grandes
 document.addEventListener('mousedown', (e) => {
   if (layoutTravado) return;
   const target = e.target.closest('.movel');
   if (!target || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-  let shiftX = e.clientX - target.getBoundingClientRect().left; let shiftY = e.clientY - target.getBoundingClientRect().top;
+
+  // VERIFICAÇÃO INTELIGENTE PARA NÃO MOVER QUANDO FOR REDIMENSIONAR
+  const rect = target.getBoundingClientRect();
+  // Se o clique for muito próximo ao canto inferior direito (onde fica o puxador de redimensionar), não inicie o drag!
+  const isBottomRight = (e.clientX > rect.right - 20) && (e.clientY > rect.bottom - 20);
+  if (target.classList.contains('redimensionavel') && isBottomRight) {
+     return; // Deixa o CSS cuidar de redimensionar!
+  }
+
+  let shiftX = e.clientX - rect.left; let shiftY = e.clientY - rect.top;
   function moveAt(pageX, pageY) { target.style.left = pageX - shiftX + 'px'; target.style.top = pageY - shiftY + 'px'; }
   function onMouseMove(event) { moveAt(event.pageX, event.pageY); }
   document.addEventListener('mousemove', onMouseMove);
