@@ -855,8 +855,49 @@ function extrairNomeLimpo(nomeBruto) {
     return nomeLimpo;
 }
 
+// FUNÇÃO AUXILIAR PARA TRANSFORMAR "HH:MM:SS" OU "HH:MM" EM SEGUNDOS DO DIA
+function horarioParaSegundos(strHora) {
+    if (!strHora) return 0;
+    const partes = strHora.split(':').map(Number);
+    const h = partes[0] || 0;
+    const m = partes[1] || 0;
+    const s = partes[2] || 0;
+    return h * 3600 + m * 60 + s;
+}
+
 function obterNomeASeguir() {
     if (!blocos || blocos.length === 0) return "";
+    
+    const agora = new Date();
+    const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
+    const segundosAgora = agora.getHours() * 3600 + agora.getMinutes() * 60 + agora.getSeconds();
+
+    // 1. PRIORIDADE MÁXIMA: Verificar se há ALGUM bloco YouTube/M3U programado para hoje cujo horário de início está entre 0 e 10 minutos (600 segundos) à frente!
+    for (let i = 0; i < blocos.length; i++) {
+        const b = blocos[i];
+        if (b && !b.removido && b.tipo === 'youtube' && b.horaInicio) {
+            let diaMatch = false;
+            if (Array.isArray(b.diaSemana)) { 
+                diaMatch = b.diaSemana.length === 0 || b.diaSemana.includes(hoje); 
+            } else { 
+                diaMatch = (b.diaSemana === "" || (typeof b.diaSemana === 'string' && b.diaSemana.toLowerCase() === hoje)); 
+            }
+            
+            if (diaMatch) {
+                const segundosInicio = horarioParaSegundos(b.horaInicio);
+                const diffSegundos = segundosInicio - segundosAgora;
+                
+                // Se faltam entre 0 e 10 minutos (600s) para começar
+                if (diffSegundos >= 0 && diffSegundos <= 600) {
+                    const minRestantes = Math.ceil(diffSegundos / 60);
+                    let nomeBloco = b.nome ? b.nome : (b.m3ulink ? "Transmissão M3U" : "Transmissão Ao Vivo");
+                    return `${nomeBloco} (Entra em ${minRestantes} min, às ${b.horaInicio})`;
+                }
+            }
+        }
+    }
+
+    // 2. CASO NÃO HAJA PRIORIDADE PRÓXIMA DE 10 MIN, SEGUE O FLUXO NORMAL DO PRÓXIMO BLOCO/ARQUIVO
     const b = blocos[idxBloco];
     if (!b || b.removido) return "";
 
@@ -897,7 +938,6 @@ function obterNomeASeguir() {
         let nextB = blocos[nextIdx];
         if (nextB && !nextB.removido) {
             if (nextB.tipo === 'youtube') {
-                // LÊ O NOME ESCRITO E O HORÁRIO DO BLOCO M3U / YOUTUBE
                 let nomeBloco = nextB.nome ? nextB.nome : (nextB.m3ulink ? "Transmissão M3U" : "Transmissão Ao Vivo");
                 let horarioStr = nextB.horaInicio ? ` (às ${nextB.horaInicio})` : "";
                 nomeASeguir = `${nomeBloco}${horarioStr}`;
@@ -1396,7 +1436,7 @@ document.addEventListener('mousedown', (e) => {
   function moveAt(pageX, pageY) { target.style.left = pageX - shiftX + 'px'; target.style.top = pageY - shiftY + 'px'; }
   function onMouseMove(event) { moveAt(event.pageX, event.pageY); }
   document.addEventListener('mousemove', onMouseMove);
-  document.onmouseup = function() { document.removeEventListener('mousemove', onMouseMove); document.onmouseup = null; };
+  document.onmouseup = function() { document.removeEventListener('mousemove', onDrag); document.onmouseup = null; };
 });
 document.addEventListener('dragstart', (e) => { if (e.target.closest('.movel')) e.preventDefault(); });
 
