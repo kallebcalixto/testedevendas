@@ -223,7 +223,7 @@
   .mini-btn { padding:4px 6px; margin:2px; border:none; border-radius:6px; cursor:pointer; background:#444; color:#fff; font-size:12px; }
   .mini-btn:hover { background:#666; }
 
-  /* ESTILOS DOS LETREIROS COM MÁXIMA QUALIDADE / ANTIALIASING FORÇADO */
+  /* ESTILOS DOS LETREIROS COM MÁXIMA QUALIDADE */
   #letreiro-kbs-auto {
     position: absolute; top: 20px; left: 20px; z-index: 999;
     background: transparent; color: #ffd700; border-left: 5px solid #ffd700;
@@ -236,7 +236,7 @@
   }
   #letreiro-logo-img { 
     height: 28px; width: auto; max-height: 35px; display: none; pointer-events: none; 
-    image-rendering: -webkit-optimize-contrast; /* Força alta nitidez */
+    image-rendering: -webkit-optimize-contrast; 
     image-rendering: high-quality;
   }
   #letreiro-texto-arquivo { pointer-events: none; }
@@ -264,7 +264,7 @@
   }
   #img-banner-fixo { 
     width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none; 
-    image-rendering: -webkit-optimize-contrast; /* Evita que o navegador borre o banner fixo */
+    image-rendering: -webkit-optimize-contrast; 
     image-rendering: high-quality;
   }
 
@@ -896,12 +896,15 @@ function obterNomeASeguir() {
 
         let nextB = blocos[nextIdx];
         if (nextB && !nextB.removido) {
-            if (nextB.nome) {
-                nomeASeguir = nextB.nome; 
-            } else if (nextB.tipo === 'youtube') {
-                nomeASeguir = "Transmissão Ao Vivo";
+            if (nextB.tipo === 'youtube') {
+                // LÊ O NOME ESCRITO E O HORÁRIO DO BLOCO M3U / YOUTUBE
+                let nomeBloco = nextB.nome ? nextB.nome : (nextB.m3ulink ? "Transmissão M3U" : "Transmissão Ao Vivo");
+                let horarioStr = nextB.horaInicio ? ` (às ${nextB.horaInicio})` : "";
+                nomeASeguir = `${nomeBloco}${horarioStr}`;
             } else if (nextB.tipo === 'pause') {
-                nomeASeguir = "Pausa Programada";
+                nomeASeguir = nextB.nome ? `Pausa: ${nextB.nome}` : "Pausa Programada";
+            } else if (nextB.nome) {
+                nomeASeguir = nextB.nome;
             } else if (nextB.arquivos && nextB.arquivos.length > 0) {
                 nomeASeguir = extrairNomeLimpo(nextB.arquivos[0].file.name);
             } else {
@@ -950,14 +953,7 @@ function gerenciarAseguir() {
   const bannerExibindo = document.getElementById('letreiro-kbs-auto');
   if (bannerExibindo.style.display === 'flex') return;
 
-  const b = blocos[idxBloco];
   const banner = document.getElementById('letreiro-aseguir');
-  
-  if (b && b.tipo === 'youtube') {
-      banner.style.display = 'none'; 
-      return;
-  }
-  
   let nomeAseguir = obterNomeASeguir();
 
   if (nomeAseguir) {
@@ -1128,7 +1124,6 @@ function tocarAtual() {
   
   if (b.tipo === 'youtube') { 
       document.getElementById('letreiro-kbs-auto').style.display = 'none';
-      document.getElementById('letreiro-aseguir').style.display = 'none';
       if (b.ytlink) startYouTubeNow(b); 
       else if (b.m3ulink) startM3UNow(b); 
       return; 
