@@ -29,7 +29,7 @@
     transition: outline 0.2s;
   }
   
-  /* NOVA CLASSE PARA REDIMENSIONAR (CLICAR E ARRASTAR O CANTO) */
+  /* CLASSE PARA REDIMENSIONAR (CLICAR E ARRASTAR O CANTO) */
   .redimensionavel {
     overflow: auto; 
     box-sizing: border-box;
@@ -171,7 +171,6 @@
   .card-login h2 { margin-bottom: 10px; color: #2e7d32; font-weight: 900; }
   .card-login p { color: #888; font-size: 14px; margin-bottom: 25px; }
 
-  /* Alterado para permitir redimensionamento interno */
   header { padding:16px 20px; background:#1b1b1b; border:1px solid #2a2a2a; display: flex; flex-direction: column; border-radius: 10px; }
   header h1 { margin:0 0 6px 0; font-size:18px; flex-shrink: 0; }
   #grade { white-space:pre-line; font-size:13px; color:#ddd; flex-grow: 1; overflow-y:auto; }
@@ -199,15 +198,17 @@
   .btn-sec { background:#1976d2; } .btn-sec:hover{ background:#2a82d8; }
   .btn-admin { background:#6200ee; font-weight: bold; } .btn-admin:hover { background:#7c4dff; }
    
+  /* BLOCOS COM ROLAGEM COMPLETA ATIVADA NAS LATERAIS E EMBAIXO */
   .grid { 
     display:flex; 
-    flex-wrap: nowrap;
+    flex-wrap: wrap; /* Permite quebrar linha normalmente */
     gap:12px; 
     margin-top:18px; 
-    overflow-y: auto !important; 
-    overflow-x: auto; 
-    padding-bottom: 15px; /* Espaço para alça de redimensionamento */
-    padding-right: 10px;
+    overflow-y: scroll !important; /* Barra de rolagem vertical fixa */
+    overflow-x: scroll !important; /* Barra de rolagem horizontal fixa */
+    padding-bottom: 25px; 
+    padding-right: 25px;
+    box-sizing: border-box;
   }
    
   .bloco { position:relative; flex:0 0 260px; border:1px solid #2b2b2b; background:#171717; border-radius:10px; padding:12px; }
@@ -268,7 +269,6 @@
     text-transform: uppercase; text-align: center; display: inline-block;
   }
 
-  /* ESTILOS DO BOTÃO LIGA/DESLIGA (SWITCH) */
   .switch input:checked + .slider { background-color: #2e7d32; }
   .switch input:focus + .slider { box-shadow: 0 0 1px #2e7d32; }
   .switch input:checked + .slider:before { transform: translateX(14px); }
@@ -688,7 +688,7 @@
         </div>
       </div>
       
-      <!-- BLOCOS (REDIMENSIONÁVEL) -->
+      <!-- BLOCOS (COM BARRAS DE ROLAGEM LATERAL E INFERIOR) -->
       <div id="blocos" class="grid movel redimensionavel" style="top: 480px; left: 20px; width: 850px; height: 350px;"></div>
     </div>
 
@@ -744,7 +744,6 @@ window.aplicarLayout = function(posicoes) {
       if (posicoes[id].right !== undefined) el.style.right = posicoes[id].right;
       if (posicoes[id].bottom !== undefined) el.style.bottom = posicoes[id].bottom;
       
-      // Aplica tamanhos redimensionados
       if (posicoes[id].width !== undefined) el.style.width = posicoes[id].width;
       if (posicoes[id].height !== undefined) el.style.height = posicoes[id].height;
     }
@@ -913,13 +912,11 @@ function obterNomeASeguir() {
     return nomeASeguir;
 }
 
-// FUNÇÃO GERENCIADORA COM BLOQUEIO MÚTUO (NUNCA APARECEM JUNTOS)
 function gerenciarBannerKBS() {
   let ligado = document.getElementById('toggleLetreiro').checked;
   if (!ligado) return; 
 
   const bannerAseguir = document.getElementById('letreiro-aseguir');
-  // Se o "A SEGUIR" estiver visível agora, pula esta rodada para não sobrepor
   if (bannerAseguir.style.display === 'flex') return;
 
   const b = blocos[idxBloco];
@@ -945,13 +942,11 @@ function gerenciarBannerKBS() {
   }
 }
 
-// FUNÇÃO GERENCIADORA COM BLOQUEIO MÚTUO (NUNCA APARECEM JUNTOS)
 function gerenciarAseguir() {
   let ligado = document.getElementById('toggleAseguir').checked;
   if (!ligado) return; 
 
   const bannerExibindo = document.getElementById('letreiro-kbs-auto');
-  // Se o "EXIBINDO" estiver visível agora, pula esta rodada para não sobrepor
   if (bannerExibindo.style.display === 'flex') return;
 
   const b = blocos[idxBloco];
@@ -1395,11 +1390,10 @@ document.addEventListener('mousedown', (e) => {
   const target = e.target.closest('.movel');
   if (!target || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
 
-  // VERIFICAÇÃO INTELIGENTE PARA NÃO MOVER QUANDO FOR REDIMENSIONAR
   const rect = target.getBoundingClientRect();
   const isBottomRight = (e.clientX > rect.right - 20) && (e.clientY > rect.bottom - 20);
   if (target.classList.contains('redimensionavel') && isBottomRight) {
-     return; // Deixa o CSS cuidar do redimensionamento aqui!
+     return; 
   }
 
   let shiftX = e.clientX - target.getBoundingClientRect().left; let shiftY = e.clientY - target.getBoundingClientRect().top;
@@ -1414,21 +1408,17 @@ const player = document.getElementById('player');
 function limparPlayer() { if (player) { player.controls = false; const shadow = player.shadowRoot; if (shadow) { const loading = shadow.querySelector('.media-loading-indicator'); if (loading) loading.style.display = 'none'; } } }
 setInterval(limparPlayer, 500);
 
-// === NOVO: CONTADOR REGRESSIVO DO BLOCO ===
 let _ultimoBlocoAtivo = -1;
 let _tempoFimPausa = 0;
 
 setInterval(() => {
-    // Se o sistema não iniciou, não faz nada
     if (!sistemaIniciado || blocos.length === 0) return;
     
     const b = blocos[idxBloco];
     if (!b || b.removido) return;
     
-    // Limpa todos os contadores da tela primeiro
     document.querySelectorAll('.contador-regressivo').forEach(el => el.innerHTML = '');
     
-    // Pega o contador apenas do bloco atual que está tocando
     const contadorEl = document.getElementById(`countdown-${idxBloco}`);
     if (!contadorEl) return;
     
@@ -1436,7 +1426,6 @@ setInterval(() => {
     let mostrar = false;
     
     if (b.tipo === 'pause') {
-        // Se acabou de entrar no bloco de pausa, grava a hora que vai acabar
         if (_ultimoBlocoAtivo !== idxBloco) {
             _tempoFimPausa = Date.now() + (b.tempo * 1000);
         }
@@ -1444,10 +1433,8 @@ setInterval(() => {
         mostrar = true;
     } 
     else if (b.tipo === 'movie' && b.arquivos && b.arquivos.length > 0) {
-        // 1. Pega o tempo que falta do vídeo ATUAL
         let restanteAtual = Math.max(0, video.duration - video.currentTime) || 0;
         
-        // 2. Soma o tempo dos PRÓXIMOS vídeos que ainda vão tocar neste ciclo
         let sumOutros = 0;
         let limite = b.limitePorCiclo || 3;
         let countAtual = b._count || 0;
@@ -1462,12 +1449,10 @@ setInterval(() => {
         mostrar = true;
     } 
     else if (b.tipo === 'timer' && b.arquivos && b.arquivos.length > 0) {
-        // No Tempo Fixo, o vídeo troca quando atinge o limite de tempo configurado
         segundosRestantes = Math.max(0, b.tempo - video.currentTime);
         mostrar = true;
     }
 
-    // Só exibe se houver tempo para mostrar
     if (mostrar && segundosRestantes > 0) {
         contadorEl.innerHTML = `⏳ Faltam <span style="color:#ff4d4d; font-weight:900; font-size:12px;">${fmt(segundosRestantes)}</span> para o próximo bloco`;
     }
