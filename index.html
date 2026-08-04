@@ -29,7 +29,6 @@
     transition: outline 0.2s;
   }
   
-  /* CLASSE PARA REDIMENSIONAR (CLICAR E ARRASTAR O CANTO) */
   .redimensionavel {
     overflow: auto; 
     box-sizing: border-box;
@@ -39,7 +38,7 @@
     background: rgba(46, 125, 50, 0.05);
   }
   .modo-edicao .redimensionavel {
-    resize: both; /* Ativa a alça de redimensionamento apenas no modo edição */
+    resize: both; 
   }
 
   #btn-trava-layout {
@@ -198,14 +197,13 @@
   .btn-sec { background:#1976d2; } .btn-sec:hover{ background:#2a82d8; }
   .btn-admin { background:#6200ee; font-weight: bold; } .btn-admin:hover { background:#7c4dff; }
    
-  /* BLOCOS COM ROLAGEM COMPLETA ATIVADA NAS LATERAIS E EMBAIXO */
   .grid { 
     display:flex; 
-    flex-wrap: wrap; /* Permite quebrar linha normalmente */
+    flex-wrap: wrap; 
     gap:12px; 
     margin-top:18px; 
-    overflow-y: scroll !important; /* Barra de rolagem vertical fixa */
-    overflow-x: scroll !important; /* Barra de rolagem horizontal fixa */
+    overflow-y: scroll !important; 
+    overflow-x: scroll !important; 
     padding-bottom: 25px; 
     padding-right: 25px;
     box-sizing: border-box;
@@ -225,7 +223,7 @@
   .mini-btn { padding:4px 6px; margin:2px; border:none; border-radius:6px; cursor:pointer; background:#444; color:#fff; font-size:12px; }
   .mini-btn:hover { background:#666; }
 
-  /* ESTILOS DOS LETREIROS */
+  /* ESTILOS DOS LETREIROS COM MÁXIMA QUALIDADE / ANTIALIASING FORÇADO */
   #letreiro-kbs-auto {
     position: absolute; top: 20px; left: 20px; z-index: 999;
     background: transparent; color: #ffd700; border-left: 5px solid #ffd700;
@@ -236,7 +234,11 @@
     user-select: none;
     transition: color 0.3s, border-color 0.3s;
   }
-  #letreiro-logo-img { height: 25px; width: auto; display: none; pointer-events: none; }
+  #letreiro-logo-img { 
+    height: 28px; width: auto; max-height: 35px; display: none; pointer-events: none; 
+    image-rendering: -webkit-optimize-contrast; /* Força alta nitidez */
+    image-rendering: high-quality;
+  }
   #letreiro-texto-arquivo { pointer-events: none; }
 
   #letreiro-aseguir {
@@ -249,14 +251,22 @@
     user-select: none;
     transition: color 0.3s, border-color 0.3s;
   }
-  #letreiro-logo-aseguir { height: 25px; width: auto; display: none; pointer-events: none; }
+  #letreiro-logo-aseguir { 
+    height: 28px; width: auto; max-height: 35px; display: none; pointer-events: none; 
+    image-rendering: -webkit-optimize-contrast; 
+    image-rendering: high-quality;
+  }
   #letreiro-texto-aseguir { pointer-events: none; }
 
   #banner-somente-logo {
     position: absolute; top: 120px; left: 20px; z-index: 1001; cursor: move; display: flex; align-items: center;
     justify-content: center; overflow: hidden; resize: both; width: 80px; height: 80px; min-width: 20px; min-height: 20px;
   }
-  #img-banner-fixo { width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none; }
+  #img-banner-fixo { 
+    width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none; 
+    image-rendering: -webkit-optimize-contrast; /* Evita que o navegador borre o banner fixo */
+    image-rendering: high-quality;
+  }
 
   @keyframes piscarVermelho {
     0% { background-color: #d32f2f; box-shadow: 0 0 5px #ff0000; }
@@ -520,7 +530,6 @@
   <div id="conteudo-player" style="display:none;">
     <div class="wrap">
       
-      <!-- TOPO DIREITO: REINÍCIO, CONTADOR DE DIAS/RENOVAÇÃO, ADMIN E SAIR -->
       <div id="movel-topo-direito" class="movel redimensionavel" style="top: 20px; right: 20px; width: 420px; display: flex; gap: 10px; z-index: 10000; align-items: center; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 8px; border: 1px solid #333;">
           <div style="display: flex; flex-direction: column; align-items: center; margin-right: 5px;">
               <label style="font-size: 10px; color: #ffd700; font-weight: bold; margin-bottom: 2px;">REINÍCIO DIÁRIO:</label>
@@ -537,13 +546,11 @@
       <div class="top">
         <div id="movel-area-player" class="movel" style="left: 20px; top: 100px; z-index: 5000 !important;">
           
-          <!-- LETREIRO: EXIBINDO -->
           <div id="letreiro-kbs-auto" onmousedown="startDrag(event)">
             <img id="letreiro-logo-img" src="">
             <span id="letreiro-texto-arquivo"></span>
           </div>
 
-          <!-- NOVO LETREIRO: A SEGUIR -->
           <div id="letreiro-aseguir" onmousedown="startDrag(event)">
             <img id="letreiro-logo-aseguir" src="">
             <span id="letreiro-texto-aseguir"></span>
@@ -573,7 +580,6 @@
           </div>
         </div>
 
-        <!-- CONTROLES DIREITO (REDIMENSIONÁVEL) -->
         <div id="movel-controles-direito" class="movel redimensionavel" style="left: 550px; top: 100px; width: 340px;">
           <div style="background:#1a1a1a; padding:15px; border-radius:10px; border:1px solid #333; width: 100%; box-sizing: border-box;">
               <label style="font-size:11px; color:#2e7d32; font-weight:bold;">URL DO BRIDGE (NODE.JS):</label>
@@ -593,7 +599,6 @@
             <input type="file" id="fileInput" style="display:none" accept="application/json" onchange="carregarProgramacao(this)">
           </div>
 
-          <!-- CAIXA DE CONFIGURAÇÃO DE BANNERS -->
           <div style="margin-top:15px; background:#222; padding:15px; border-radius:8px; border:1px solid #333; width: 100%; box-sizing: border-box;">
             <label style="font-size:11px; color:#ffd700; display:block; margin-bottom:5px; font-weight:bold;">CONFIGURAÇÃO DE BANNERS:</label>
             
@@ -602,7 +607,6 @@
               <input type="text" id="logoUrl" oninput="atualizarLogos(this.value)" placeholder="Cole o link da imagem .png aqui" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:8px; border-radius:5px; box-sizing: border-box;">
             </div>
 
-            <!-- BLOCO DE CONFIGURAÇÃO: EXIBINDO (ATUAL) -->
             <div style="margin-bottom:10px; border-top: 1px solid #444; padding-top: 10px;">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom:5px;">
                 <label style="font-size:10px; color:#ffd700; font-weight:bold;">MOSTRAR "EXIBINDO AGORA":</label>
@@ -643,7 +647,6 @@
               </div>
             </div>
 
-            <!-- BLOCO DE CONFIGURAÇÃO: A SEGUIR -->
             <div style="margin-top:10px; border-top: 1px solid #444; padding-top: 10px;">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom:5px;">
                 <label style="font-size:10px; color:#4fc3f7; font-weight:bold;">MOSTRAR "A SEGUIR":</label>
@@ -688,11 +691,9 @@
         </div>
       </div>
       
-      <!-- BLOCOS (COM BARRAS DE ROLAGEM LATERAL E INFERIOR) -->
       <div id="blocos" class="grid movel redimensionavel" style="top: 480px; left: 20px; width: 850px; height: 350px;"></div>
     </div>
 
-    <!-- GRADE DE PROGRAMAÇÃO (REDIMENSIONÁVEL) -->
     <header id="movel-header" class="movel redimensionavel" style="bottom: 80px; left: 20px; width: 800px; height: 250px;">
       <h1>📺 Grade de Programação</h1>
       <div id="grade">Carregando programação do administrador...</div>
@@ -1004,7 +1005,7 @@ function renderizarBloco(i, bloco){
   const isYoutubeM3U = bloco.tipo === 'youtube';
   const nomeDisplay = bloco.nome ? ` - ${bloco.nome}` : '';
   card.innerHTML = `
-    <h3 id="titulo-bloco-${i}">Bloco ${i+1}${nomeDisplay} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':bloco.tipo==='movie'?'Filmes':blocos[i].tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
+    <h3 id="titulo-bloco-${i}">Bloco ${i+1}${nomeDisplay} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':blocos[i].tipo==='movie'?'Filmes':blocos[i].tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
     <div class="row"><label>Nome:</label><input type="text" placeholder="Ex: Jaspion" value="${bloco.nome || ''}" onchange="definirNomeBloco(${i}, this.value)" style="width:145px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 6px;"></div>
     <div class="row">
       ${(isTimer||bloco.tipo==='movie') ? `<label>Pasta:</label><input type="file" webkitdirectory directory multiple onchange="carregarArquivos(${i}, this.files)">`:''}
