@@ -29,7 +29,7 @@
     transition: outline 0.2s;
   }
   
-  /* CLASSE PARA REDIMENSIONAR (CLICAR E ARRASTAR O CANTO) */
+  /* NOVA CLASSE PARA REDIMENSIONAR (CLICAR E ARRASTAR O CANTO) */
   .redimensionavel {
     overflow: auto; 
     box-sizing: border-box;
@@ -140,8 +140,18 @@
     box-shadow: 0 5px 15px rgba(46, 125, 50, 0.2);
   }
 
-  .btn-plano-premium .nome { font-weight: bold; font-size: 16px; text-transform: uppercase; }
-  .btn-plano-premium .preco { color: var(--primary-color); font-weight: 900; font-size: 18px; }
+  .btn-plano-premium .nome {
+    font-weight: bold;
+    font-size: 16px;
+    text-transform: uppercase;
+  }
+
+  .btn-plano-premium .preco {
+    color: var(--primary-color);
+    font-weight: 900;
+    font-size: 18px;
+  }
+
   .btn-plano-premium.destaque { border-color: var(--gold); }
   .btn-plano-premium.destaque .preco { color: var(--gold); }
 
@@ -161,10 +171,8 @@
   .card-login h2 { margin-bottom: 10px; color: #2e7d32; font-weight: 900; }
   .card-login p { color: #888; font-size: 14px; margin-bottom: 25px; }
 
-  header { 
-    padding:16px 20px; background:#1b1b1b; border:1px solid #2a2a2a; 
-    display: flex; flex-direction: column; border-radius: 10px;
-  }
+  /* Alterado para permitir redimensionamento interno */
+  header { padding:16px 20px; background:#1b1b1b; border:1px solid #2a2a2a; display: flex; flex-direction: column; border-radius: 10px; }
   header h1 { margin:0 0 6px 0; font-size:18px; flex-shrink: 0; }
   #grade { white-space:pre-line; font-size:13px; color:#ddd; flex-grow: 1; overflow-y:auto; }
   
@@ -193,13 +201,13 @@
    
   .grid { 
     display:flex; 
-    flex-wrap:wrap; 
+    flex-wrap: nowrap;
     gap:12px; 
     margin-top:18px; 
     overflow-y: auto !important; 
-    overflow-x: hidden;
+    overflow-x: auto; 
+    padding-bottom: 15px; /* Espaço para alça de redimensionamento */
     padding-right: 10px;
-    padding-bottom: 15px; /* espaço para o ícone de redimensionar */
   }
    
   .bloco { position:relative; flex:0 0 260px; border:1px solid #2b2b2b; background:#171717; border-radius:10px; padding:12px; }
@@ -216,6 +224,7 @@
   .mini-btn { padding:4px 6px; margin:2px; border:none; border-radius:6px; cursor:pointer; background:#444; color:#fff; font-size:12px; }
   .mini-btn:hover { background:#666; }
 
+  /* ESTILOS DOS LETREIROS */
   #letreiro-kbs-auto {
     position: absolute; top: 20px; left: 20px; z-index: 999;
     background: transparent; color: #ffd700; border-left: 5px solid #ffd700;
@@ -224,12 +233,26 @@
     text-shadow: 2px 2px 4px #000; 
     cursor: move;
     user-select: none;
+    transition: color 0.3s, border-color 0.3s;
   }
   #letreiro-logo-img { height: 25px; width: auto; display: none; pointer-events: none; }
   #letreiro-texto-arquivo { pointer-events: none; }
 
+  #letreiro-aseguir {
+    position: absolute; top: 70px; left: 20px; z-index: 998;
+    background: transparent; color: #ffffff; border-left: 5px solid #ffffff;
+    padding: 10px 20px; font-weight: bold; font-size: 14px;
+    display: none; align-items: center; gap: 10px; border-radius: 0 8px 8px 0;
+    text-shadow: 2px 2px 4px #000; 
+    cursor: move;
+    user-select: none;
+    transition: color 0.3s, border-color 0.3s;
+  }
+  #letreiro-logo-aseguir { height: 25px; width: auto; display: none; pointer-events: none; }
+  #letreiro-texto-aseguir { pointer-events: none; }
+
   #banner-somente-logo {
-    position: absolute; top: 60px; left: 20px; z-index: 1001; cursor: move; display: flex; align-items: center;
+    position: absolute; top: 120px; left: 20px; z-index: 1001; cursor: move; display: flex; align-items: center;
     justify-content: center; overflow: hidden; resize: both; width: 80px; height: 80px; min-width: 20px; min-height: 20px;
   }
   #img-banner-fixo { width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none; }
@@ -243,6 +266,15 @@
     background-color: #d32f2f; color: white; border: 2px solid #fff; padding: 5px 12px; border-radius: 6px;
     font-weight: bold; font-size: 11px; cursor: pointer; animation: piscarVermelho 1s infinite;
     text-transform: uppercase; text-align: center; display: inline-block;
+  }
+
+  /* ESTILOS DO BOTÃO LIGA/DESLIGA (SWITCH) */
+  .switch input:checked + .slider { background-color: #2e7d32; }
+  .switch input:focus + .slider { box-shadow: 0 0 1px #2e7d32; }
+  .switch input:checked + .slider:before { transform: translateX(14px); }
+  .slider:before {
+    position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px;
+    background-color: white; transition: .4s; border-radius: 50%;
   }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -341,10 +373,12 @@
   function atualizarContadorPlano(expiracaoMs) {
     const containerContador = document.getElementById('contador-plano-container');
     if (!containerContador) return;
+
     if (!expiracaoMs || expiracaoMs <= Date.now()) {
       containerContador.innerHTML = `<span style="color:#ff4d4d; font-size:11px; font-weight:bold;">PLANO EXPIRADO</span>`;
       return;
     }
+
     const diffMs = expiracaoMs - Date.now();
     const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const horas = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -457,7 +491,6 @@
 
 <body>
   <div id="tela-pagamento">
-    <!-- Restante da tela de pagamento -->
     <div class="painel-premium">
       <div class="status-badge">Sinal Interrompido</div>
       <h2>Acesso Expirado</h2>
@@ -477,7 +510,8 @@
     <div class="card-login">
       <h2>KBS TV</h2>
       <p>Área de Acesso do Cliente</p>
-      <button onclick="fazerLoginGoogle()" style="background:#db4437; padding: 16px; font-size: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; border-radius: 8px; border: none; color: white;">
+      <button onclick="fazerLoginGoogle()" style="background:#db4437; padding: 16px; font-size: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(219,68,55,0.2); transition: all 0.2s; cursor: pointer; border: none; color: white;">
+        <svg style="width:20px; height:20px; fill:white;" viewBox="0 0 24 24"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 6.133 1 1.18 5.925 1.18 12s4.953 11 11.06 11c6.373 0 10.596-4.477 10.596-10.75 0-.725-.078-1.275-.173-1.615H12.24z"/></svg>
         ENTRAR COM O GMAIL
       </button>
     </div>
@@ -486,14 +520,15 @@
   <div id="conteudo-player" style="display:none;">
     <div class="wrap">
       
-      <!-- TOPO DIREITO: REINÍCIO, ADMIN E SAIR -->
+      <!-- TOPO DIREITO: REINÍCIO, CONTADOR DE DIAS/RENOVAÇÃO, ADMIN E SAIR -->
       <div id="movel-topo-direito" class="movel redimensionavel" style="top: 20px; right: 20px; width: 420px; display: flex; gap: 10px; z-index: 10000; align-items: center; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 8px; border: 1px solid #333;">
           <div style="display: flex; flex-direction: column; align-items: center; margin-right: 5px;">
               <label style="font-size: 10px; color: #ffd700; font-weight: bold; margin-bottom: 2px;">REINÍCIO DIÁRIO:</label>
               <input type="time" id="horarioReinicio" onchange="salvarHorarioReinicio(this.value)" style="background:#000; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 6px; font-size: 12px; cursor: pointer;">
           </div>
           
-          <div id="contador-plano-container" style="display: flex; flex-direction: column; align-items: center; margin-right: 5px; min-width: 130px;"></div>
+          <div id="contador-plano-container" style="display: flex; flex-direction: column; align-items: center; margin-right: 5px; min-width: 130px;">
+          </div>
 
           <button class="btn-admin" onclick="window.open('admin.html', '_blank')">⚙️ ADMIN</button>
           <button onclick="fazerLogout()" style="background:#b71c1c; font-weight: bold;">🚪 SAIR</button>
@@ -502,9 +537,16 @@
       <div class="top">
         <div id="movel-area-player" class="movel" style="left: 20px; top: 100px; z-index: 5000 !important;">
           
+          <!-- LETREIRO: EXIBINDO -->
           <div id="letreiro-kbs-auto" onmousedown="startDrag(event)">
             <img id="letreiro-logo-img" src="">
             <span id="letreiro-texto-arquivo"></span>
+          </div>
+
+          <!-- NOVO LETREIRO: A SEGUIR -->
+          <div id="letreiro-aseguir" onmousedown="startDrag(event)">
+            <img id="letreiro-logo-aseguir" src="">
+            <span id="letreiro-texto-aseguir"></span>
           </div>
 
           <div id="banner-somente-logo" onmousedown="startDrag(event)">
@@ -522,7 +564,6 @@
             <button onclick="proximoBloco()">⏭ Próximo bloco</button>
           </div>
 
-          <!-- Player usa lógica numérica para manter a proporção perfeitamente -->
           <div class="player-resize-controls" style="margin-top:10px; display:flex; gap:8px; align-items:center;">
             <label>Largura:</label>
             <input type="number" id="playerWidth" value="500" style="width:70px;">
@@ -532,6 +573,7 @@
           </div>
         </div>
 
+        <!-- CONTROLES DIREITO (REDIMENSIONÁVEL) -->
         <div id="movel-controles-direito" class="movel redimensionavel" style="left: 550px; top: 100px; width: 340px;">
           <div style="background:#1a1a1a; padding:15px; border-radius:10px; border:1px solid #333; width: 100%; box-sizing: border-box;">
               <label style="font-size:11px; color:#2e7d32; font-weight:bold;">URL DO BRIDGE (NODE.JS):</label>
@@ -551,19 +593,106 @@
             <input type="file" id="fileInput" style="display:none" accept="application/json" onchange="carregarProgramacao(this)">
           </div>
 
+          <!-- CAIXA DE CONFIGURAÇÃO DE BANNERS -->
           <div style="margin-top:15px; background:#222; padding:15px; border-radius:8px; border:1px solid #333; width: 100%; box-sizing: border-box;">
             <label style="font-size:11px; color:#ffd700; display:block; margin-bottom:5px; font-weight:bold;">CONFIGURAÇÃO DE BANNERS:</label>
+            
             <div style="margin-bottom:10px;">
               <label style="font-size:10px; display:block; color:#aaa;">LINK DA LOGO (BANNER FIXO):</label>
               <input type="text" id="logoUrl" oninput="atualizarLogos(this.value)" placeholder="Cole o link da imagem .png aqui" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:8px; border-radius:5px; box-sizing: border-box;">
             </div>
+
+            <!-- BLOCO DE CONFIGURAÇÃO: EXIBINDO (ATUAL) -->
+            <div style="margin-bottom:10px; border-top: 1px solid #444; padding-top: 10px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom:5px;">
+                <label style="font-size:10px; color:#ffd700; font-weight:bold;">MOSTRAR "EXIBINDO AGORA":</label>
+                <label class="switch" style="position:relative; display:inline-block; width:34px; height:20px;">
+                  <input type="checkbox" id="toggleLetreiro" checked onchange="reiniciarTimerBanner()" style="opacity:0; width:0; height:0;">
+                  <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#b71c1c; transition:.4s; border-radius:20px;"></span>
+                </label>
+              </div>
+              
+              <div style="display:flex; gap: 10px; margin-bottom:5px;">
+                <div style="flex:1;">
+                  <label style="font-size:10px; display:block; color:#aaa;">INTERVALO (min):</label>
+                  <input type="number" id="intervaloLetreiro" value="3" min="1" onchange="reiniciarTimerBanner()" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:5px; border-radius:5px; box-sizing: border-box;">
+                </div>
+                <div style="flex:1;">
+                  <label style="font-size:10px; display:block; color:#aaa;">DURAÇÃO (seg):</label>
+                  <input type="number" id="duracaoLetreiro" value="20" min="1" onchange="reiniciarTimerBanner()" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:5px; border-radius:5px; box-sizing: border-box;">
+                </div>
+              </div>
+
+              <div style="display:flex; gap: 10px;">
+                <div style="flex:1;">
+                  <label style="font-size:10px; display:block; color:#aaa;">COR:</label>
+                  <input type="color" id="corTextoLetreiro" value="#ffd700" onchange="atualizarEstiloLetreiro()" style="width:100%; height:28px; background:#000; border:1px solid #444; border-radius:5px; cursor:pointer; padding: 2px; box-sizing: border-box;">
+                </div>
+                <div style="flex:1;">
+                  <label style="font-size:10px; display:block; color:#aaa;">FONTE:</label>
+                  <select id="fonteLetreiro" onchange="atualizarEstiloLetreiro()" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:5px; height:28px; border-radius:5px; box-sizing: border-box;">
+                    <option value="'Segoe UI', Arial, sans-serif">Padrão</option>
+                    <option value="Arial, sans-serif">Arial</option>
+                    <option value="'Courier New', Courier, monospace">Courier New</option>
+                    <option value="'Impact', sans-serif">Impact</option>
+                    <option value="'Times New Roman', Times, serif">Times</option>
+                    <option value="'Comic Sans MS', cursive, sans-serif">Comic</option>
+                    <option value="'Trebuchet MS', sans-serif">Trebuchet</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- BLOCO DE CONFIGURAÇÃO: A SEGUIR -->
+            <div style="margin-top:10px; border-top: 1px solid #444; padding-top: 10px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom:5px;">
+                <label style="font-size:10px; color:#4fc3f7; font-weight:bold;">MOSTRAR "A SEGUIR":</label>
+                <label class="switch" style="position:relative; display:inline-block; width:34px; height:20px;">
+                  <input type="checkbox" id="toggleAseguir" checked onchange="reiniciarTimerAseguir()" style="opacity:0; width:0; height:0;">
+                  <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#b71c1c; transition:.4s; border-radius:20px;"></span>
+                </label>
+              </div>
+              
+              <div style="display:flex; gap: 10px; margin-bottom:5px;">
+                <div style="flex:1;">
+                  <label style="font-size:10px; display:block; color:#aaa;">INTERVALO (min):</label>
+                  <input type="number" id="intervaloAseguir" value="3" min="1" onchange="reiniciarTimerAseguir()" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:5px; border-radius:5px; box-sizing: border-box;">
+                </div>
+                <div style="flex:1;">
+                  <label style="font-size:10px; display:block; color:#aaa;">DURAÇÃO (seg):</label>
+                  <input type="number" id="duracaoAseguir" value="20" min="1" onchange="reiniciarTimerAseguir()" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:5px; border-radius:5px; box-sizing: border-box;">
+                </div>
+              </div>
+
+              <div style="display:flex; gap: 10px;">
+                <div style="flex:1;">
+                  <label style="font-size:10px; display:block; color:#aaa;">COR:</label>
+                  <input type="color" id="corTextoAseguir" value="#ffffff" onchange="atualizarEstiloAseguir()" style="width:100%; height:28px; background:#000; border:1px solid #444; border-radius:5px; cursor:pointer; padding: 2px; box-sizing: border-box;">
+                </div>
+                <div style="flex:1;">
+                  <label style="font-size:10px; display:block; color:#aaa;">FONTE:</label>
+                  <select id="fonteAseguir" onchange="atualizarEstiloAseguir()" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:5px; height:28px; border-radius:5px; box-sizing: border-box;">
+                    <option value="'Segoe UI', Arial, sans-serif">Padrão</option>
+                    <option value="Arial, sans-serif">Arial</option>
+                    <option value="'Courier New', Courier, monospace">Courier New</option>
+                    <option value="'Impact', sans-serif">Impact</option>
+                    <option value="'Times New Roman', Times, serif">Times</option>
+                    <option value="'Comic Sans MS', cursive, sans-serif">Comic</option>
+                    <option value="'Trebuchet MS', sans-serif">Trebuchet</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
       
+      <!-- BLOCOS (REDIMENSIONÁVEL) -->
       <div id="blocos" class="grid movel redimensionavel" style="top: 480px; left: 20px; width: 850px; height: 350px;"></div>
     </div>
 
+    <!-- GRADE DE PROGRAMAÇÃO (REDIMENSIONÁVEL) -->
     <header id="movel-header" class="movel redimensionavel" style="bottom: 80px; left: 20px; width: 800px; height: 250px;">
       <h1>📺 Grade de Programação</h1>
       <div id="grade">Carregando programação do administrador...</div>
@@ -588,6 +717,12 @@ let sistemaIniciado = false;
 
 let ytTempoSalvo = 0;
 let ytUltimoPlayTimestamp = 0;
+
+let timerBannerAtivo = null;
+let timerOcultarBanner = null;
+
+let timerAseguirAtivo = null;
+let timerOcultarAseguir = null;
 
 window.aplicarLayout = function(posicoes) {
   if (!posicoes) return;
@@ -618,6 +753,28 @@ window.aplicarLayout = function(posicoes) {
 
 window.salvarHorarioReinicio = function(valor) { localStorage.setItem('kbs_horario_reinicio', valor); };
 
+window.atualizarEstiloLetreiro = function() {
+    const cor = document.getElementById('corTextoLetreiro').value;
+    const fonte = document.getElementById('fonteLetreiro').value;
+    const letreiro = document.getElementById('letreiro-kbs-auto');
+    if(letreiro) {
+        letreiro.style.color = cor;
+        letreiro.style.borderLeftColor = cor; 
+        letreiro.style.fontFamily = fonte;
+    }
+}
+
+window.atualizarEstiloAseguir = function() {
+    const cor = document.getElementById('corTextoAseguir').value;
+    const fonte = document.getElementById('fonteAseguir').value;
+    const letreiro = document.getElementById('letreiro-aseguir');
+    if(letreiro) {
+        letreiro.style.color = cor;
+        letreiro.style.borderLeftColor = cor; 
+        letreiro.style.fontFamily = fonte;
+    }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
     const horarioSalvo = localStorage.getItem('kbs_horario_reinicio');
     if (horarioSalvo) {
@@ -629,6 +786,11 @@ window.addEventListener('DOMContentLoaded', () => {
     if (layoutSalvo) {
         window.aplicarLayout(JSON.parse(layoutSalvo));
     }
+
+    reiniciarTimerBanner();
+    reiniciarTimerAseguir();
+    atualizarEstiloLetreiro(); 
+    atualizarEstiloAseguir();
 });
 
 let ultimoReinicio = "";
@@ -650,30 +812,171 @@ setInterval(() => {
 function atualizarLogos(url) {
   const logo1 = document.getElementById('letreiro-logo-img');
   const logo2 = document.getElementById('img-banner-fixo');
+  const logo3 = document.getElementById('letreiro-logo-aseguir');
   if(url) {
     logo1.src = url; logo1.style.display = 'block';
     logo2.src = url; logo2.style.display = 'block';
+    logo3.src = url; logo3.style.display = 'block';
   } else {
-    logo1.style.display = 'none'; logo2.style.display = 'none';
+    logo1.style.display = 'none'; logo2.style.display = 'none'; logo3.style.display = 'none';
   }
 }
 
-function gerenciarBannerKBS() {
-  const b = blocos[idxBloco];
-  const banner = document.getElementById('letreiro-kbs-auto');
-  if (b && b.arquivos && b.arquivos[b.arquivoAtual]) {
-    const nomeBruto = b.arquivos[b.arquivoAtual].file.name;
+window.reiniciarTimerBanner = function() {
+    if (timerBannerAtivo) clearInterval(timerBannerAtivo);
+    if (timerOcultarBanner) clearTimeout(timerOcultarBanner);
+    
+    let ligado = document.getElementById('toggleLetreiro').checked;
+    if (!ligado) {
+        document.getElementById('letreiro-kbs-auto').style.display = 'none';
+        return; 
+    }
+    let intervaloMinutos = parseFloat(document.getElementById('intervaloLetreiro').value) || 3;
+    timerBannerAtivo = setInterval(gerenciarBannerKBS, intervaloMinutos * 60 * 1000);
+}
+
+window.reiniciarTimerAseguir = function() {
+    if (timerAseguirAtivo) clearInterval(timerAseguirAtivo);
+    if (timerOcultarAseguir) clearTimeout(timerOcultarAseguir);
+    
+    let ligado = document.getElementById('toggleAseguir').checked;
+    if (!ligado) {
+        document.getElementById('letreiro-aseguir').style.display = 'none';
+        return; 
+    }
+    let intervaloMinutos = parseFloat(document.getElementById('intervaloAseguir').value) || 3;
+    timerAseguirAtivo = setInterval(gerenciarAseguir, intervaloMinutos * 60 * 1000);
+}
+
+function extrairNomeLimpo(nomeBruto) {
+    if (!nomeBruto) return "";
     let nomeLimpo = nomeBruto.split(/\.(mp4|mkv|avi|webm|ogg|mov)$/i)[0].split(/DUBLADO|convertido|DVDRip|XviD|_00|1080p|720p/i)[0].replace(/^[\s.]+/, "").trim();
     if(nomeLimpo.endsWith('.')) nomeLimpo = nomeLimpo.slice(0, -1);
-    
+    return nomeLimpo;
+}
+
+function obterNomeASeguir() {
+    if (!blocos || blocos.length === 0) return "";
+    const b = blocos[idxBloco];
+    if (!b || b.removido) return "";
+
+    let nextIsNextBlock = false;
+    let nomeASeguir = "";
+
+    if (b.tipo === 'movie') {
+        if (b.arquivos && b.arquivos.length > 0) {
+            if ((b._count || 0) + 1 >= (b.limitePorCiclo || 3)) {
+                nextIsNextBlock = true;
+            } else if (b.arquivoAtual + 1 >= b.arquivos.length) {
+                nextIsNextBlock = true;
+            } else {
+                nomeASeguir = extrairNomeLimpo(b.arquivos[b.arquivoAtual + 1].file.name);
+            }
+        } else {
+            nextIsNextBlock = true;
+        }
+    } else if (b.tipo === 'timer') {
+         if (b.arquivos && b.arquivos.length > 0) {
+             let nextFileIdx = (b.arquivoAtual + 1) % b.arquivos.length;
+             nomeASeguir = extrairNomeLimpo(b.arquivos[nextFileIdx].file.name);
+         } else {
+             nextIsNextBlock = true;
+         }
+    } else {
+        nextIsNextBlock = true;
+    }
+
+    if (nextIsNextBlock) {
+        let nextIdx = (idxBloco + 1) % blocos.length;
+        let loops = 0;
+        while (blocos[nextIdx] && blocos[nextIdx].removido && loops < blocos.length) {
+            nextIdx = (nextIdx + 1) % blocos.length;
+            loops++;
+        }
+
+        let nextB = blocos[nextIdx];
+        if (nextB && !nextB.removido) {
+            if (nextB.nome) {
+                nomeASeguir = nextB.nome; 
+            } else if (nextB.tipo === 'youtube') {
+                nomeASeguir = "Transmissão Ao Vivo";
+            } else if (nextB.tipo === 'pause') {
+                nomeASeguir = "Pausa Programada";
+            } else if (nextB.arquivos && nextB.arquivos.length > 0) {
+                nomeASeguir = extrairNomeLimpo(nextB.arquivos[0].file.name);
+            } else {
+                nomeASeguir = "Próximo Bloco";
+            }
+        }
+    }
+
+    return nomeASeguir;
+}
+
+// FUNÇÃO GERENCIADORA COM BLOQUEIO MÚTUO (NUNCA APARECEM JUNTOS)
+function gerenciarBannerKBS() {
+  let ligado = document.getElementById('toggleLetreiro').checked;
+  if (!ligado) return; 
+
+  const bannerAseguir = document.getElementById('letreiro-aseguir');
+  // Se o "A SEGUIR" estiver visível agora, pula esta rodada para não sobrepor
+  if (bannerAseguir.style.display === 'flex') return;
+
+  const b = blocos[idxBloco];
+  const banner = document.getElementById('letreiro-kbs-auto');
+  
+  if (b && b.tipo === 'youtube') {
+      banner.style.display = 'none'; 
+      return;
+  }
+  
+  if (b && b.arquivos && b.arquivos[b.arquivoAtual]) {
+    let nomeLimpo = extrairNomeLimpo(b.arquivos[b.arquivoAtual].file.name);
     document.getElementById('letreiro-texto-arquivo').innerText = "EXIBINDO: " + nomeLimpo;
     const urlLogo = document.getElementById('logoUrl').value;
     atualizarLogos(urlLogo);
+    
+    atualizarEstiloLetreiro();
     banner.style.display = 'flex';
-    setTimeout(() => { banner.style.display = 'none'; }, 20000); 
+
+    let duracaoMs = (parseFloat(document.getElementById('duracaoLetreiro').value) || 20) * 1000;
+    if (timerOcultarBanner) clearTimeout(timerOcultarBanner);
+    timerOcultarBanner = setTimeout(() => { banner.style.display = 'none'; }, duracaoMs); 
   }
 }
-setInterval(gerenciarBannerKBS, 180000);
+
+// FUNÇÃO GERENCIADORA COM BLOQUEIO MÚTUO (NUNCA APARECEM JUNTOS)
+function gerenciarAseguir() {
+  let ligado = document.getElementById('toggleAseguir').checked;
+  if (!ligado) return; 
+
+  const bannerExibindo = document.getElementById('letreiro-kbs-auto');
+  // Se o "EXIBINDO" estiver visível agora, pula esta rodada para não sobrepor
+  if (bannerExibindo.style.display === 'flex') return;
+
+  const b = blocos[idxBloco];
+  const banner = document.getElementById('letreiro-aseguir');
+  
+  if (b && b.tipo === 'youtube') {
+      banner.style.display = 'none'; 
+      return;
+  }
+  
+  let nomeAseguir = obterNomeASeguir();
+
+  if (nomeAseguir) {
+    document.getElementById('letreiro-texto-aseguir').innerText = "A SEGUIR: " + nomeAseguir;
+    const urlLogo = document.getElementById('logoUrl').value;
+    atualizarLogos(urlLogo);
+    
+    atualizarEstiloAseguir();
+    banner.style.display = 'flex';
+
+    let duracaoMs = (parseFloat(document.getElementById('duracaoAseguir').value) || 20) * 1000;
+    if (timerOcultarAseguir) clearTimeout(timerOcultarAseguir);
+    timerOcultarAseguir = setTimeout(() => { banner.style.display = 'none'; }, duracaoMs); 
+  }
+}
 
 function fmt(s){ s=Math.max(0,Math.floor(s||0)); const h=String(Math.floor(s/3600)).padStart(2,'0'); const m=String(Math.floor((s%3600)/60)).padStart(2,'0'); const ss=String(s%60).padStart(2,'0'); return `${h}:${m}:${ss}`; }
 function timeToSec(str){ if(!str) return 0; const p=str.split(':').map(Number); if(p.length === 3) return p[0]*3600 + p[1]*60 + p[2]; return (p[0]||0)*3600+(p[1]||0)*60; }
@@ -681,7 +984,11 @@ function anyPlayableBlocks(){ return blocos.some(b=>b && !b.removido); }
 
 window.adicionarBloco = function(tipo){
   if (tipo === 'youtube') return alert('Blocos YouTube / M3U são gerenciados apenas pelo painel Admin.');
-  const bloco = { nome: '', tipo, arquivos: [], progresso: [], tempo: (tipo==='timer'||tipo==='pause'?300:0), sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: (tipo==='movie'?3:0), ytlink:'', m3ulink:'', diaSemana:'', horaInicio:'', horaFim:'', removido:false, _agendadoRodando:false, diasSelecionados: [], horarios: [] };
+  
+  let nomeSugerido = prompt("Digite o nome deste bloco para organizar (ex: Filmes Ação, Jaspion, etc):", "");
+  if (nomeSugerido === null) return; 
+
+  const bloco = { nome: nomeSugerido, tipo, arquivos: [], progresso: [], tempo: (tipo==='timer'||tipo==='pause'?300:0), sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: (tipo==='movie'?3:0), ytlink:'', m3ulink:'', diaSemana:'', horaInicio:'', horaFim:'', removido:false, _agendadoRodando:false, diasSelecionados: [], horarios: [] };
   const i = blocos.push(bloco)-1;
   renderizarBloco(i, bloco);
   atualizarGrade();
@@ -718,6 +1025,7 @@ function renderizarBloco(i, bloco){
       ${isYoutubeM3U ? `<label>Início:</label><input type="time" step="1" value="${bloco.horaInicio||''}" disabled><label>Fim:</label><input type="time" step="1" value="${bloco.horaFim||''}" disabled>`:''}
     </div>
     <div class="hint" id="info-${i}">${isYoutubeM3U?'Agendamento Admin':bloco.arquivos.length+' arquivos.'}</div>
+    <div class="contador-regressivo" id="countdown-${i}" style="font-size:11px; margin-top:5px;"></div>
     <button onclick="removerBloco(${i})" style="margin-top:8px;background:#b71c1c; width:100%;">🗑 Remover</button>
   `;
   blocosEl.appendChild(card);
@@ -821,7 +1129,15 @@ function tocarAtual() {
   if (card) card.classList.add('running');
 
   if (b.tipo === 'pause') { video.pause(); pauseTimer = setTimeout(() => window.proximoBloco(), b.tempo * 1000); return; }
-  if (b.tipo === 'youtube') { if (b.ytlink) startYouTubeNow(b); else if (b.m3ulink) startM3UNow(b); return; }
+  
+  if (b.tipo === 'youtube') { 
+      document.getElementById('letreiro-kbs-auto').style.display = 'none';
+      document.getElementById('letreiro-aseguir').style.display = 'none';
+      if (b.ytlink) startYouTubeNow(b); 
+      else if (b.m3ulink) startM3UNow(b); 
+      return; 
+  }
+  
   if (b.arquivos.length === 0) { pularParaProximo(); return; }
 
   video.style.opacity = '0';
@@ -834,7 +1150,10 @@ function tocarAtual() {
   video.currentTime = tempoAlvo;
   if (tempoAlvo === 0) { video.style.opacity = '1'; }
   video.play().catch(() => {});
-  attachHandlersFor(b); gerenciarBannerKBS();
+  attachHandlersFor(b); 
+  
+  gerenciarBannerKBS();
+  gerenciarAseguir();
 }
 
 function pularParaProximo() { idxBloco = (idxBloco + 1) % blocos.length; setTimeout(() => { tocarAtual(); }, 0); }
@@ -967,7 +1286,7 @@ window.resizePlayer = function(){ const w=document.getElementById('playerWidth')
 
 window.salvarProgramacao = function(){ 
   const posicoes = {};
-  document.querySelectorAll('.movel, #letreiro-kbs-auto, #banner-somente-logo').forEach(el => {
+  document.querySelectorAll('.movel, #letreiro-kbs-auto, #letreiro-aseguir, #banner-somente-logo').forEach(el => {
     if(el.id) { 
       posicoes[el.id] = { 
         top: el.style.top, 
@@ -1024,7 +1343,6 @@ window.removeHora = function(i, idx) { blocos[i].horarios.splice(idx, 1); const 
 
 let isDragging = false; let offsetX, offsetY; let activeElement = null;
 
-// Lógica de Movimentação dos banners menores (logo e letreiro)
 window.startDrag = function(e) { 
     isDragging = true; activeElement = e.currentTarget;
     offsetX = e.clientX - activeElement.getBoundingClientRect().left; 
@@ -1072,7 +1390,6 @@ btnTrava.onclick = () => {
   else { btnTrava.innerHTML = '🔓 Layout Livre'; btnTrava.className = 'layout-destravado'; document.body.classList.add('modo-edicao'); }
 };
 
-// Movimentação principal das janelas grandes
 document.addEventListener('mousedown', (e) => {
   if (layoutTravado) return;
   const target = e.target.closest('.movel');
@@ -1080,13 +1397,12 @@ document.addEventListener('mousedown', (e) => {
 
   // VERIFICAÇÃO INTELIGENTE PARA NÃO MOVER QUANDO FOR REDIMENSIONAR
   const rect = target.getBoundingClientRect();
-  // Se o clique for muito próximo ao canto inferior direito (onde fica o puxador de redimensionar), não inicie o drag!
   const isBottomRight = (e.clientX > rect.right - 20) && (e.clientY > rect.bottom - 20);
   if (target.classList.contains('redimensionavel') && isBottomRight) {
-     return; // Deixa o CSS cuidar de redimensionar!
+     return; // Deixa o CSS cuidar do redimensionamento aqui!
   }
 
-  let shiftX = e.clientX - rect.left; let shiftY = e.clientY - rect.top;
+  let shiftX = e.clientX - target.getBoundingClientRect().left; let shiftY = e.clientY - target.getBoundingClientRect().top;
   function moveAt(pageX, pageY) { target.style.left = pageX - shiftX + 'px'; target.style.top = pageY - shiftY + 'px'; }
   function onMouseMove(event) { moveAt(event.pageX, event.pageY); }
   document.addEventListener('mousemove', onMouseMove);
@@ -1097,6 +1413,67 @@ document.addEventListener('dragstart', (e) => { if (e.target.closest('.movel')) 
 const player = document.getElementById('player');
 function limparPlayer() { if (player) { player.controls = false; const shadow = player.shadowRoot; if (shadow) { const loading = shadow.querySelector('.media-loading-indicator'); if (loading) loading.style.display = 'none'; } } }
 setInterval(limparPlayer, 500);
+
+// === NOVO: CONTADOR REGRESSIVO DO BLOCO ===
+let _ultimoBlocoAtivo = -1;
+let _tempoFimPausa = 0;
+
+setInterval(() => {
+    // Se o sistema não iniciou, não faz nada
+    if (!sistemaIniciado || blocos.length === 0) return;
+    
+    const b = blocos[idxBloco];
+    if (!b || b.removido) return;
+    
+    // Limpa todos os contadores da tela primeiro
+    document.querySelectorAll('.contador-regressivo').forEach(el => el.innerHTML = '');
+    
+    // Pega o contador apenas do bloco atual que está tocando
+    const contadorEl = document.getElementById(`countdown-${idxBloco}`);
+    if (!contadorEl) return;
+    
+    let segundosRestantes = 0;
+    let mostrar = false;
+    
+    if (b.tipo === 'pause') {
+        // Se acabou de entrar no bloco de pausa, grava a hora que vai acabar
+        if (_ultimoBlocoAtivo !== idxBloco) {
+            _tempoFimPausa = Date.now() + (b.tempo * 1000);
+        }
+        segundosRestantes = Math.max(0, (_tempoFimPausa - Date.now()) / 1000);
+        mostrar = true;
+    } 
+    else if (b.tipo === 'movie' && b.arquivos && b.arquivos.length > 0) {
+        // 1. Pega o tempo que falta do vídeo ATUAL
+        let restanteAtual = Math.max(0, video.duration - video.currentTime) || 0;
+        
+        // 2. Soma o tempo dos PRÓXIMOS vídeos que ainda vão tocar neste ciclo
+        let sumOutros = 0;
+        let limite = b.limitePorCiclo || 3;
+        let countAtual = b._count || 0;
+        let start = (b.arquivoAtual + 1) % b.arquivos.length;
+        
+        for (let j = 0; j < limite - countAtual - 1; j++) {
+            let idx = (start + j) % b.arquivos.length;
+            if (b.arquivos[idx]) sumOutros += (b.arquivos[idx].duration || 0);
+        }
+        
+        segundosRestantes = restanteAtual + sumOutros;
+        mostrar = true;
+    } 
+    else if (b.tipo === 'timer' && b.arquivos && b.arquivos.length > 0) {
+        // No Tempo Fixo, o vídeo troca quando atinge o limite de tempo configurado
+        segundosRestantes = Math.max(0, b.tempo - video.currentTime);
+        mostrar = true;
+    }
+
+    // Só exibe se houver tempo para mostrar
+    if (mostrar && segundosRestantes > 0) {
+        contadorEl.innerHTML = `⏳ Faltam <span style="color:#ff4d4d; font-weight:900; font-size:12px;">${fmt(segundosRestantes)}</span> para o próximo bloco`;
+    }
+    
+    _ultimoBlocoAtivo = idxBloco;
+}, 1000);
 </script>
 </body>
 </html>
