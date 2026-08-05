@@ -855,7 +855,6 @@ function extrairNomeLimpo(nomeBruto) {
     return nomeLimpo;
 }
 
-// FUNÇÃO AUXILIAR PARA TRANSFORMAR "HH:MM:SS" OU "HH:MM" EM SEGUNDOS DO DIA
 function horarioParaSegundos(strHora) {
     if (!strHora) return 0;
     const partes = strHora.split(':').map(Number);
@@ -872,7 +871,6 @@ function obterNomeASeguir() {
     const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
     const segundosAgora = agora.getHours() * 3600 + agora.getMinutes() * 60 + agora.getSeconds();
 
-    // 1. PRIORIDADE MÁXIMA: Verificar se há ALGUM bloco YouTube/M3U programado para hoje cujo horário de início está entre 0 e 10 minutos (600 segundos) à frente!
     for (let i = 0; i < blocos.length; i++) {
         const b = blocos[i];
         if (b && !b.removido && b.tipo === 'youtube' && b.horaInicio) {
@@ -887,7 +885,6 @@ function obterNomeASeguir() {
                 const segundosInicio = horarioParaSegundos(b.horaInicio);
                 const diffSegundos = segundosInicio - segundosAgora;
                 
-                // Se faltam entre 0 e 10 minutos (600s) para começar
                 if (diffSegundos >= 0 && diffSegundos <= 600) {
                     const minRestantes = Math.ceil(diffSegundos / 60);
                     let nomeBloco = b.nome ? b.nome : (b.m3ulink ? "Transmissão M3U" : "Transmissão Ao Vivo");
@@ -897,7 +894,6 @@ function obterNomeASeguir() {
         }
     }
 
-    // 2. CASO NÃO HAJA PRIORIDADE PRÓXIMA DE 10 MIN, SEGUE O FLUXO NORMAL DO PRÓXIMO BLOCO/ARQUIVO
     const b = blocos[idxBloco];
     if (!b || b.removido) return "";
 
@@ -1495,6 +1491,15 @@ setInterval(() => {
     
     _ultimoBlocoAtivo = idxBloco;
 }, 1000);
+
+// ATUALIZAÇÃO AUTOMÁTICA DA PASTA A CADA 1 MINUTO
+setInterval(() => {
+    if (!sistemaIniciado || blocos.length === 0) return;
+    const b = blocos[idxBloco];
+    if (b && (b.tipo === 'movie' || b.tipo === 'timer') && b.arquivos && b.arquivos.length > 0) {
+        atualizarInfoTempo(idxBloco);
+    }
+}, 60000);
 </script>
 </body>
 </html>
