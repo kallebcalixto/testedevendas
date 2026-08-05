@@ -20,6 +20,7 @@
     min-width: 100vw;
     min-height: 101vh;
     position: relative;
+    user-select: none;
   }
 
   .movel {
@@ -1383,7 +1384,12 @@ function onDrag(e) {
     let x = e.clientX - container.left - offsetX; let y = e.clientY - container.top - offsetY; 
     activeElement.style.left = x + 'px'; activeElement.style.top = y + 'px'; 
 }
-function stopDrag() { isDragging = false; activeElement = null; document.removeEventListener('mousemove', onDrag); }
+function stopDrag() { 
+    isDragging = false; 
+    activeElement = null; 
+    document.removeEventListener('mousemove', onDrag); 
+    document.removeEventListener('mouseup', stopDrag);
+}
 
 let mediaRecorder; let socket;
 
@@ -1428,11 +1434,25 @@ document.addEventListener('mousedown', (e) => {
      return; 
   }
 
-  let shiftX = e.clientX - target.getBoundingClientRect().left; let shiftY = e.clientY - target.getBoundingClientRect().top;
-  function moveAt(pageX, pageY) { target.style.left = pageX - shiftX + 'px'; target.style.top = pageY - shiftY + 'px'; }
-  function onMouseMove(event) { moveAt(event.pageX, event.pageY); }
+  let shiftX = e.clientX - target.getBoundingClientRect().left; 
+  let shiftY = e.clientY - target.getBoundingClientRect().top;
+
+  function moveAt(pageX, pageY) { 
+      target.style.left = pageX - shiftX + 'px'; 
+      target.style.top = pageY - shiftY + 'px'; 
+  }
+
+  function onMouseMove(event) { 
+      moveAt(event.pageX, event.pageY); 
+  }
+
+  function onMouseUp() {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+  }
+
   document.addEventListener('mousemove', onMouseMove);
-  document.onmouseup = function() { document.removeEventListener('mousemove', onDrag); document.onmouseup = null; };
+  document.addEventListener('mouseup', onMouseUp);
 });
 document.addEventListener('dragstart', (e) => { if (e.target.closest('.movel')) e.preventDefault(); });
 
