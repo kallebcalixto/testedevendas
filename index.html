@@ -1172,12 +1172,11 @@ function tocarAtual() {
   video.style.backgroundColor = '#000000';
 
   const novaUrl = b.arquivos[b.arquivoAtual].url;
-  
-  // Limpeza e recarga completa da URL do objeto para o navegador ler o arquivo novo da pasta
-  video.pause();
-  video.removeAttribute('src');
-  video.load();
-  video.src = novaUrl;
+  if (video.src !== novaUrl) { 
+      video.src = novaUrl; 
+  } else {
+      video.load();
+  }
   
   const tempoAlvo = b.progresso[b.arquivoAtual] || 0;
   video.currentTime = tempoAlvo;
@@ -1245,12 +1244,6 @@ window.atualizarInfoTempo = function(i) {
 window.carregarArquivos = async function(i, fileList){
   const validExtensions = ['.mp4', '.webm', '.ogg', '.mkv', '.mov'];
   const files = Array.from(fileList).filter(f => validExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
-  
-  // Limpa os URLs antigos da memória para liberar espaço e forçar novos objetos limpos
-  if (blocos[i].arquivos) {
-      blocos[i].arquivos.forEach(item => { if(item.url) URL.revokeObjectURL(item.url); });
-  }
-
   blocos[i].arquivos = files.map(f => ({ url: URL.createObjectURL(f), file: f, duration: 0 }));
   blocos[i].progresso = blocos[i].arquivos.map(()=>0);
   document.getElementById(`info-${i}`).innerHTML = files.length + " arquivos. <br><span style='color:#ffd700; font-size:11px;'>Calculando tempos...</span>";
@@ -1261,22 +1254,27 @@ window.carregarArquivos = async function(i, fileList){
      catch(e) { blocos[i].arquivos[j].duration = 0; }
   }
   atualizarInfoTempo(i);
-};
-
-// --- FUNÇÃO DE ATUALIZAÇÃO AUTOMÁTICA DA PASTA A CADA 1 MINUTO (FORÇANDO RECONEXÃO DO BLOCO) ---
-setInterval(() => {
-    if (!sistemaIniciado || blocos.length === 0) return;
-    const b = blocos[idxBloco];
-    if (b && (b.tipo === 'movie' || b.tipo === 'timer') && b.arquivos && b.arquivos.length > 0) {
-        atualizarInfoTempo(idxBloco);
-    }
-}, 60000);
+}
 
 window.definirTempo = function(i,v){ blocos[i].tempo=timeToSec(v); atualizarGrade(); }
 window.definirLimite = function(i,v){ blocos[i].limitePorCiclo=parseInt(v); atualizarInfoTempo(i); atualizarGrade(); }
 window.pularArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual+1)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
 window.voltarArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual-1+b.arquivos.length)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
-window.removerBloco = function(i){ blocos[i].removido=true; document.getElementById(`bloco-${i}`).remove(); window.proximoBloco(); }
+
+// FUNÇÃO DE REMOVER BLOCO AJUSTADA PARA NÃO REINICIAR DO ZERO
+window.removerBloco = function(i){ 
+  blocos[i].removido = true; 
+  document.getElementById(`bloco-${i}`).remove(); 
+
+  if (idxBloco === i) {
+    window.proximoBloco();
+  } else if (idxBloco > i) {
+    idxBloco--;
+  }
+  
+  atualizarGrade();
+}
+
 window.iniciar = function(){ sistemaIniciado = true; idxBloco=0; ytTempoSalvo = 0; ytUltimoPlayTimestamp = 0; tocarAtual(); }
 window.proximoBloco = function(){ idxBloco=(idxBloco+1)%blocos.length; tocarAtual(); }
 window.pausar = function(){ video.pause(); }
@@ -1531,6 +1529,14 @@ setInterval(() => {
     
     _ultimoBlocoAtivo = idxBloco;
 }, 1000);
+
+setInterval(() => {
+    if (!sistemaIniciado || blocos.length === 0) return;
+    const b = blocos[idxBloco];
+    if (b && (b.tipo === 'movie' || b.tipo === 'timer') && b.arquivos && b.arquivos.length > 0) {
+        atualizarInfoTempo(idxBloco);
+    }
+}, 60000);
 </script>
 </body>
 </html>
