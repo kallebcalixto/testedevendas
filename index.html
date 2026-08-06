@@ -1172,7 +1172,12 @@ function tocarAtual() {
   video.style.backgroundColor = '#000000';
 
   const novaUrl = b.arquivos[b.arquivoAtual].url;
-  if (video.src !== novaUrl) { video.src = novaUrl; }
+  if (video.src !== novaUrl) { 
+      video.src = novaUrl; 
+  } else {
+      // Força a recarga completa do elemento de vídeo para ler o arquivo novo da memória do navegador sem tela preta
+      video.load();
+  }
   
   const tempoAlvo = b.progresso[b.arquivoAtual] || 0;
   video.currentTime = tempoAlvo;
