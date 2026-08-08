@@ -224,7 +224,6 @@
   .mini-btn { padding:4px 6px; margin:2px; border:none; border-radius:6px; cursor:pointer; background:#444; color:#fff; font-size:12px; }
   .mini-btn:hover { background:#666; }
 
-  /* ESTILOS DOS LETREIROS COM MÁXIMA QUALIDADE */
   #letreiro-kbs-auto {
     position: absolute; top: 20px; left: 20px; z-index: 999;
     background: transparent; color: #ffd700; border-left: 5px solid #ffd700;
@@ -1226,7 +1225,21 @@ async function tocarAtual() {
                   tocarAtual();
               } else {
                   b.arquivoAtual = 0;
-                  window.proximoBloco();
+                  // CORREÇÃO APLICADA AQUI: Quando a sequência da nuvem acaba, o bloco agendado desliga e o player volta de onde estava!
+                  b._agendadoRodando = false;
+                  if (blocoAnteriorIdx !== -1) {
+                      idxBloco = blocoAnteriorIdx; blocoAnteriorIdx = -1;
+                      video.style.opacity = '0'; video.style.backgroundColor = '#000000';
+                      tocarAtual();
+                      if (blocos[idxBloco] && blocos[idxBloco].tipo !== 'youtube') {
+                          if (blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
+                              video.currentTime = blocoAnteriorProgresso;
+                              if (blocoAnteriorPaused) video.pause();
+                          }
+                      }
+                  } else {
+                      window.proximoBloco();
+                  }
               }
           };
       }
@@ -1473,7 +1486,7 @@ window.toggleStream = async function() {
 function resetStreamUI(btn, led) { btn.innerText = "🔴 INICIAR TRANSMISSÃO"; btn.style.background = "#b71c1c"; led.style.background = "#444"; }
 
 let layoutTravado = true;
-const btnTrava = document.createElement('button'); btnTrava.id = 'btn-trava-layout'; btnNav = '🔒 Layout Travado'; btnTrava.className = 'layout-travado'; document.body.appendChild(btnTrava);
+const btnTrava = document.createElement('button'); btnTrava.id = 'btn-trava-layout'; btnTrava.innerHTML = '🔒 Layout Travado'; btnTrava.className = 'layout-travado'; document.body.appendChild(btnTrava);
 
 btnTrava.onclick = () => {
   layoutTravado = !layoutTravado;
