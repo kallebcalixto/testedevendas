@@ -469,7 +469,6 @@
               const d = dadosFirebase[i];
               const blocoAntigo = blocos.find(b => b._firebaseIndex === i);
               
-              // Coleta array de links de múltiplos vídeos sequenciais ou string legada
               let linksArr = [];
               if (Array.isArray(d.fbLinks)) {
                   linksArr = d.fbLinks.filter(l => l && l.trim() !== "");
@@ -1209,7 +1208,6 @@ async function tocarAtual() {
       } else if (b.m3ulink) {
           startM3UNow(b);
       } else if (b.arquivos && b.arquivos.length > 0) {
-          // LÓGICA DE MÚLTIPLOS VÍDEOS EM SEQUÊNCIA (ABERTURA -> REPÓRTER -> FINAL)
           video.style.display = 'block';
           ytplayer.style.display = 'none';
           
@@ -1475,7 +1473,7 @@ window.toggleStream = async function() {
 function resetStreamUI(btn, led) { btn.innerText = "🔴 INICIAR TRANSMISSÃO"; btn.style.background = "#b71c1c"; led.style.background = "#444"; }
 
 let layoutTravado = true;
-const btnTrava = document.createElement('button'); btnTrava.id = 'btn-trava-layout'; btnTrava.innerHTML = '🔒 Layout Travado'; btnTrava.className = 'layout-travado'; document.body.appendChild(btnTrava);
+const btnTrava = document.createElement('button'); btnTrava.id = 'btn-trava-layout'; btnNav = '🔒 Layout Travado'; btnTrava.className = 'layout-travado'; document.body.appendChild(btnTrava);
 
 btnTrava.onclick = () => {
   layoutTravado = !layoutTravado;
