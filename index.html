@@ -451,7 +451,7 @@
   window._firebase_onValue = onValue;
 
   window.iniciarLeituraFirebase = function(referenciaDinamica) {
-      window._firebase_onValue(referenciaDinamica, async snap => {
+      window._firebase_onValue(referenciaDinamica, snap => {
           const dadosFirebase = snap.val() || {};
           let blocoAtual = blocos[idxBloco];
           let idPlaying = null;
@@ -465,7 +465,7 @@
           let blocosManter = blocos.filter(b => b.tipo !== 'youtube' && b._firebaseIndex === undefined);
           let novosBlocosAgendados = [];
 
-          for (const i of Object.keys(dadosFirebase)) {
+          Object.keys(dadosFirebase).forEach(i => {
               const d = dadosFirebase[i];
               const blocoAntigo = blocos.find(b => b._firebaseIndex === i);
               const ytMudou = blocoAntigo && (blocoAntigo.ytlink !== (d.yt || ''));
@@ -473,35 +473,17 @@
               const fbMudou = blocoAntigo && (blocoAntigo.fblink !== (d.fb || ''));
               const estavaRodando = (blocoAntigo && !ytMudou && !m3uMudou && !fbMudou) ? blocoAntigo._agendadoRodando : false;
 
-              let arquivosCarregados = blocoAntigo ? blocoAntigo.arquivos : [];
-              
-              // SE HOUVER LINK DIRETO OU M3U NO FIREBASE, PUXA AUTOMATICAMENTE
-              let linkParaBaixar = d.fb || d.m3u;
-              if (linkParaBaixar && (!blocoAntigo || fbMudou || m3uMudou || arquivosCarregados.length === 0)) {
-                  try {
-                      if (linkParaBaixar.includes('.m3u')) {
-                          const res = await fetch(linkParaBaixar);
-                          const texto = await res.text();
-                          for (let linha of texto.split('\n')) {
-                              linha = linha.trim();
-                              if (linha && !linha.startsWith('#')) { linkParaBaixar = linha; break; }
-                          }
-                      }
-                      const resVid = await fetch(linkParaBaixar);
-                      const blob = await resVid.blob();
-                      const fakeFile = new File([blob], "video_nuvem.mp4", { type: "video/mp4" });
-                      const urlBlob = URL.createObjectURL(blob);
-                      arquivosCarregados = [{ url: urlBlob, file: fakeFile, duration: 0 }];
-                  } catch(err) {
-                      console.error("Erro ao puxar vídeo do Firebase:", err);
-                  }
+              // LÓGICA DIRETA DE LINK DA NUVEM (SE HOUVER LINK NO FB, JOGA COMO URL DIRETA DO VÍDEO)
+              let listaArquivosFirebase = [];
+              if (d.fb) {
+                  listaArquivosFirebase = [{ url: d.fb, file: { name: "video_nuvem.mp4" }, duration: 0 }];
               }
 
               novosBlocosAgendados.push({
-                  tipo: 'youtube', nome: d.nome || 'Bloco Nuvem', arquivos: arquivosCarregados, progresso: [0], tempo: 0, sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: 0,
+                  tipo: 'youtube', nome: d.nome || '', arquivos: listaArquivosFirebase, progresso: [0], tempo: 0, sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: 0,
                   ytlink: d.yt || '', m3ulink: d.m3u || '', fblink: d.fb || '', diaSemana: d.dias || d.dia || [], horaInicio: d.inicio || '', horaFim: d.fim || '', removido: false, _agendadoRodando: estavaRodando, _firebaseIndex: i 
               });
-          }
+          });
           blocos = [...blocosManter, ...novosBlocosAgendados];
            
           if (idPlaying && idPlaying.startsWith('fb_')) {
@@ -520,11 +502,6 @@
           });
           atualizarGrade();
           if (idxBloco >= blocos.length) idxBloco = 0;
-
-          // SE O SISTEMA JÁ ESTIVER ATIVO, DISPARA O PLAY IMEDIATAMENTE
-          if (sistemaIniciado && blocos.length > 0) {
-              tocarAtual();
-          }
       });
   };
 </script>
@@ -1193,31 +1170,13 @@ async function tocarAtual() {
       document.getElementById('letreiro-kbs-auto').style.display = 'none';
       if (b.ytlink) {
           startYouTubeNow(b);
-      } else if (b.fblink && b.fblink.includes('.m3u')) {
-          try {
-              const res = await fetch(b.fblink);
-              const texto = await res.text();
-              const linhas = texto.split('\n');
-              let videoRealUrl = "";
-              for (let linha of linhas) {
-                  linha = linha.trim();
-                  if (linha && !linha.startsWith('#')) {
-                      videoRealUrl = linha;
-                      break;
-                  }
-              }
-              if (videoRealUrl) {
-                  video.style.display = 'block';
-                  ytplayer.style.display = 'none';
-                  video.src = videoRealUrl;
-                  video.load();
-                  video.play().catch(() => {});
-              } else {
-                  startM3UNow(b);
-              }
-          } catch(e) {
-              startM3UNow(b);
-          }
+      } else if (b.fblink) {
+          // REPRODUÇÃO DIRETA DO LINK DO FIREBASE NA TAG VIDEO (SEM BAIXAR NADA)
+          video.style.display = 'block';
+          ytplayer.style.display = 'none';
+          video.src = b.fblink;
+          video.load();
+          video.play().catch(() => {});
       } else if (b.m3ulink) {
           startM3UNow(b);
       }
@@ -1269,117 +1228,24 @@ function attachHandlersFor(b){
   };
 }
 
-function obterDuracao(url) {
-  return new Promise((resolve) => {
-    const tempVid = document.createElement('video');
-    tempVid.onloadedmetadata = () => { resolve(tempVid.duration); tempVid.removeAttribute('src'); tempVid.load(); };
-    tempVid.onerror = () => { resolve(0); };
-    tempVid.src = url;
-  });
-}
-
 window.atualizarInfoTempo = function(i) {
   const b = blocos[i];
   if (!b || !b.arquivos) return;
   let infoText = b.arquivos.length + " arquivos.";
-  
-  if (b.tipo === 'movie') {
-    let limite = b.limitePorCiclo || 3;
-    let start = b.arquivoAtual || 0;
-    let sum = 0; let count = 0;
-    for(let j=0; j < b.arquivos.length && count < limite; j++) {
-        let idx = (start + j) % b.arquivos.length; sum += (b.arquivos[idx].duration || 0); count++;
-    }
-    infoText += "<br><span style='color:#ffd700; font-size:11px;'>Tempo p/ rodar os " + count + ": " + fmt(sum) + "</span>";
-  } else if (b.tipo === 'timer') {
-    let sum = b.arquivos.reduce((a, c) => a + (c.duration || 0), 0);
-    infoText += "<br><span style='color:#ffd700; font-size:11px;'>Duração total da pasta: " + fmt(sum) + "</span>";
-  }
   const infoEl = document.getElementById(`info-${i}`);
   if(infoEl) infoEl.innerHTML = infoText;
 }
 
 window.carregarArquivos = async function(i, fileList){
   const validExtensions = ['.mp4', '.webm', '.ogg', '.mkv', '.mov'];
-  
-  if (typeof fileList === 'string') {
-      document.getElementById(`info-${i}`).innerHTML = `1 arquivo na nuvem. <br><span style='color:#ffd700; font-size:11px;'>Baixando do Firebase...</span>`;
-      try {
-          const response = await fetch(fileList);
-          const blob = await response.blob();
-          const fakeFile = new File([blob], "video_nuvem.mp4", { type: "video/mp4" });
-          
-          blocos[i].arquivos = [{ url: URL.createObjectURL(blob), file: fakeFile, duration: 0 }];
-          blocos[i].progresso = [0];
-          blocos[i].arquivos[0].duration = await obterDuracao(blocos[i].arquivos[0].url);
-          
-          atualizarInfoTempo(i);
-          atualizarGrade();
-          return;
-      } catch (err) {
-          console.error("Erro ao baixar vídeo do Firebase:", err);
-          document.getElementById(`info-${i}`).innerHTML = `<span style='color:#ff4d4d;'>Erro ao carregar vídeo da nuvem.</span>`;
-          return;
-      }
-  }
-
   const files = Array.from(fileList).filter(f => validExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
   
   blocos[i].lastFileListRef = fileList;
-
   blocos[i].arquivos = files.map(f => ({ url: URL.createObjectURL(f), file: f, duration: 0 }));
   blocos[i].progresso = blocos[i].arquivos.map(()=>0);
-  document.getElementById(`info-${i}`).innerHTML = files.length + " arquivos. <br><span style='color:#ffd700; font-size:11px;'>Calculando tempos...</span>";
+  document.getElementById(`info-${i}`).innerHTML = files.length + " arquivos.";
   atualizarGrade();
-
-  for (let j = 0; j < blocos[i].arquivos.length; j++) {
-     try { blocos[i].arquivos[j].duration = await obterDuracao(blocos[i].arquivos[j].url); } 
-     catch(e) { blocos[i].arquivos[j].duration = 0; }
-  }
-  atualizarInfoTempo(i);
 }
-
-setInterval(async () => {
-    if (!sistemaIniciado) return;
-
-    for (let i = 0; i < blocos.length; i++) {
-        const b = blocos[i];
-        if (b && !b.removido && (b.tipo === 'timer' || b.tipo === 'movie') && b.lastFileListRef) {
-            const validExtensions = ['.mp4', '.webm', '.ogg', '.mkv', '.mov'];
-            const currentFiles = Array.from(b.lastFileListRef).filter(f => validExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
-
-            if (currentFiles.length !== b.arquivos.length) {
-                let arquivoRodandoAtual = null;
-                if (i === idxBloco && b.arquivos[b.arquivoAtual]) {
-                    arquivoRodandoAtual = b.arquivos[b.arquivoAtual].file.name;
-                }
-
-                const novosArquivos = currentFiles.map(f => ({ url: URL.createObjectURL(f), file: f, duration: 0 }));
-                 
-                for (let j = 0; j < novosArquivos.length; j++) {
-                    try { novosArquivos[j].duration = await obterDuracao(novosArquivos[j].url); }
-                    catch(e) { novosArquivos[j].duration = 0; }
-                }
-
-                b.arquivos = novosArquivos;
-                b.progresso = b.arquivos.map(() => 0);
-
-                if (i === idxBloco && arquivoRodandoAtual) {
-                    let novoIndexEncontrado = b.arquivos.findIndex(f => f.file.name === arquivoRodandoAtual);
-                    if (novoIndexEncontrado !== -1) {
-                        b.arquivoAtual = novoIndexEncontrado; 
-                    } else {
-                        b.arquivoAtual = Math.min(b.arquivoAtual, b.arquivos.length - 1);
-                    }
-                } else {
-                    b.arquivoAtual = Math.min(b.arquivoAtual, b.arquivos.length - 1);
-                }
-
-                atualizarInfoTempo(i);
-            }
-        }
-    }
-}, 3000);
 
 window.definirTempo = function(i,v){ blocos[i].tempo=timeToSec(v); atualizarGrade(); }
 window.definirLimite = function(i,v){ blocos[i].limitePorCiclo=parseInt(v); atualizarInfoTempo(i); atualizarGrade(); }
@@ -1616,7 +1482,7 @@ setInterval(() => {
     const contadorEl = document.getElementById(`countdown-${idxBloco}`);
     if (!contadorEl) return;
      
-    segundosRestantes = 0;
+    let segundosRestantes = 0;
     let mostrar = false;
      
     if (b.tipo === 'pause') {
