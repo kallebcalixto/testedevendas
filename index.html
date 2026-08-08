@@ -473,14 +473,31 @@
               const fbMudou = blocoAntigo && (blocoAntigo.fblink !== (d.fb || ''));
               const estavaRodando = (blocoAntigo && !ytMudou && !m3uMudou && !fbMudou) ? blocoAntigo._agendadoRodando : false;
 
+              // DINÂMICO PARA ACEITAR SEMPRE O NOVO LINK ATUALIZADO DO FIREBASE
               let listaArquivosFirebase = [];
               if (d.fb) {
-                  listaArquivosFirebase = [{ url: d.fb, file: { name: "video_nuvem.mp4" }, duration: 0 }];
+                  listaArquivosFirebase = [{ url: d.fb, file: { name: d.nome || "video_atualizado.mp4" }, duration: 0 }];
               }
 
               novosBlocosAgendados.push({
-                  tipo: 'youtube', nome: d.nome || '', arquivos: listaArquivosFirebase, progresso: [0], tempo: 0, sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: 0,
-                  ytlink: d.yt || '', m3ulink: d.m3u || '', fblink: d.fb || '', diaSemana: d.dias || d.dia || [], horaInicio: d.inicio || '', horaFim: d.fim || '', removido: false, _agendadoRodando: estavaRodando, _firebaseIndex: i 
+                  tipo: 'youtube', 
+                  nome: d.nome || 'Vídeo Nuvem', 
+                  arquivos: listaArquivosFirebase, 
+                  progresso: [0], 
+                  tempo: 0, 
+                  sessaoRestante: 0, 
+                  pauseRestante: 0, 
+                  arquivoAtual: 0, 
+                  limitePorCiclo: 0,
+                  ytlink: d.yt || '', 
+                  m3ulink: d.m3u || '', 
+                  fblink: d.fb || '', 
+                  diaSemana: d.dias || d.dia || [], 
+                  horaInicio: d.inicio || '', 
+                  horaFim: d.fim || '', 
+                  removido: false, 
+                  _agendadoRodando: estavaRodando, 
+                  _firebaseIndex: i 
               });
           });
           blocos = [...blocosManter, ...novosBlocosAgendados];
@@ -1072,14 +1089,18 @@ function verificarAgendados() {
   if (blocos.length === 0) return;
   const agora = new Date();
   const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
-  const horaAtual = agora.toTimeString().split(' ')[0];
+  const h = String(agora.getHours()).padStart(2, '0');
+  const m = String(agora.getMinutes()).padStart(2, '0');
+  const s = String(agora.getSeconds()).padStart(2, '0');
+  const horaAtual = `${h}:${m}:${s}`;
+  const horaAtualCurta = `${h}:${m}`;
   let blocoEncontrado = false; let indiceParaRodar = -1;
 
   for (let i = 0; i < blocos.length; i++) {
     const b = blocos[i]; if (!b || b.removido) continue;
     if (b.tipo === 'timer' && b.horarios && b.horarios.length > 0) {
       const diaMatch = (!b.diasSelecionados || b.diasSelecionados.length === 0 || b.diasSelecionados.includes(hoje));
-      const horarioMatch = b.horarios.some(h => horaAtual >= h.inicio && horaAtual < h.fim);
+      const horarioMatch = b.horarios.some(hObj => horaAtual >= hObj.inicio && horaAtual < hObj.fim);
       if (diaMatch && horarioMatch) { blocoEncontrado = true; indiceParaRodar = i; break; }
     }
   }
@@ -1091,7 +1112,11 @@ function verificarAgendados() {
         let diaMatch = false;
         if (Array.isArray(b.diaSemana)) { diaMatch = b.diaSemana.length === 0 || b.diaSemana.includes(hoje); } 
         else { diaMatch = (b.diaSemana === "" || (typeof b.diaSemana === 'string' && b.diaSemana.toLowerCase() === hoje)); }
-        const dentroDoHorario = (b.horaInicio && b.horaFim && horaAtual >= b.horaInicio && horaAtual < b.horaFim);
+        
+        const inicioStr = (b.horaInicio || "00:00:00").substring(0, 5);
+        const fimStr = (b.horaFim || "23:59:59").substring(0, 5);
+        const dentroDoHorario = (b.horaInicio && b.horaFim && horaAtualCurta >= inicioStr && horaAtualCurta < fimStr);
+
         if (diaMatch && dentroDoHorario) { blocoEncontrado = true; indiceParaRodar = i; break; }
       }
     }
@@ -1100,6 +1125,7 @@ function verificarAgendados() {
   if (blocoEncontrado) {
     const b = blocos[indiceParaRodar];
     if (!b._agendadoRodando) {
+      sistemaIniciado = true;
       if (sistemaIniciado && idxBloco !== indiceParaRodar && !blocos[idxBloco]._agendadoRodando) {
         if (blocos[idxBloco].tipo === 'youtube' && ytUltimoPlayTimestamp > 0) {
           const decorrido = (Date.now() - ytUltimoPlayTimestamp) / 1000;
@@ -1170,7 +1196,6 @@ async function tocarAtual() {
       if (b.ytlink) {
           startYouTubeNow(b);
       } else if (b.fblink) {
-          // REPRODUÇÃO DIRETA DO LINK DO FIREBASE NO PLAYER AO CHEGAR O HORÁRIO DO ADMIN
           video.style.display = 'block';
           ytplayer.style.display = 'none';
           video.src = b.fblink;
