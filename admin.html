@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Admin – Programação KBS TV</title>
+<title>Admin – Programação KBS TV com Múltiplos Vídeos</title>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -52,6 +52,14 @@
       const b = dados[i];
       const diasSelecionados = b.dias || []; 
       
+      // Garante que fbLinks seja um array de links (compatibilidade retroativa com 'fb' string antiga)
+      let linksArray = [];
+      if (Array.isArray(b.fbLinks)) {
+        linksArray = b.fbLinks;
+      } else if (b.fb) {
+        linksArray = [b.fb];
+      }
+
       const card = document.createElement("div");
       card.className = "card";
       
@@ -65,21 +73,32 @@
       });
       diasHTML += '</div>';
 
+      let linksHtml = `<div id="container-links-${i}" class="links-container">`;
+      linksArray.forEach((linkVal, indexLink) => {
+        linksHtml += `
+          <div class="linha-link" style="display:flex; gap:5px; margin-bottom:5px;">
+            <input type="text" class="input-fb-${i}" value="${linkVal}" placeholder="Link do vídeo ${indexLink + 1} (Ex: Abertura / Repórter / Final)">
+            <button type="button" onclick="removerLinhaLink(this)" style="background:#b71c1c; width:35px; margin-top:0; padding:0;">X</button>
+          </div>`;
+      });
+      linksHtml += `</div>`;
+
       card.innerHTML = `
         <h3>Bloco ${i} ${b.nome ? '- ' + b.nome : ''}</h3>
         
         <label>Nome de identificação:</label>
-        <input id="nome-${i}" value="${b.nome || ''}" placeholder="Ex: Bloco de Abertura / Repórter">
+        <input id="nome-${i}" value="${b.nome || ''}" placeholder="Ex: Jornal KBS">
 
-        <label>Link M3U:</label>
-        <input id="m3u-${i}" value="${b.m3u || ''}" placeholder="Link M3U opcional">
+        <label>Link M3U (Opcional):</label>
+        <input id="m3u-${i}" value="${b.m3u || ''}">
         
-        <label>Link YouTube:</label>
-        <input id="yt-${i}" value="${b.yt || ''}" placeholder="Link YouTube opcional">
+        <label>Link YouTube (Opcional):</label>
+        <input id="yt-${i}" value="${b.yt || ''}">
 
-        <label style="color: #4fc3f7;">Link Firebase (Vídeo Fixo da Nuvem):</label>
-        <input id="fb-${i}" value="${b.fb || ''}" placeholder="Cole o link do Firebase aqui (ex: mesmo nome fixo)">
-        <small style="color:#aaa; display:block; margin-bottom:8px; font-size:10px;">Dica: Use sempre o mesmo link/nome na nuvem para atualizar o vídeo sem quebrar a programação.</small>
+        <label style="color: #4fc3f7;">Lista de Vídeos em Sequência (Nuvem):</label>
+        <small style="color:#aaa; display:block; margin-bottom:5px; font-size:10px;">Adicione na ordem: 1º Abertura, 2º Repórter, 3º Final...</small>
+        ${linksHtml}
+        <button type="button" onclick="adicionarLinhaLink(${i})" style="background:#2e7d32; font-size:11px; margin-bottom:10px; padding:6px;">+ Adicionar Vídeo na Sequência</button>
         
         <label>Dias da semana:</label>
         ${diasHTML}
@@ -97,18 +116,39 @@
     });
   }
 
+  window.adicionarLinhaLink = function(i) {
+    const container = document.getElementById(`container-links-${i}`);
+    const div = document.createElement('div');
+    div.className = "linha-link";
+    div.style = "display:flex; gap:5px; margin-bottom:5px;";
+    div.innerHTML = `
+      <input type="text" class="input-fb-${i}" value="" placeholder="Cole o link do próximo vídeo">
+      <button type="button" onclick="removerLinhaLink(this)" style="background:#b71c1c; width:35px; margin-top:0; padding:0;">X</button>
+    `;
+    container.appendChild(div);
+  };
+
+  window.removerLinhaLink = function(btn) {
+    btn.parentElement.remove();
+  };
+
   window.salvar = function(i) {
     if(!auth.currentUser) return;
     
     const checkboxes = document.querySelectorAll(`.dia-${i}:checked`);
     const diasMarcados = Array.from(checkboxes).map(cb => cb.value);
 
+    // Coleta todos os inputs de links da sequência deste bloco
+    const inputsLinks = document.querySelectorAll(`.input-fb-${i}`);
+    const fbLinksArray = Array.from(inputsLinks).map(inp => inp.value.trim()).filter(val => val !== "");
+
     const caminho = ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${i}`);
     set(caminho, {
       nome: document.getElementById("nome-" + i).value,
       m3u: document.getElementById("m3u-" + i).value,
       yt: document.getElementById("yt-" + i).value,
-      fb: document.getElementById("fb-" + i).value,
+      fbLinks: fbLinksArray, // Salva a lista ordenada
+      fb: fbLinksArray[0] || "", // Retrocompatibilidade com campo único
       dias: diasMarcados,
       inicio: document.getElementById("inicio-" + i).value,
       fim: document.getElementById("fim-" + i).value,
@@ -130,7 +170,7 @@
       const novoID = chaves.length > 0 ? Math.max(...chaves) + 1 : 0;
       
       set(ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${novoID}`), {
-        nome: "Novo Bloco", m3u: "", yt: "", fb: "", dias: ["segunda", "terca", "quarta", "quinta", "sexta"], inicio: "00:00:00", fim: "00:00:00", timestamp: Date.now()
+        nome: "Bloco Sequencial", m3u: "", yt: "", fbLinks: [""], fb: "", dias: ["segunda", "terca", "quarta", "quinta", "sexta"], inicio: "00:00:00", fim: "00:00:00", timestamp: Date.now()
       });
     }, { onlyOnce: true });
   };
@@ -148,7 +188,7 @@ body { background:#111; color:#fff; font-family: 'Segoe UI', Arial, sans-serif; 
   gap: 20px;
 }
 
-.card { background:#1b1b1b; padding:20px; border-radius:12px; border:1px solid #333; width:340px; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+.card { background:#1b1b1b; padding:20px; border-radius:12px; border:1px solid #333; width:360px; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
 
 label { font-size: 11px; color: #aaa; display: block; margin-top: 8px; margin-bottom: 3px; font-weight: bold; text-transform: uppercase; }
 input { width:100%; margin-bottom:5px; padding:8px; background:#111; border:1px solid #444; color:white; border-radius:6px; box-sizing: border-box; font-size: 13px;}
@@ -179,8 +219,8 @@ h3 { margin-top: 0; color: #ffd700; text-align: center; border-bottom: 1px solid
 </head>
 <body>
 <div id="topBar">
-  <h1>⚙️ Painel Admin – Sequência de Blocos</h1>
-  <button id="addBtn" onclick="adicionarBloco()">+ Adicionar Bloco (Abertura/Repórter/Final)</button>
+  <h1>⚙️ Painel Admin – Múltiplos Vídeos em Sequência</h1>
+  <button id="addBtn" onclick="adicionarBloco()">+ Adicionar Bloco Sequencial</button>
 </div>
 <div id="lista">Carregando seus blocos programados...</div>
 </body>
