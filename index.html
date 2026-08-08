@@ -451,7 +451,7 @@
   window._firebase_onValue = onValue;
 
   window.iniciarLeituraFirebase = function(referenciaDinamica) {
-      window._firebase_onValue(referenciaDinamica, snap => {
+      window._firebase_onValue(referenciaDinamica, async snap => {
           const dadosFirebase = snap.val() || {};
           let blocoAtual = blocos[idxBloco];
           let idPlaying = null;
@@ -465,7 +465,7 @@
           let blocosManter = blocos.filter(b => b.tipo !== 'youtube' && b._firebaseIndex === undefined);
           let novosBlocosAgendados = [];
 
-          Object.keys(dadosFirebase).forEach(i => {
+          for (const i of Object.keys(dadosFirebase)) {
               const d = dadosFirebase[i];
               const blocoAntigo = blocos.find(b => b._firebaseIndex === i);
               const ytMudou = blocoAntigo && (blocoAntigo.ytlink !== (d.yt || ''));
@@ -473,11 +473,35 @@
               const fbMudou = blocoAntigo && (blocoAntigo.fblink !== (d.fb || ''));
               const estavaRodando = (blocoAntigo && !ytMudou && !m3uMudou && !fbMudou) ? blocoAntigo._agendadoRodando : false;
 
+              let arquivosCarregados = blocoAntigo ? blocoAntigo.arquivos : [];
+              
+              // SE HOUVER LINK DIRETO OU M3U NO FIREBASE, PUXA AUTOMATICAMENTE
+              let linkParaBaixar = d.fb || d.m3u;
+              if (linkParaBaixar && (!blocoAntigo || fbMudou || m3uMudou || arquivosCarregados.length === 0)) {
+                  try {
+                      if (linkParaBaixar.includes('.m3u')) {
+                          const res = await fetch(linkParaBaixar);
+                          const texto = await res.text();
+                          for (let linha of texto.split('\n')) {
+                              linha = linha.trim();
+                              if (linha && !linha.startsWith('#')) { linkParaBaixar = linha; break; }
+                          }
+                      }
+                      const resVid = await fetch(linkParaBaixar);
+                      const blob = await resVid.blob();
+                      const fakeFile = new File([blob], "video_nuvem.mp4", { type: "video/mp4" });
+                      const urlBlob = URL.createObjectURL(blob);
+                      arquivosCarregados = [{ url: urlBlob, file: fakeFile, duration: 0 }];
+                  } catch(err) {
+                      console.error("Erro ao puxar vídeo do Firebase:", err);
+                  }
+              }
+
               novosBlocosAgendados.push({
-                  tipo: 'youtube', nome: d.nome || '', arquivos: [], progresso: [], tempo: 0, sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: 0,
+                  tipo: 'youtube', nome: d.nome || 'Bloco Nuvem', arquivos: arquivosCarregados, progresso: [0], tempo: 0, sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: 0,
                   ytlink: d.yt || '', m3ulink: d.m3u || '', fblink: d.fb || '', diaSemana: d.dias || d.dia || [], horaInicio: d.inicio || '', horaFim: d.fim || '', removido: false, _agendadoRodando: estavaRodando, _firebaseIndex: i 
               });
-          });
+          }
           blocos = [...blocosManter, ...novosBlocosAgendados];
            
           if (idPlaying && idPlaying.startsWith('fb_')) {
@@ -496,6 +520,11 @@
           });
           atualizarGrade();
           if (idxBloco >= blocos.length) idxBloco = 0;
+
+          // SE O SISTEMA JÁ ESTIVER ATIVO, DISPARA O PLAY IMEDIATAMENTE
+          if (sistemaIniciado && blocos.length > 0) {
+              tocarAtual();
+          }
       });
   };
 </script>
@@ -1587,7 +1616,7 @@ setInterval(() => {
     const contadorEl = document.getElementById(`countdown-${idxBloco}`);
     if (!contadorEl) return;
      
-    let segundosRestantes = 0;
+    segundosRestantes = 0;
     let mostrar = false;
      
     if (b.tipo === 'pause') {
