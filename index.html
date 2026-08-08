@@ -324,7 +324,7 @@
           const playerRef = ref(db, `usuarios/${user.uid}/player_m3u/0`);
           get(playerRef).then((snapshot) => {
             if (!snapshot.exists()) {
-              set(playerRef, { dias: ["segunda"], inicio: "12:00:00", fim: "13:00:00", m3u: "", fb: "", yt: "", timestamp: Date.now() });
+              set(playerRef, { dias: ["segunda"], inicio: "12:00:00", fim: "13:00:00", m3u: "", fbLinks: [""], yt: "", timestamp: Date.now() });
             }
           });
         }
@@ -468,30 +468,41 @@
           Object.keys(dadosFirebase).forEach(i => {
               const d = dadosFirebase[i];
               const blocoAntigo = blocos.find(b => b._firebaseIndex === i);
+              
+              // Coleta array de links de múltiplos vídeos sequenciais ou string legada
+              let linksArr = [];
+              if (Array.isArray(d.fbLinks)) {
+                  linksArr = d.fbLinks.filter(l => l && l.trim() !== "");
+              } else if (d.fb) {
+                  linksArr = [d.fb];
+              }
+
+              const blocoAntigoLinks = blocoAntigo ? JSON.stringify(blocoAntigo.fbLinksArray || []) : "";
+              const blocoNovoLinks = JSON.stringify(linksArr);
               const ytMudou = blocoAntigo && (blocoAntigo.ytlink !== (d.yt || ''));
               const m3uMudou = blocoAntigo && (blocoAntigo.m3ulink !== (d.m3u || ''));
-              const fbMudou = blocoAntigo && (blocoAntigo.fblink !== (d.fb || ''));
-              const estavaRodando = (blocoAntigo && !ytMudou && !m3uMudou && !fbMudou) ? blocoAntigo._agendadoRodando : false;
+              const linksMudaram = blocoAntigoLinks !== blocoNovoLinks;
+              const estavaRodando = (blocoAntigo && !ytMudou && !m3uMudou && !linksMudaram) ? blocoAntigo._agendadoRodando : false;
 
-              // DINÂMICO PARA ACEITAR SEMPRE O NOVO LINK ATUALIZADO DO FIREBASE
-              let listaArquivosFirebase = [];
-              if (d.fb) {
-                  listaArquivosFirebase = [{ url: d.fb, file: { name: d.nome || "video_atualizado.mp4" }, duration: 0 }];
-              }
+              let listaArquivosFirebase = linksArr.map((linkUrl, indexUrl) => ({
+                  url: linkUrl, 
+                  file: { name: (d.nome || "video_nuvem") + "_" + (indexUrl + 1) + ".mp4" }, 
+                  duration: 0 
+              }));
 
               novosBlocosAgendados.push({
                   tipo: 'youtube', 
-                  nome: d.nome || 'Vídeo Nuvem', 
+                  nome: d.nome || '', 
                   arquivos: listaArquivosFirebase, 
-                  progresso: [0], 
+                  progresso: new Array(listaArquivosFirebase.length).fill(0), 
                   tempo: 0, 
                   sessaoRestante: 0, 
                   pauseRestante: 0, 
-                  arquivoAtual: 0, 
+                  arquivoAtual: (blocoAntigo && blocoAntigo._firebaseIndex === i) ? blocoAntigo.arquivoAtual : 0, 
                   limitePorCiclo: 0,
                   ytlink: d.yt || '', 
                   m3ulink: d.m3u || '', 
-                  fblink: d.fb || '', 
+                  fbLinksArray: linksArr,
                   diaSemana: d.dias || d.dia || [], 
                   horaInicio: d.inicio || '', 
                   horaFim: d.fim || '', 
@@ -1040,7 +1051,7 @@ window.adicionarBloco = function(tipo){
   let nomeSugerido = prompt("Digite o nome deste bloco para organizar (ex: Filmes Ação, Jaspion, etc):", "");
   if (nomeSugerido === null) return; 
 
-  const bloco = { nome: nomeSugerido, tipo, arquivos: [], progresso: [], tempo: (tipo==='timer'||tipo==='pause'?300:0), sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: (tipo==='movie'?3:0), ytlink:'', m3ulink:'', fblink:'', diaSemana:'', horaInicio:'', horaFim:'', removido:false, _agendadoRodando:false, diasSelecionados: [], horarios: [], lastFileListRef: null };
+  const bloco = { nome: nomeSugerido, tipo, arquivos: [], progresso: [], tempo: (tipo==='timer'||tipo==='pause'?300:0), sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: (tipo==='movie'?3:0), ytlink:'', m3ulink:'', fbLinksArray:[], diaSemana:'', horaInicio:'', horaFim:'', removido:false, _agendadoRodando:false, diasSelecionados: [], horarios: [], lastFileListRef: null };
   const i = blocos.push(bloco)-1;
   renderizarBloco(i, bloco);
   atualizarGrade();
@@ -1195,14 +1206,31 @@ async function tocarAtual() {
       document.getElementById('letreiro-kbs-auto').style.display = 'none';
       if (b.ytlink) {
           startYouTubeNow(b);
-      } else if (b.fblink) {
-          video.style.display = 'block';
-          ytplayer.style.display = 'none';
-          video.src = b.fblink;
-          video.load();
-          video.play().catch(() => {});
       } else if (b.m3ulink) {
           startM3UNow(b);
+      } else if (b.arquivos && b.arquivos.length > 0) {
+          // LÓGICA DE MÚLTIPLOS VÍDEOS EM SEQUÊNCIA (ABERTURA -> REPÓRTER -> FINAL)
+          video.style.display = 'block';
+          ytplayer.style.display = 'none';
+          
+          if (b.arquivoAtual >= b.arquivos.length) {
+              b.arquivoAtual = 0;
+          }
+          
+          const arquivoCorrente = b.arquivos[b.arquivoAtual];
+          video.src = arquivoCorrente.url;
+          video.load();
+          video.play().catch(() => {});
+          
+          video.onended = () => {
+              b.arquivoAtual++;
+              if (b.arquivoAtual < b.arquivos.length) {
+                  tocarAtual();
+              } else {
+                  b.arquivoAtual = 0;
+                  window.proximoBloco();
+              }
+          };
       }
       return; 
   }
