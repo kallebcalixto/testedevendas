@@ -1245,7 +1245,7 @@ window.carregarArquivos = async function(i, fileList){
   const validExtensions = ['.mp4', '.webm', '.ogg', '.mkv', '.mov'];
   const files = Array.from(fileList).filter(f => validExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
   
-  // Salva a referência FileList original para checagem em segundo plano
+  // Salva a referência da pasta para poder atualizar sozinha depois
   blocos[i].lastFileListRef = fileList;
 
   blocos[i].arquivos = files.map(f => ({ url: URL.createObjectURL(f), file: f, duration: 0 }));
@@ -1260,29 +1260,24 @@ window.carregarArquivos = async function(i, fileList){
   atualizarInfoTempo(i);
 }
 
-// NOVO: Função para atualizar a pasta em background sem interromper o arquivo em execução
+// SISTEMA DE RECARREGAMENTO AUTOMÁTICO DA PASTA DA NUVEM EM SEGUNDO PLANO
 setInterval(async () => {
     if (!sistemaIniciado) return;
 
     for (let i = 0; i < blocos.length; i++) {
         const b = blocos[i];
-        // Verifica blocos que possuem pasta carregada (timer ou movie)
         if (b && !b.removido && (b.tipo === 'timer' || b.tipo === 'movie') && b.lastFileListRef) {
             const validExtensions = ['.mp4', '.webm', '.ogg', '.mkv', '.mov'];
             const currentFiles = Array.from(b.lastFileListRef).filter(f => validExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
 
-            // Se a quantidade de arquivos mudou na pasta da nuvem
             if (currentFiles.length !== b.arquivos.length) {
-                // Guarda o arquivo que está rodando atualmente (se houver)
                 let arquivoRodandoAtual = null;
                 if (i === idxBloco && b.arquivos[b.arquivoAtual]) {
                     arquivoRodandoAtual = b.arquivos[b.arquivoAtual].file.name;
                 }
 
-                // Mapeia os novos arquivos
                 const novosArquivos = currentFiles.map(f => ({ url: URL.createObjectURL(f), file: f, duration: 0 }));
                 
-                // Calcula as durações em background
                 for (let j = 0; j < novosArquivos.length; j++) {
                     try { novosArquivos[j].duration = await obterDuracao(novosArquivos[j].url); }
                     catch(e) { novosArquivos[j].duration = 0; }
@@ -1291,11 +1286,10 @@ setInterval(async () => {
                 b.arquivos = novosArquivos;
                 b.progresso = b.arquivos.map(() => 0);
 
-                // Se este bloco for o que está tocando no momento, tenta manter o mesmo arquivo rodando para não danificar a reprodução
                 if (i === idxBloco && arquivoRodandoAtual) {
                     let novoIndexEncontrado = b.arquivos.findIndex(f => f.file.name === arquivoRodandoAtual);
                     if (novoIndexEncontrado !== -1) {
-                        b.arquivoAtual = novoIndexEncontrado; // Mantém o arquivo exato que estava rodando!
+                        b.arquivoAtual = novoIndexEncontrado; 
                     } else {
                         b.arquivoAtual = Math.min(b.arquivoAtual, b.arquivos.length - 1);
                     }
@@ -1307,7 +1301,7 @@ setInterval(async () => {
             }
         }
     }
-}, 5000); // Verifica a cada 5 segundos de forma leve e segura
+}, 3000);
 
 window.definirTempo = function(i,v){ blocos[i].tempo=timeToSec(v); atualizarGrade(); }
 window.definirLimite = function(i,v){ blocos[i].limitePorCiclo=parseInt(v); atualizarInfoTempo(i); atualizarGrade(); }
