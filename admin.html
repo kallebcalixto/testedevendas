@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Admin – Programação Individual</title>
+<title>Admin – Programação KBS TV</title>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -35,7 +35,7 @@
           console.log("Admin conectado à pasta: " + user.uid);
         } else {
           alert("Acesso negado. Faça login no Player primeiro.");
-          window.location.href = "cara.html"; 
+          window.location.href = "index.html"; 
         }
       });
     })
@@ -66,30 +66,32 @@
       diasHTML += '</div>';
 
       card.innerHTML = `
-        <h3>${b.nome ? b.nome : 'Bloco ' + i}</h3>
+        <h3>Bloco ${i} ${b.nome ? '- ' + b.nome : ''}</h3>
         
         <label>Nome de identificação:</label>
-        <input id="nome-${i}" value="${b.nome || ''}" placeholder="Ex: Programação da Manhã">
+        <input id="nome-${i}" value="${b.nome || ''}" placeholder="Ex: Bloco de Abertura / Repórter">
 
         <label>Link M3U:</label>
-        <input id="m3u-${i}" value="${b.m3u || ''}">
+        <input id="m3u-${i}" value="${b.m3u || ''}" placeholder="Link M3U opcional">
         
         <label>Link YouTube:</label>
-        <input id="yt-${i}" value="${b.yt || ''}">
+        <input id="yt-${i}" value="${b.yt || ''}" placeholder="Link YouTube opcional">
 
-        <label style="color: #4fc3f7;">Link Firebase (Arquivos/Nuvem):</label>
-        <input id="fb-${i}" value="${b.fb || ''}" placeholder="Cole o link do Firebase aqui">
+        <label style="color: #4fc3f7;">Link Firebase (Vídeo Fixo da Nuvem):</label>
+        <input id="fb-${i}" value="${b.fb || ''}" placeholder="Cole o link do Firebase aqui (ex: mesmo nome fixo)">
+        <small style="color:#aaa; display:block; margin-bottom:8px; font-size:10px;">Dica: Use sempre o mesmo link/nome na nuvem para atualizar o vídeo sem quebrar a programação.</small>
         
         <label>Dias da semana:</label>
         ${diasHTML}
 
         <label>Hora início (com segundos):</label>
         <input id="inicio-${i}" type="time" step="1" value="${b.inicio || '00:00:00'}">
+        
         <label>Hora fim (com segundos):</label>
         <input id="fim-${i}" type="time" step="1" value="${b.fim || '00:00:00'}">
         
-        <button class="saveBtn" onclick="salvar(${i})">Salvar</button>
-        <button class="deleteBtn" onclick="apagar(${i})">Apagar</button>
+        <button class="saveBtn" onclick="salvar(${i})">💾 Salvar Bloco</button>
+        <button class="deleteBtn" onclick="apagar(${i})">🗑 Apagar Bloco</button>
       `;
       lista.appendChild(card);
     });
@@ -112,31 +114,33 @@
       fim: document.getElementById("fim-" + i).value,
       timestamp: Date.now()
     });
-    alert("✔ Salvo com sucesso!");
+    alert("✔ Bloco salvo com sucesso!");
   };
 
   window.apagar = function(i) {
-    if (!confirm("Apagar bloco?")) return;
+    if (!confirm("Deseja realmente apagar este bloco?")) return;
     remove(ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${i}`));
   };
 
   window.adicionarBloco = function() {
+    if(!auth.currentUser) return;
     onValue(blocosRef, snap => {
       const dados = snap.val() || {};
       const chaves = Object.keys(dados).map(Number);
       const novoID = chaves.length > 0 ? Math.max(...chaves) + 1 : 0;
       
       set(ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${novoID}`), {
-        nome: "", m3u: "", yt: "", fb: "", dias: [], inicio: "00:00:00", fim: "00:00:00", timestamp: Date.now()
+        nome: "Novo Bloco", m3u: "", yt: "", fb: "", dias: ["segunda", "terca", "quarta", "quinta", "sexta"], inicio: "00:00:00", fim: "00:00:00", timestamp: Date.now()
       });
     }, { onlyOnce: true });
   };
 </script>
 
 <style>
-body { background:#111; color:#fff; font-family:Arial; padding: 20px; margin: 0; }
-#topBar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
-#addBtn { background:#28a745; padding:10px 18px; border:none; color:white; border-radius:8px; cursor:pointer; font-weight: bold; }
+body { background:#111; color:#fff; font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; margin: 0; }
+#topBar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom: 2px solid #2e7d32; padding-bottom: 15px; }
+#addBtn { background:#2e7d32; padding:12px 20px; border:none; color:white; border-radius:8px; cursor:pointer; font-weight: bold; font-size: 14px; }
+#addBtn:hover { background:#3e8d42; }
 
 #lista {
   display: flex;
@@ -144,31 +148,40 @@ body { background:#111; color:#fff; font-family:Arial; padding: 20px; margin: 0;
   gap: 20px;
 }
 
-.card { background:#1b1b1b; padding:15px; border-radius:10px; border:1px solid #333; width:320px; box-sizing: border-box; }
+.card { background:#1b1b1b; padding:20px; border-radius:12px; border:1px solid #333; width:340px; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
 
-input, select { width:100%; margin-bottom:8px; padding:6px; background:#222; border:1px solid #555; color:white; box-sizing: border-box;}
-button { width:100%; padding:8px; border:none; color:white; border-radius:6px; margin-top:6px; cursor:pointer; font-weight: bold; }
-.saveBtn { background:#007bff; }
-.deleteBtn { background:#dc3545; }
-h3 { margin-top: 0; color: #aaa; text-align: center; border-bottom: 1px solid #333; padding-bottom: 10px; }
+label { font-size: 11px; color: #aaa; display: block; margin-top: 8px; margin-bottom: 3px; font-weight: bold; text-transform: uppercase; }
+input { width:100%; margin-bottom:5px; padding:8px; background:#111; border:1px solid #444; color:white; border-radius:6px; box-sizing: border-box; font-size: 13px;}
+input:focus { border-color: #2e7d32; outline: none; }
+
+button { width:100%; padding:10px; border:none; color:white; border-radius:8px; margin-top:10px; cursor:pointer; font-weight: bold; font-size: 13px; }
+.saveBtn { background:#1976d2; }
+.saveBtn:hover { background:#2a82d8; }
+.deleteBtn { background:#b71c1c; }
+.deleteBtn:hover { background:#d32f2f; }
+
+h1 { margin: 0; font-size: 22px; color: #fff; }
+h3 { margin-top: 0; color: #ffd700; text-align: center; border-bottom: 1px solid #333; padding-bottom: 10px; font-size: 16px; }
 
 .dias-check { 
-  background: #222; 
+  background: #111; 
   padding: 10px; 
-  border-radius: 5px; 
-  margin-bottom: 10px; 
+  border-radius: 6px; 
+  margin-bottom: 8px; 
   border: 1px solid #444;
   display: grid;
   grid-template-columns: 1fr 1fr;
+  gap: 5px;
 }
-.dias-check input { width: auto; margin-right: 5px; cursor: pointer; }
+.dias-check label { color: #ddd; font-weight: normal; text-transform: none; margin: 0; display: flex; align-items: center; cursor: pointer; }
+.dias-check input { width: auto; margin-right: 6px; margin-bottom: 0; cursor: pointer; }
 </style>
 </head>
 <body>
 <div id="topBar">
-  <h1>Admin Individual</h1>
-  <button id="addBtn" onclick="adicionarBloco()">+ Novo Bloco Individual</button>
+  <h1>⚙️ Painel Admin – Sequência de Blocos</h1>
+  <button id="addBtn" onclick="adicionarBloco()">+ Adicionar Bloco (Abertura/Repórter/Final)</button>
 </div>
-<div id="lista">Carregando seus blocos…</div>
+<div id="lista">Carregando seus blocos programados...</div>
 </body>
 </html>
