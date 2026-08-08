@@ -36,7 +36,6 @@
           console.log("Admin conectado à pasta: " + user.uid);
         } else {
           alert("Acesso negado. Faça login no Player primeiro.");
-          // Se o arquivo do seu player não se chamar cara.html, mude o nome abaixo:
           window.location.href = "cara.html"; 
         }
       });
@@ -76,8 +75,12 @@
 
         <label>Link M3U:</label>
         <input id="m3u-${i}" value="${b.m3u || ''}">
+        
         <label>Link YouTube:</label>
         <input id="yt-${i}" value="${b.yt || ''}">
+
+        <label style="color: #4fc3f7;">Link Firebase (Arquivos/Nuvem):</label>
+        <input id="fb-${i}" value="${b.fb || ''}" placeholder="Cole o link do Firebase aqui">
         
         <label>Dias da semana:</label>
         ${diasHTML}
@@ -103,15 +106,16 @@
 
     const caminho = ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${i}`);
     set(caminho, {
-      nome: document.getElementById("nome-" + i).value, // SALVANDO O NOME
+      nome: document.getElementById("nome-" + i).value,
       m3u: document.getElementById("m3u-" + i).value,
       yt: document.getElementById("yt-" + i).value,
-      dias: diasMarcados, // Salvando como array
+      fb: document.getElementById("fb-" + i).value, // SALVANDO O LINK DO FIREBASE
+      dias: diasMarcados,
       inicio: document.getElementById("inicio-" + i).value,
       fim: document.getElementById("fim-" + i).value,
       timestamp: Date.now()
     });
-    alert("✔ Salvo com múltiplos dias, segundos e nome!");
+    alert("✔ Salvo com sucesso!");
   };
 
   window.apagar = function(i) {
@@ -126,23 +130,21 @@
       const novoID = chaves.length > 0 ? Math.max(...chaves) + 1 : 0;
       
       set(ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${novoID}`), {
-        nome: "", m3u: "", yt: "", dias: [], inicio: "00:00:00", fim: "00:00:00", timestamp: Date.now()
+        nome: "", m3u: "", yt: "", fb: "", dias: [], inicio: "00:00:00", fim: "00:00:00", timestamp: Date.now()
       });
     }, { onlyOnce: true });
   };
 </script>
 
 <style>
-/* CSS ORIGINAL PRESERVADO (Com layout lado a lado) */
 body { background:#111; color:#fff; font-family:Arial; padding: 20px; margin: 0; }
 #topBar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
 #addBtn { background:#28a745; padding:10px 18px; border:none; color:white; border-radius:8px; cursor:pointer; font-weight: bold; }
 
-/* Layout lado a lado com flexbox */
 #lista {
   display: flex;
-  flex-wrap: wrap; /* Faz os blocos quebrarem a linha se não couber na tela */
-  gap: 20px; /* Espaçamento entre os blocos */
+  flex-wrap: wrap;
+  gap: 20px;
 }
 
 .card { background:#1b1b1b; padding:15px; border-radius:10px; border:1px solid #333; width:320px; box-sizing: border-box; }
@@ -153,7 +155,6 @@ button { width:100%; padding:8px; border:none; color:white; border-radius:6px; m
 .deleteBtn { background:#dc3545; }
 h3 { margin-top: 0; color: #aaa; text-align: center; border-bottom: 1px solid #333; padding-bottom: 10px; }
 
-/* AJUSTE PARA OS CHECKBOXES */
 .dias-check { 
   background: #222; 
   padding: 10px; 
