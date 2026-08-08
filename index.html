@@ -324,7 +324,7 @@
           const playerRef = ref(db, `usuarios/${user.uid}/player_m3u/0`);
           get(playerRef).then((snapshot) => {
             if (!snapshot.exists()) {
-              set(playerRef, { dia: "segunda", inicio: "12:00", fim: "13:00", m3u: "https://srv4.zcast.com.br/samircalixto/samircalixto/playlist.m3u8", yt: "", timestamp: Date.now() });
+              set(playerRef, { dia: "segunda", inicio: "12:00", fim: "13:00", m3u: "", fb: "", yt: "", timestamp: Date.now() });
             }
           });
         }
@@ -470,11 +470,12 @@
               const blocoAntigo = blocos.find(b => b._firebaseIndex === i);
               const ytMudou = blocoAntigo && (blocoAntigo.ytlink !== (d.yt || ''));
               const m3uMudou = blocoAntigo && (blocoAntigo.m3ulink !== (d.m3u || ''));
-              const estavaRodando = (blocoAntigo && !ytMudou && !m3uMudou) ? blocoAntigo._agendadoRodando : false;
+              const fbMudou = blocoAntigo && (blocoAntigo.fblink !== (d.fb || ''));
+              const estavaRodando = (blocoAntigo && !ytMudou && !m3uMudou && !fbMudou) ? blocoAntigo._agendadoRodando : false;
 
               novosBlocosAgendados.push({
                   tipo: 'youtube', nome: d.nome || '', arquivos: [], progresso: [], tempo: 0, sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: 0,
-                  ytlink: d.yt || '', m3ulink: d.m3u || '', diaSemana: d.dias || d.dia || [], horaInicio: d.inicio || '', horaFim: d.fim || '', removido: false, _agendadoRodando: estavaRodando, _firebaseIndex: i 
+                  ytlink: d.yt || '', m3ulink: d.m3u || '', fblink: d.fb || '', diaSemana: d.dias || d.dia || [], horaInicio: d.inicio || '', horaFim: d.fim || '', removido: false, _agendadoRodando: estavaRodando, _firebaseIndex: i 
               });
           });
           blocos = [...blocosManter, ...novosBlocosAgendados];
@@ -489,12 +490,12 @@
           blocos.forEach((b, i) => {
               renderizarBloco(i, b);
               if (i === idxBloco && b._agendadoRodando) {
-                  const card = document.getElementById(`bloco-${i}`);
-                  if (card) card.classList.add('running');
-              }
-          });
-          atualizarGrade();
-          if (idxBloco >= blocos.length) idxBloco = 0;
+                const card = document.getElementById(`bloco-${i}`);
+                if (card) card.classList.add('running');
+            }
+        });
+        atualizarGrade();
+        if (idxBloco >= blocos.length) idxBloco = 0;
       });
   };
 </script>
@@ -646,59 +647,58 @@
                   </select>
                 </div>
               </div>
+          </div>
+
+          <div style="margin-top:10px; border-top: 1px solid #444; padding-top: 10px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom:5px;">
+              <label style="font-size:10px; color:#4fc3f7; font-weight:bold;">MOSTRAR "A SEGUIR":</label>
+              <label class="switch" style="position:relative; display:inline-block; width:34px; height:20px;">
+                <input type="checkbox" id="toggleAseguir" checked onchange="reiniciarTimerAseguir()" style="opacity:0; width:0; height:0;">
+                <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#b71c1c; transition:.4s; border-radius:20px;"></span>
+              </label>
             </div>
-
-            <div style="margin-top:10px; border-top: 1px solid #444; padding-top: 10px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom:5px;">
-                <label style="font-size:10px; color:#4fc3f7; font-weight:bold;">MOSTRAR "A SEGUIR":</label>
-                <label class="switch" style="position:relative; display:inline-block; width:34px; height:20px;">
-                  <input type="checkbox" id="toggleAseguir" checked onchange="reiniciarTimerAseguir()" style="opacity:0; width:0; height:0;">
-                  <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#b71c1c; transition:.4s; border-radius:20px;"></span>
-                </label>
+            
+            <div style="display:flex; gap: 10px; margin-bottom:5px;">
+              <div style="flex:1;">
+                <label style="font-size:10px; display:block; color:#aaa;">INTERVALO (min):</label>
+                <input type="number" id="intervaloAseguir" value="3" min="1" onchange="reiniciarTimerAseguir()" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:5px; border-radius:5px; box-sizing: border-box;">
               </div>
-              
-              <div style="display:flex; gap: 10px; margin-bottom:5px;">
-                <div style="flex:1;">
-                  <label style="font-size:10px; display:block; color:#aaa;">INTERVALO (min):</label>
-                  <input type="number" id="intervaloAseguir" value="3" min="1" onchange="reiniciarTimerAseguir()" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:5px; border-radius:5px; box-sizing: border-box;">
-                </div>
-                <div style="flex:1;">
-                  <label style="font-size:10px; display:block; color:#aaa;">DURAÇÃO (seg):</label>
-                  <input type="number" id="duracaoAseguir" value="20" min="1" onchange="reiniciarTimerAseguir()" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:5px; border-radius:5px; box-sizing: border-box;">
-                </div>
-              </div>
-
-              <div style="display:flex; gap: 10px;">
-                <div style="flex:1;">
-                  <label style="font-size:10px; display:block; color:#aaa;">COR:</label>
-                  <input type="color" id="corTextoAseguir" value="#ffffff" onchange="atualizarEstiloAseguir()" style="width:100%; height:28px; background:#000; border:1px solid #444; border-radius:5px; cursor:pointer; padding: 2px; box-sizing: border-box;">
-                </div>
-                <div style="flex:1;">
-                  <label style="font-size:10px; display:block; color:#aaa;">FONTE:</label>
-                  <select id="fonteAseguir" onchange="atualizarEstiloAseguir()" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:5px; height:28px; border-radius:5px; box-sizing: border-box;">
-                    <option value="'Segoe UI', Arial, sans-serif">Padrão</option>
-                    <option value="Arial, sans-serif">Arial</option>
-                    <option value="'Courier New', Courier, monospace">Courier New</option>
-                    <option value="'Impact', sans-serif">Impact</option>
-                    <option value="'Times New Roman', Times, serif">Times</option>
-                    <option value="'Comic Sans MS', cursive, sans-serif">Comic</option>
-                    <option value="'Trebuchet MS', sans-serif">Trebuchet</option>
-                  </select>
-                </div>
+              <div style="flex:1;">
+                <label style="font-size:10px; display:block; color:#aaa;">DURAÇÃO (seg):</label>
+                <input type="number" id="duracaoAseguir" value="20" min="1" onchange="reiniciarTimerAseguir()" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:5px; border-radius:5px; box-sizing: border-box;">
               </div>
             </div>
 
+            <div style="display:flex; gap: 10px;">
+              <div style="flex:1;">
+                <label style="font-size:10px; display:block; color:#aaa;">COR:</label>
+                <input type="color" id="corTextoAseguir" value="#ffffff" onchange="atualizarEstiloAseguir()" style="width:100%; height:28px; background:#000; border:1px solid #444; border-radius:5px; cursor:pointer; padding: 2px; box-sizing: border-box;">
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:10px; display:block; color:#aaa;">FONTE:</label>
+                <select id="fonteAseguir" onchange="atualizarEstiloAseguir()" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:5px; height:28px; border-radius:5px; box-sizing: border-box;">
+                  <option value="'Segoe UI', Arial, sans-serif">Padrão</option>
+                  <option value="Arial, sans-serif">Arial</option>
+                  <option value="'Courier New', Courier, monospace">Courier New</option>
+                  <option value="'Impact', sans-serif">Impact</option>
+                  <option value="'Times New Roman', Times, serif">Times</option>
+                  <option value="'Comic Sans MS', cursive, sans-serif">Comic</option>
+                  <option value="'Trebuchet MS', sans-serif">Trebuchet</option>
+                </select>
+              </div>
           </div>
         </div>
-      </div>
-      
-      <div id="blocos" class="grid movel redimensionavel" style="top: 480px; left: 20px; width: 850px; height: 350px;"></div>
-    </div>
 
-    <header id="movel-header" class="movel redimensionavel" style="bottom: 80px; left: 20px; width: 800px; height: 250px;">
-      <h1>📺 Grade de Programação</h1>
-      <div id="grade">Carregando programação do administrador...</div>
-    </header>
+      </div>
+    </div>
+      
+    <div id="blocos" class="grid movel redimensionavel" style="top: 480px; left: 20px; width: 850px; height: 350px;"></div>
+  </div>
+
+  <header id="movel-header" class="movel redimensionavel" style="bottom: 80px; left: 20px; width: 800px; height: 250px;">
+    <h1>📺 Grade de Programação</h1>
+    <div id="grade">Carregando programação do administrador...</div>
+  </header>
   </div>
 
 <script>
@@ -745,7 +745,7 @@ window.aplicarLayout = function(posicoes) {
       if (posicoes[id].left !== undefined) el.style.left = posicoes[id].left;
       if (posicoes[id].right !== undefined) el.style.right = posicoes[id].right;
       if (posicoes[id].bottom !== undefined) el.style.bottom = posicoes[id].bottom;
-      
+       
       if (posicoes[id].width !== undefined) el.style.width = posicoes[id].width;
       if (posicoes[id].height !== undefined) el.style.height = posicoes[id].height;
     }
@@ -782,7 +782,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const inputReinicio = document.getElementById('horarioReinicio');
         if (inputReinicio) inputReinicio.value = horarioSalvo;
     }
-    
+     
     const layoutSalvo = localStorage.getItem('kbs_layout');
     if (layoutSalvo) {
         window.aplicarLayout(JSON.parse(layoutSalvo));
@@ -826,7 +826,7 @@ function atualizarLogos(url) {
 window.reiniciarTimerBanner = function() {
     if (timerBannerAtivo) clearInterval(timerBannerAtivo);
     if (timerOcultarBanner) clearTimeout(timerOcultarBanner);
-    
+     
     let ligado = document.getElementById('toggleLetreiro').checked;
     if (!ligado) {
         document.getElementById('letreiro-kbs-auto').style.display = 'none';
@@ -839,7 +839,7 @@ window.reiniciarTimerBanner = function() {
 window.reiniciarTimerAseguir = function() {
     if (timerAseguirAtivo) clearInterval(timerAseguirAtivo);
     if (timerOcultarAseguir) clearTimeout(timerOcultarAseguir);
-    
+     
     let ligado = document.getElementById('toggleAseguir').checked;
     if (!ligado) {
         document.getElementById('letreiro-aseguir').style.display = 'none';
@@ -867,7 +867,7 @@ function horarioParaSegundos(strHora) {
 
 function obterNomeASeguir() {
     if (!blocos || blocos.length === 0) return "";
-    
+     
     const agora = new Date();
     const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
     const segundosAgora = agora.getHours() * 3600 + agora.getMinutes() * 60 + agora.getSeconds();
@@ -881,11 +881,11 @@ function obterNomeASeguir() {
             } else { 
                 diaMatch = (b.diaSemana === "" || (typeof b.diaSemana === 'string' && b.diaSemana.toLowerCase() === hoje)); 
             }
-            
+             
             if (diaMatch) {
                 const segundosInicio = horarioParaSegundos(b.horaInicio);
                 const diffSegundos = segundosInicio - segundosAgora;
-                
+                 
                 if (diffSegundos >= 0 && diffSegundos <= 600) {
                     const minRestantes = Math.ceil(diffSegundos / 60);
                     let nomeBloco = b.nome ? b.nome : (b.m3ulink ? "Transmissão M3U" : "Transmissão Ao Vivo");
@@ -973,7 +973,7 @@ function gerenciarBannerKBS() {
     document.getElementById('letreiro-texto-arquivo').innerText = "EXIBINDO: " + nomeLimpo;
     const urlLogo = document.getElementById('logoUrl').value;
     atualizarLogos(urlLogo);
-    
+     
     atualizarEstiloLetreiro();
     banner.style.display = 'flex';
 
@@ -997,7 +997,7 @@ function gerenciarAseguir() {
     document.getElementById('letreiro-texto-aseguir').innerText = "A SEGUIR: " + nomeAseguir;
     const urlLogo = document.getElementById('logoUrl').value;
     atualizarLogos(urlLogo);
-    
+     
     atualizarEstiloAseguir();
     banner.style.display = 'flex';
 
@@ -1017,7 +1017,7 @@ window.adicionarBloco = function(tipo){
   let nomeSugerido = prompt("Digite o nome deste bloco para organizar (ex: Filmes Ação, Jaspion, etc):", "");
   if (nomeSugerido === null) return; 
 
-  const bloco = { nome: nomeSugerido, tipo, arquivos: [], progresso: [], tempo: (tipo==='timer'||tipo==='pause'?300:0), sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: (tipo==='movie'?3:0), ytlink:'', m3ulink:'', diaSemana:'', horaInicio:'', horaFim:'', removido:false, _agendadoRodando:false, diasSelecionados: [], horarios: [], lastFileListRef: null };
+  const bloco = { nome: nomeSugerido, tipo, arquivos: [], progresso: [], tempo: (tipo==='timer'||tipo==='pause'?300:0), sessaoRestante: 0, pauseRestante: 0, arquivoAtual: 0, limitePorCiclo: (tipo==='movie'?3:0), ytlink:'', m3ulink:'', fblink:'', diaSemana:'', horaInicio:'', horaFim:'', removido:false, _agendadoRodando:false, diasSelecionados: [], horarios: [], lastFileListRef: null };
   const i = blocos.push(bloco)-1;
   renderizarBloco(i, bloco);
   atualizarGrade();
@@ -1124,7 +1124,7 @@ function verificarAgendados() {
   }
 }
 
-function tocarAtual() {
+async function tocarAtual() {
   if (!anyPlayableBlocks()) return;
   const b = blocos[idxBloco]; 
   if (!b || b.removido) { pularParaProximo(); return; }
@@ -1161,8 +1161,37 @@ function tocarAtual() {
   
   if (b.tipo === 'youtube') { 
       document.getElementById('letreiro-kbs-auto').style.display = 'none';
-      if (b.ytlink) startYouTubeNow(b); 
-      else if (b.m3ulink) startM3UNow(b); 
+      if (b.ytlink) {
+          startYouTubeNow(b);
+      } else if (b.fblink && b.fblink.includes('.m3u')) {
+          // LEITURA INTELIGENTE DO M3U DA NUVEM (FIREBASE)
+          try {
+              const res = await fetch(b.fblink);
+              const texto = await res.text();
+              const linhas = texto.split('\n');
+              let videoRealUrl = "";
+              for (let linha of linhas) {
+                  linha = linha.trim();
+                  if (linha && !linha.startsWith('#')) {
+                      videoRealUrl = linha;
+                      break;
+                  }
+              }
+              if (videoRealUrl) {
+                  video.style.display = 'block';
+                  ytplayer.style.display = 'none';
+                  video.src = videoRealUrl;
+                  video.load();
+                  video.play().catch(() => {});
+              } else {
+                  startM3UNow(b);
+              }
+          } catch(e) {
+              startM3UNow(b);
+          }
+      } else if (b.m3ulink) {
+          startM3UNow(b);
+      }
       return; 
   }
   
@@ -1230,7 +1259,7 @@ window.atualizarInfoTempo = function(i) {
     let start = b.arquivoAtual || 0;
     let sum = 0; let count = 0;
     for(let j=0; j < b.arquivos.length && count < limite; j++) {
-       let idx = (start + j) % b.arquivos.length; sum += (b.arquivos[idx].duration || 0); count++;
+        let idx = (start + j) % b.arquivos.length; sum += (b.arquivos[idx].duration || 0); count++;
     }
     infoText += "<br><span style='color:#ffd700; font-size:11px;'>Tempo p/ rodar os " + count + ": " + fmt(sum) + "</span>";
   } else if (b.tipo === 'timer') {
@@ -1245,7 +1274,6 @@ window.carregarArquivos = async function(i, fileList){
   const validExtensions = ['.mp4', '.webm', '.ogg', '.mkv', '.mov'];
   const files = Array.from(fileList).filter(f => validExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
   
-  // Salva a referência da pasta para poder atualizar sozinha depois
   blocos[i].lastFileListRef = fileList;
 
   blocos[i].arquivos = files.map(f => ({ url: URL.createObjectURL(f), file: f, duration: 0 }));
@@ -1260,7 +1288,6 @@ window.carregarArquivos = async function(i, fileList){
   atualizarInfoTempo(i);
 }
 
-// SISTEMA DE RECARREGAMENTO AUTOMÁTICO DA PASTA DA NUVEM EM SEGUNDO PLANO
 setInterval(async () => {
     if (!sistemaIniciado) return;
 
@@ -1277,7 +1304,7 @@ setInterval(async () => {
                 }
 
                 const novosArquivos = currentFiles.map(f => ({ url: URL.createObjectURL(f), file: f, duration: 0 }));
-                
+                 
                 for (let j = 0; j < novosArquivos.length; j++) {
                     try { novosArquivos[j].duration = await obterDuracao(novosArquivos[j].url); }
                     catch(e) { novosArquivos[j].duration = 0; }
@@ -1406,7 +1433,7 @@ window.carregarProgramacao = function(input){
   const reader = new FileReader(); 
   reader.onload = e => { 
     const data = JSON.parse(e.target.result); 
-    
+     
     if (Array.isArray(data)) {
         blocos = data;
     } else {
@@ -1416,7 +1443,7 @@ window.carregarProgramacao = function(input){
             localStorage.setItem('kbs_layout', JSON.stringify(data.layout));
         }
     }
-    
+     
     blocosEl.innerHTML=""; 
     blocos.forEach((b,i)=>renderizarBloco(i,b)); 
     atualizarGrade(); 
@@ -1529,18 +1556,18 @@ let _tempoFimPausa = 0;
 
 setInterval(() => {
     if (!sistemaIniciado || blocos.length === 0) return;
-    
+     
     const b = blocos[idxBloco];
     if (!b || b.removido) return;
-    
+     
     document.querySelectorAll('.contador-regressivo').forEach(el => el.innerHTML = '');
-    
+     
     const contadorEl = document.getElementById(`countdown-${idxBloco}`);
     if (!contadorEl) return;
-    
+     
     let segundosRestantes = 0;
     let mostrar = false;
-    
+     
     if (b.tipo === 'pause') {
         if (_ultimoBlocoAtivo !== idxBloco) {
             _tempoFimPausa = Date.now() + (b.tempo * 1000);
@@ -1550,17 +1577,17 @@ setInterval(() => {
     } 
     else if (b.tipo === 'movie' && b.arquivos && b.arquivos.length > 0) {
         let restanteAtual = Math.max(0, video.duration - video.currentTime) || 0;
-        
+         
         let sumOutros = 0;
         let limite = b.limitePorCiclo || 3;
         let countAtual = b._count || 0;
         let start = (b.arquivoAtual + 1) % b.arquivos.length;
-        
+         
         for (let j = 0; j < limite - countAtual - 1; j++) {
             let idx = (start + j) % b.arquivos.length;
             if (b.arquivos[idx]) sumOutros += (b.arquivos[idx].duration || 0);
         }
-        
+         
         segundosRestantes = restanteAtual + sumOutros;
         mostrar = true;
     } 
@@ -1572,7 +1599,7 @@ setInterval(() => {
     if (mostrar && segundosRestantes > 0) {
         contadorEl.innerHTML = `⏳ Faltam <span style="color:#ff4d4d; font-weight:900; font-size:12px;">${fmt(segundosRestantes)}</span> para o próximo bloco`;
     }
-    
+     
     _ultimoBlocoAtivo = idxBloco;
 }, 1000);
 
