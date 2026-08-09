@@ -475,6 +475,26 @@
                   linksArr = [d.fb];
               }
 
+              // ORDENAÇÃO RIGOROSA SOLICITADA: GARANTE INTRO NO INÍCIO, ARQUIVOS 01, 02... NO MEIO E FIM NO FINAL.
+              linksArr.sort((a, b) => {
+                  let nomeA = decodeURIComponent(a).toLowerCase();
+                  let nomeB = decodeURIComponent(b).toLowerCase();
+                  
+                  let scoreA = 1; // Meio (arquivos normais / 01)
+                  let scoreB = 1;
+
+                  if (nomeA.includes('intro')) scoreA = 0;
+                  else if (nomeA.includes('fim')) scoreA = 2;
+
+                  if (nomeB.includes('intro')) scoreB = 0;
+                  else if (nomeB.includes('fim')) scoreB = 2;
+
+                  if (scoreA !== scoreB) {
+                      return scoreA - scoreB;
+                  }
+                  return nomeA.localeCompare(nomeB);
+              });
+
               const blocoAntigoLinks = blocoAntigo ? JSON.stringify(blocoAntigo.fbLinksArray || []) : "";
               const blocoNovoLinks = JSON.stringify(linksArr);
               const ytMudou = blocoAntigo && (blocoAntigo.ytlink !== (d.yt || ''));
@@ -1210,14 +1230,20 @@ async function tocarAtual() {
           video.style.display = 'block';
           ytplayer.style.display = 'none';
           
-          if (b.arquivoAtual >= b.arquivos.length) {
+          // GARANTE QUE TODO NOVO BLOCO DA NUVEM INICIA RIGOROSAMENTE NO PRIMEIRO ARQUIVO (INTRO)
+          if (b.arquivoAtual === undefined || b.arquivoAtual < 0 || b.arquivoAtual >= b.arquivos.length) {
               b.arquivoAtual = 0;
           }
           
           const arquivoCorrente = b.arquivos[b.arquivoAtual];
           video.src = arquivoCorrente.url;
           video.load();
-          video.play().catch(() => {});
+          
+          // SINCRONIZAÇÃO FIEL AO SEGUNDO USANDO PRECISE CAN_PLAY / LOADEDMETADATA
+          video.onloadedmetadata = () => {
+              video.currentTime = 0;
+              video.play().catch(() => {});
+          };
           
           video.onended = () => {
               b.arquivoAtual++;
@@ -1225,7 +1251,6 @@ async function tocarAtual() {
                   tocarAtual();
               } else {
                   b.arquivoAtual = 0;
-                  // CORREÇÃO APLICADA AQUI: Quando a sequência da nuvem acaba, o bloco agendado desliga e o player volta de onde estava!
                   b._agendadoRodando = false;
                   if (blocoAnteriorIdx !== -1) {
                       idxBloco = blocoAnteriorIdx; blocoAnteriorIdx = -1;
@@ -1586,9 +1611,9 @@ setInterval(() => {
 setInterval(() => {
     if (!sistemaIniciado || blocos.length === 0) return;
     const b = blocos[idxBloco];
-    if (b && (b.tipo === 'movie' || b.tipo === 'timer') && b.arquivos && b.arquivos.length > 0) {
+    if (b && (b.tipo === 'movie' || b.tipo === 'timer') && b.arquivos && b.arquivos.length > 0) do {
         atualizarInfoTempo(idxBloco);
-    }
+    } while(0);
 }, 60000);
 </script>
 </body>
