@@ -1073,8 +1073,8 @@ function renderizarBloco(i, bloco){
     <h3 id="titulo-bloco-${i}">Bloco ${i+1}${nomeDisplay} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':blocos[i].tipo==='movie'?'Filmes':blocos[i].tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
     <div class="row"><label>Nome:</label><input type="text" placeholder="Ex: Jaspion" value="${bloco.nome || ''}" onchange="definirNomeBloco(${i}, this.value)" style="width:145px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 6px;"></div>
     <div class="row">
-      ${(isTimer||bloco.tipo==='movie') ? `<label>Pasta:</label><input type="file" webkitdirectory directory multiple onchange="carregarArquivos(${i}, this.files)">`:''}
-      ${isTimer ? `
+       ${(isTimer||bloco.tipo==='movie') ? `<label>Pasta:</label><input type="file" webkitdirectory directory multiple onchange="carregarArquivos(${i}, this.files)">`:''}
+       ${isTimer ? `
         <label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempo(${i}, this.value)">
         <div style="margin-top:10px; width:100%; background:#222; padding:8px; border-radius:5px;"><label>Dias da Semana:</label><br><div style="display:grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size:11px;">
             ${['domingo','segunda','terca','quarta','quinta','sexta','sabado'].map(d => `<label style="cursor:pointer;"><input type="checkbox" ${bloco.diasSelecionados && bloco.diasSelecionados.includes(d) ? 'checked' : ''} onchange="toggleDia(${i}, '${d}')"> ${d.charAt(0).toUpperCase() + d.slice(1)}</label>`).join('')}
@@ -1122,9 +1122,11 @@ function verificarAgendados() {
         if (Array.isArray(b.diaSemana)) { diaMatch = b.diaSemana.length === 0 || b.diaSemana.includes(hoje); } 
         else { diaMatch = (b.diaSemana === "" || (typeof b.diaSemana === 'string' && b.diaSemana.toLowerCase() === hoje)); }
         
-        const inicioStr = (b.horaInicio || "00:00:00").substring(0, 5);
-        const fimStr = (b.horaFim || "23:59:59").substring(0, 5);
-        const dentroDoHorario = (b.horaInicio && b.horaFim && horaAtualCurta >= inicioStr && horaAtualCurta < fimStr);
+        const inicioStr = (b.horaInicio || "00:00:00");
+        const fimStr = (b.horaFim || "23:59:59");
+        
+        // Compara com segundos exatos para não falhar na hora de start/fim
+        const dentroDoHorario = (b.horaInicio && b.horaFim && horaAtual >= inicioStr && horaAtual < fimStr);
 
         if (diaMatch && dentroDoHorario) { blocoEncontrado = true; indiceParaRodar = i; break; }
       }
@@ -1141,7 +1143,12 @@ function verificarAgendados() {
           ytTempoSalvo += Math.floor(decorrido);
           ytUltimoPlayTimestamp = 0;
         }
-        blocoAnteriorIdx = idxBloco; blocoAnteriorProgresso = video.currentTime; blocoAnteriorPaused = video.paused;
+        // SALVA EXATAMENTE O BLOCO E O SEGUNDO ANTES DE ENTRAR NO ADMIN
+        if (blocoAnteriorIdx === -1) {
+            blocoAnteriorIdx = idxBloco; 
+            blocoAnteriorProgresso = video.currentTime; 
+            blocoAnteriorPaused = video.paused;
+        }
       }
       blocos.forEach(bl => bl._agendadoRodando = false);
       b._agendadoRodando = true; idxBloco = indiceParaRodar; sistemaIniciado = true; tocarAtual();
@@ -1151,13 +1158,18 @@ function verificarAgendados() {
     if (agendadoQueEstavaRodando) {
       agendadoQueEstavaRodando._agendadoRodando = false;
       if (blocoAnteriorIdx !== -1) {
-        idxBloco = blocoAnteriorIdx; blocoAnteriorIdx = -1; 
+        idxBloco = blocoAnteriorIdx; 
+        const progressoSalvo = blocoAnteriorProgresso;
+        const estavaPausado = blocoAnteriorPaused;
+        blocoAnteriorIdx = -1; 
+        
         video.style.opacity = '0'; video.style.backgroundColor = '#000000';
         tocarAtual();
+        
         if (blocos[idxBloco] && blocos[idxBloco].tipo !== 'youtube') {
           if (blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
-            video.currentTime = blocoAnteriorProgresso;
-            if (blocoAnteriorPaused) video.pause();
+            video.currentTime = progressoSalvo;
+            if (estavaPausado) video.pause();
           }
         }
       } else { window.proximoBloco(); }
@@ -1172,7 +1184,10 @@ async function tocarAtual() {
 
   const agora = new Date();
   const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
-  const horaAgora = agora.toTimeString().split(' ')[0];
+  const h = String(agora.getHours()).padStart(2, '0');
+  const m = String(agora.getMinutes()).padStart(2, '0');
+  const s = String(agora.getSeconds()).padStart(2, '0');
+  const horaAgora = `${h}:${m}:${s}`;
 
   if (b.tipo === 'timer') {
     const diaMatch = (!b.diasSelecionados || b.diasSelecionados.length === 0 || b.diasSelecionados.includes(hoje));
@@ -1225,16 +1240,21 @@ async function tocarAtual() {
                   tocarAtual();
               } else {
                   b.arquivoAtual = 0;
-                  // CORREÇÃO APLICADA AQUI: Quando a sequência da nuvem acaba, o bloco agendado desliga e o player volta de onde estava!
                   b._agendadoRodando = false;
+                  
                   if (blocoAnteriorIdx !== -1) {
-                      idxBloco = blocoAnteriorIdx; blocoAnteriorIdx = -1;
+                      idxBloco = blocoAnteriorIdx; 
+                      const progressoSalvo = blocoAnteriorProgresso;
+                      const estavaPausado = blocoAnteriorPaused;
+                      blocoAnteriorIdx = -1;
+                      
                       video.style.opacity = '0'; video.style.backgroundColor = '#000000';
                       tocarAtual();
+                      
                       if (blocos[idxBloco] && blocos[idxBloco].tipo !== 'youtube') {
                           if (blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
-                              video.currentTime = blocoAnteriorProgresso;
-                              if (blocoAnteriorPaused) video.pause();
+                              video.currentTime = progressoSalvo;
+                              if (estavaPausado) video.pause();
                           }
                       }
                   } else {
