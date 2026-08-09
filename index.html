@@ -475,26 +475,6 @@
                   linksArr = [d.fb];
               }
 
-              // ORDENAÇÃO RIGOROSA E CORRETA: INTRO PRIMEIRO, MEIO (01, 02...), FIM POR ÚLTIMO
-              linksArr.sort((a, b) => {
-                  let nomeA = decodeURIComponent(a).toLowerCase();
-                  let nomeB = decodeURIComponent(b).toLowerCase();
-                  
-                  let scoreA = 1; 
-                  let scoreB = 1;
-
-                  if (nomeA.includes('intro')) scoreA = 0;
-                  else if (nomeA.includes('fim')) scoreA = 2;
-
-                  if (nomeB.includes('intro')) scoreB = 0;
-                  else if (nomeB.includes('fim')) scoreB = 2;
-
-                  if (scoreA !== scoreB) {
-                      return scoreA - scoreB;
-                  }
-                  return nomeA.localeCompare(nomeB);
-              });
-
               const blocoAntigoLinks = blocoAntigo ? JSON.stringify(blocoAntigo.fbLinksArray || []) : "";
               const blocoNovoLinks = JSON.stringify(linksArr);
               const ytMudou = blocoAntigo && (blocoAntigo.ytlink !== (d.yt || ''));
@@ -1093,8 +1073,8 @@ function renderizarBloco(i, bloco){
     <h3 id="titulo-bloco-${i}">Bloco ${i+1}${nomeDisplay} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':blocos[i].tipo==='movie'?'Filmes':blocos[i].tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
     <div class="row"><label>Nome:</label><input type="text" placeholder="Ex: Jaspion" value="${bloco.nome || ''}" onchange="definirNomeBloco(${i}, this.value)" style="width:145px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 6px;"></div>
     <div class="row">
-       ${(isTimer||bloco.tipo==='movie') ? `<label>Pasta:</label><input type="file" webkitdirectory directory multiple onchange="carregarArquivos(${i}, this.files)">`:''}
-       ${isTimer ? `
+      ${(isTimer||bloco.tipo==='movie') ? `<label>Pasta:</label><input type="file" webkitdirectory directory multiple onchange="carregarArquivos(${i}, this.files)">`:''}
+      ${isTimer ? `
         <label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempo(${i}, this.value)">
         <div style="margin-top:10px; width:100%; background:#222; padding:8px; border-radius:5px;"><label>Dias da Semana:</label><br><div style="display:grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size:11px;">
             ${['domingo','segunda','terca','quarta','quinta','sexta','sabado'].map(d => `<label style="cursor:pointer;"><input type="checkbox" ${bloco.diasSelecionados && bloco.diasSelecionados.includes(d) ? 'checked' : ''} onchange="toggleDia(${i}, '${d}')"> ${d.charAt(0).toUpperCase() + d.slice(1)}</label>`).join('')}
@@ -1161,13 +1141,7 @@ function verificarAgendados() {
           ytTempoSalvo += Math.floor(decorrido);
           ytUltimoPlayTimestamp = 0;
         }
-        
-        // SALVA EXATAMENTE O BLOCO E O SEGUNDO EM QUE ESTAVA ANTES DE ENTRAR NA NUVEM
-        if (blocos[idxBloco].tipo !== 'youtube' && blocoAnteriorIdx === -1) {
-          blocoAnteriorIdx = idxBloco; 
-          blocoAnteriorProgresso = video.currentTime; 
-          blocoAnteriorPaused = video.paused;
-        }
+        blocoAnteriorIdx = idxBloco; blocoAnteriorProgresso = video.currentTime; blocoAnteriorPaused = video.paused;
       }
       blocos.forEach(bl => bl._agendadoRodando = false);
       b._agendadoRodando = true; idxBloco = indiceParaRodar; sistemaIniciado = true; tocarAtual();
@@ -1177,17 +1151,13 @@ function verificarAgendados() {
     if (agendadoQueEstavaRodando) {
       agendadoQueEstavaRodando._agendadoRodando = false;
       if (blocoAnteriorIdx !== -1) {
-        idxBloco = blocoAnteriorIdx; 
-        const progressoSalvo = blocoAnteriorProgresso;
-        const estavaPausado = blocoAnteriorPaused;
-        blocoAnteriorIdx = -1; 
-        
+        idxBloco = blocoAnteriorIdx; blocoAnteriorIdx = -1; 
+        video.style.opacity = '0'; video.style.backgroundColor = '#000000';
         tocarAtual();
-        
         if (blocos[idxBloco] && blocos[idxBloco].tipo !== 'youtube') {
           if (blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
-            video.currentTime = progressoSalvo;
-            if (estavaPausado) video.pause();
+            video.currentTime = blocoAnteriorProgresso;
+            if (blocoAnteriorPaused) video.pause();
           }
         }
       } else { window.proximoBloco(); }
@@ -1240,19 +1210,14 @@ async function tocarAtual() {
           video.style.display = 'block';
           ytplayer.style.display = 'none';
           
-          if (b.arquivoAtual === undefined || b.arquivoAtual < 0 || b.arquivoAtual >= b.arquivos.length) {
+          if (b.arquivoAtual >= b.arquivos.length) {
               b.arquivoAtual = 0;
           }
           
           const arquivoCorrente = b.arquivos[b.arquivoAtual];
           video.src = arquivoCorrente.url;
           video.load();
-          
-          // FORÇA O VÍDEO DA NUVEM A COMEÇAR EXATAMENTE DO ZERO
-          video.onloadedmetadata = () => {
-              if (video.currentTime > 0.5) video.currentTime = 0;
-              video.play().catch(() => {});
-          };
+          video.play().catch(() => {});
           
           video.onended = () => {
               b.arquivoAtual++;
@@ -1260,20 +1225,16 @@ async function tocarAtual() {
                   tocarAtual();
               } else {
                   b.arquivoAtual = 0;
+                  // CORREÇÃO APLICADA AQUI: Quando a sequência da nuvem acaba, o bloco agendado desliga e o player volta de onde estava!
                   b._agendadoRodando = false;
-                  
                   if (blocoAnteriorIdx !== -1) {
-                      idxBloco = blocoAnteriorIdx; 
-                      const progressoSalvo = blocoAnteriorProgresso;
-                      const estavaPausado = blocoAnteriorPaused;
-                      blocoAnteriorIdx = -1;
-                      
+                      idxBloco = blocoAnteriorIdx; blocoAnteriorIdx = -1;
+                      video.style.opacity = '0'; video.style.backgroundColor = '#000000';
                       tocarAtual();
-                      
                       if (blocos[idxBloco] && blocos[idxBloco].tipo !== 'youtube') {
                           if (blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
-                              video.currentTime = progressoSalvo;
-                              if (estavaPausado) video.pause();
+                              video.currentTime = blocoAnteriorProgresso;
+                              if (blocoAnteriorPaused) video.pause();
                           }
                       }
                   } else {
