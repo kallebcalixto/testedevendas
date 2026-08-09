@@ -509,7 +509,7 @@
                   tempo: 0, 
                   sessaoRestante: 0, 
                   pauseRestante: 0, 
-                  arquivoAtual: 0, // SEMPRE COMEÇA DO ZERO QUANDO RECARREGA/ENTRA
+                  arquivoAtual: 0, // GARANTE QUE COMEÇARÁ SEMPRE DO ZERO (INTRO)
                   limitePorCiclo: 0,
                   ytlink: d.yt || '', 
                   m3ulink: d.m3u || '', 
@@ -1153,7 +1153,6 @@ function verificarAgendados() {
           ytTempoSalvo += Math.floor(decorrido);
           ytUltimoPlayTimestamp = 0;
         }
-        // SALVA O VÍDEO LOCAL DA MÁQUINA EXATAMENTE NO SEGUNDO EM QUE PAROU
         if (blocoAnteriorIdx === -1 && blocos[idxBloco].tipo !== 'youtube') {
             blocoAnteriorIdx = idxBloco; 
             blocoAnteriorProgresso = video.currentTime; 
@@ -1161,7 +1160,7 @@ function verificarAgendados() {
         }
       }
       
-      // GARANTE QUE A NUVEM SEMPRE COMEÇARA DO ZERINHOS (INTRO) QUANDO FOR ACIONADA
+      // FORÇA RESET COMPLETO DA NUVEM PARA COMEÇAR SEMPRE DO ZERO (INTRO)
       b.arquivoAtual = 0;
 
       blocos.forEach(bl => bl._agendadoRodando = false);
@@ -1244,6 +1243,12 @@ async function tocarAtual() {
           }
           
           const arquivoCorrente = b.arquivos[b.arquivoAtual];
+          
+          // LIMPEZA DE CACHE DO PLAYER
+          video.pause();
+          video.removeAttribute('src');
+          video.load();
+          
           video.src = arquivoCorrente.url;
           video.load();
           video.play().catch(() => {});
@@ -1286,11 +1291,13 @@ async function tocarAtual() {
   video.style.backgroundColor = '#000000';
 
   const novaUrl = b.arquivos[b.arquivoAtual].url;
-  if (video.src !== novaUrl) { 
-      video.src = novaUrl; 
-  } else {
-      video.load();
-  }
+  
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+
+  video.src = novaUrl; 
+  video.load();
   
   const tempoAlvo = b.progresso[b.arquivoAtual] || 0;
   video.currentTime = tempoAlvo;
@@ -1337,6 +1344,15 @@ window.carregarArquivos = async function(i, fileList){
   const validExtensions = ['.mp4', '.webm', '.ogg', '.mkv', '.mov'];
   const files = Array.from(fileList).filter(f => validExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
   
+  // Limpa URLs antigas da memória para liberar RAM e evitar cache fantasma
+  if (blocos[i] && blocos[i].arquivos) {
+      blocos[i].arquivos.forEach(arq => {
+          if (arq.url && arq.url.startsWith('blob:')) {
+              URL.revokeObjectURL(arq.url);
+          }
+      });
+  }
+
   blocos[i].lastFileListRef = fileList;
   blocos[i].arquivos = files.map(f => ({ url: URL.createObjectURL(f), file: f, duration: 0 }));
   blocos[i].progresso = blocos[i].arquivos.map(()=>0);
@@ -1350,6 +1366,11 @@ window.pularArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b
 window.voltarArquivo = function(i){ const b=blocos[i]; if(b.arquivos.length>0){ b.arquivoAtual=(b.arquivoAtual-1+b.arquivos.length)%b.arquivos.length; atualizarInfoTempo(i); if(idxBloco===i) tocarAtual(); } }
 
 window.removerBloco = function(i){ 
+  if (blocos[i] && blocos[i].arquivos) {
+      blocos[i].arquivos.forEach(arq => {
+          if (arq.url && arq.url.startsWith('blob:')) URL.revokeObjectURL(arq.url);
+      });
+  }
   blocos[i].removido = true; 
   document.getElementById(`bloco-${i}`).remove(); 
 
