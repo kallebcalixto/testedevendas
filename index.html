@@ -475,6 +475,19 @@
                   linksArr = [d.fb];
               }
 
+              // ORDENAÇÃO RIGOROSA: INTRO PRIMEIRO, FIM POR ÚLTIMO
+              linksArr.sort((a, b) => {
+                  let nomeA = decodeURIComponent(a).toLowerCase();
+                  let nomeB = decodeURIComponent(b).toLowerCase();
+                  let scoreA = 1, scoreB = 1;
+                  if (nomeA.includes('intro')) scoreA = 0;
+                  else if (nomeA.includes('fim')) scoreA = 2;
+                  if (nomeB.includes('intro')) scoreB = 0;
+                  else if (nomeB.includes('fim')) scoreB = 2;
+                  if (scoreA !== scoreB) return scoreA - scoreB;
+                  return nomeA.localeCompare(nomeB);
+              });
+
               const blocoAntigoLinks = blocoAntigo ? JSON.stringify(blocoAntigo.fbLinksArray || []) : "";
               const blocoNovoLinks = JSON.stringify(linksArr);
               const ytMudou = blocoAntigo && (blocoAntigo.ytlink !== (d.yt || ''));
@@ -496,7 +509,7 @@
                   tempo: 0, 
                   sessaoRestante: 0, 
                   pauseRestante: 0, 
-                  arquivoAtual: (blocoAntigo && blocoAntigo._firebaseIndex === i) ? blocoAntigo.arquivoAtual : 0, 
+                  arquivoAtual: 0, // SEMPRE COMEÇA DO ZERO QUANDO RECARREGA/ENTRA
                   limitePorCiclo: 0,
                   ytlink: d.yt || '', 
                   m3ulink: d.m3u || '', 
@@ -1102,7 +1115,6 @@ function verificarAgendados() {
   const m = String(agora.getMinutes()).padStart(2, '0');
   const s = String(agora.getSeconds()).padStart(2, '0');
   const horaAtual = `${h}:${m}:${s}`;
-  const horaAtualCurta = `${h}:${m}`;
   let blocoEncontrado = false; let indiceParaRodar = -1;
 
   for (let i = 0; i < blocos.length; i++) {
@@ -1124,8 +1136,6 @@ function verificarAgendados() {
         
         const inicioStr = (b.horaInicio || "00:00:00");
         const fimStr = (b.horaFim || "23:59:59");
-        
-        // Compara com segundos exatos para não falhar na hora de start/fim
         const dentroDoHorario = (b.horaInicio && b.horaFim && horaAtual >= inicioStr && horaAtual < fimStr);
 
         if (diaMatch && dentroDoHorario) { blocoEncontrado = true; indiceParaRodar = i; break; }
@@ -1143,13 +1153,17 @@ function verificarAgendados() {
           ytTempoSalvo += Math.floor(decorrido);
           ytUltimoPlayTimestamp = 0;
         }
-        // SALVA EXATAMENTE O BLOCO E O SEGUNDO ANTES DE ENTRAR NO ADMIN
-        if (blocoAnteriorIdx === -1) {
+        // SALVA O VÍDEO LOCAL DA MÁQUINA EXATAMENTE NO SEGUNDO EM QUE PAROU
+        if (blocoAnteriorIdx === -1 && blocos[idxBloco].tipo !== 'youtube') {
             blocoAnteriorIdx = idxBloco; 
             blocoAnteriorProgresso = video.currentTime; 
             blocoAnteriorPaused = video.paused;
         }
       }
+      
+      // GARANTE QUE A NUVEM SEMPRE COMEÇARA DO ZERINHOS (INTRO) QUANDO FOR ACIONADA
+      b.arquivoAtual = 0;
+
       blocos.forEach(bl => bl._agendadoRodando = false);
       b._agendadoRodando = true; idxBloco = indiceParaRodar; sistemaIniciado = true; tocarAtual();
     }
