@@ -495,11 +495,20 @@
               const linksMudaram = blocoAntigoLinks !== blocoNovoLinks;
               const estavaRodando = (blocoAntigo && !ytMudou && !m3uMudou && !linksMudaram) ? blocoAntigo._agendadoRodando : false;
 
-              let listaArquivosFirebase = linksArr.map((linkUrl, indexUrl) => ({
-                  url: linkUrl, 
-                  file: { name: (d.nome || "video_nuvem") + "_" + (indexUrl + 1) + ".mp4" }, 
-                  duration: 0 
-              }));
+              // ADICIONA ANTI-CACHE AUTOMÁTICO (?v=TIMESTAMP) EM CADA LINK DA NUVEM
+              let timestampCache = Date.now();
+              let listaArquivosFirebase = linksArr.map((linkUrl, indexUrl) => {
+                  let urlComAntiCache = linkUrl;
+                  if (linkUrl && !linkUrl.startsWith('blob:')) {
+                      const separador = linkUrl.includes('?') ? '&' : '?';
+                      urlComAntiCache = `${linkUrl}${separador}v_kbs=${timestampCache}_${indexUrl}`;
+                  }
+                  return {
+                      url: urlComAntiCache, 
+                      file: { name: (d.nome || "video_nuvem") + "_" + (indexUrl + 1) + ".mp4" }, 
+                      duration: 0 
+                  };
+              });
 
               novosBlocosAgendados.push({
                   tipo: 'youtube', 
@@ -509,7 +518,7 @@
                   tempo: 0, 
                   sessaoRestante: 0, 
                   pauseRestante: 0, 
-                  arquivoAtual: 0, // GARANTE QUE COMEÇARÁ SEMPRE DO ZERO (INTRO)
+                  arquivoAtual: 0, 
                   limitePorCiclo: 0,
                   ytlink: d.yt || '', 
                   m3ulink: d.m3u || '', 
@@ -1160,7 +1169,6 @@ function verificarAgendados() {
         }
       }
       
-      // FORÇA RESET COMPLETO DA NUVEM PARA COMEÇAR SEMPRE DO ZERO (INTRO)
       b.arquivoAtual = 0;
 
       blocos.forEach(bl => bl._agendadoRodando = false);
@@ -1244,7 +1252,6 @@ async function tocarAtual() {
           
           const arquivoCorrente = b.arquivos[b.arquivoAtual];
           
-          // LIMPEZA DE CACHE DO PLAYER
           video.pause();
           video.removeAttribute('src');
           video.load();
@@ -1344,7 +1351,6 @@ window.carregarArquivos = async function(i, fileList){
   const validExtensions = ['.mp4', '.webm', '.ogg', '.mkv', '.mov'];
   const files = Array.from(fileList).filter(f => validExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
   
-  // Limpa URLs antigas da memória para liberar RAM e evitar cache fantasma
   if (blocos[i] && blocos[i].arquivos) {
       blocos[i].arquivos.forEach(arq => {
           if (arq.url && arq.url.startsWith('blob:')) {
