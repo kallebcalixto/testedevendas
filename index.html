@@ -475,12 +475,12 @@
                   linksArr = [d.fb];
               }
 
-              // ORDENAÇÃO RIGOROSA SOLICITADA: GARANTE INTRO NO INÍCIO, ARQUIVOS 01, 02... NO MEIO E FIM NO FINAL.
+              // ORDENAÇÃO RIGOROSA E CORRETA: INTRO PRIMEIRO, MEIO (01, 02...), FIM POR ÚLTIMO
               linksArr.sort((a, b) => {
                   let nomeA = decodeURIComponent(a).toLowerCase();
                   let nomeB = decodeURIComponent(b).toLowerCase();
                   
-                  let scoreA = 1; // Meio (arquivos normais / 01)
+                  let scoreA = 1; 
                   let scoreB = 1;
 
                   if (nomeA.includes('intro')) scoreA = 0;
@@ -1161,7 +1161,13 @@ function verificarAgendados() {
           ytTempoSalvo += Math.floor(decorrido);
           ytUltimoPlayTimestamp = 0;
         }
-        blocoAnteriorIdx = idxBloco; blocoAnteriorProgresso = video.currentTime; blocoAnteriorPaused = video.paused;
+        
+        // SALVA EXATAMENTE O BLOCO E O SEGUNDO EM QUE ESTAVA ANTES DE ENTRAR NA NUVEM
+        if (blocos[idxBloco].tipo !== 'youtube') {
+          blocoAnteriorIdx = idxBloco; 
+          blocoAnteriorProgresso = video.currentTime; 
+          blocoAnteriorPaused = video.paused;
+        }
       }
       blocos.forEach(bl => bl._agendadoRodando = false);
       b._agendadoRodando = true; idxBloco = indiceParaRodar; sistemaIniciado = true; tocarAtual();
@@ -1171,13 +1177,18 @@ function verificarAgendados() {
     if (agendadoQueEstavaRodando) {
       agendadoQueEstavaRodando._agendadoRodando = false;
       if (blocoAnteriorIdx !== -1) {
-        idxBloco = blocoAnteriorIdx; blocoAnteriorIdx = -1; 
+        idxBloco = blocoAnteriorIdx; 
+        const progressoSalvo = blocoAnteriorProgresso;
+        const estavaPausado = blocoAnteriorPaused;
+        blocoAnteriorIdx = -1; 
+        
         video.style.opacity = '0'; video.style.backgroundColor = '#000000';
         tocarAtual();
+        
         if (blocos[idxBloco] && blocos[idxBloco].tipo !== 'youtube') {
           if (blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
-            video.currentTime = blocoAnteriorProgresso;
-            if (blocoAnteriorPaused) video.pause();
+            video.currentTime = progressoSalvo;
+            if (estavaPausado) video.pause();
           }
         }
       } else { window.proximoBloco(); }
@@ -1230,7 +1241,6 @@ async function tocarAtual() {
           video.style.display = 'block';
           ytplayer.style.display = 'none';
           
-          // GARANTE QUE TODO NOVO BLOCO DA NUVEM INICIA RIGOROSAMENTE NO PRIMEIRO ARQUIVO (INTRO)
           if (b.arquivoAtual === undefined || b.arquivoAtual < 0 || b.arquivoAtual >= b.arquivos.length) {
               b.arquivoAtual = 0;
           }
@@ -1239,9 +1249,9 @@ async function tocarAtual() {
           video.src = arquivoCorrente.url;
           video.load();
           
-          // SINCRONIZAÇÃO FIEL AO SEGUNDO USANDO PRECISE CAN_PLAY / LOADEDMETADATA
+          // PRECISÃO EXATA AO SEGUNDO (GARANTE QUE COMEÇA DO ZERO E TOICA ATÉ O FIM REAL DO VÍDEO)
           video.onloadedmetadata = () => {
-              video.currentTime = 0;
+              if (video.currentTime > 0.5) video.currentTime = 0;
               video.play().catch(() => {});
           };
           
@@ -1252,14 +1262,20 @@ async function tocarAtual() {
               } else {
                   b.arquivoAtual = 0;
                   b._agendadoRodando = false;
+                  
                   if (blocoAnteriorIdx !== -1) {
-                      idxBloco = blocoAnteriorIdx; blocoAnteriorIdx = -1;
+                      idxBloco = blocoAnteriorIdx; 
+                      const progressoSalvo = blocoAnteriorProgresso;
+                      const estavaPausado = blocoAnteriorPaused;
+                      blocoAnteriorIdx = -1;
+                      
                       video.style.opacity = '0'; video.style.backgroundColor = '#000000';
                       tocarAtual();
+                      
                       if (blocos[idxBloco] && blocos[idxBloco].tipo !== 'youtube') {
                           if (blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
-                              video.currentTime = blocoAnteriorProgresso;
-                              if (blocoAnteriorPaused) video.pause();
+                              video.currentTime = progressoSalvo;
+                              if (estavaPausado) video.pause();
                           }
                       }
                   } else {
@@ -1611,9 +1627,9 @@ setInterval(() => {
 setInterval(() => {
     if (!sistemaIniciado || blocos.length === 0) return;
     const b = blocos[idxBloco];
-    if (b && (b.tipo === 'movie' || b.tipo === 'timer') && b.arquivos && b.arquivos.length > 0) do {
+    if (b && (b.tipo === 'movie' || b.tipo === 'timer') && b.arquivos && b.arquivos.length > 0) {
         atualizarInfoTempo(idxBloco);
-    } while(0);
+    }
 }, 60000);
 </script>
 </body>
