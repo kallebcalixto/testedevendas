@@ -12,7 +12,7 @@
     --gold: #ffd700;
   }
   body {
-    background: transparent !important;
+    background:#000;
     color:#eee;
     font-family: 'Segoe UI', Arial, sans-serif;
     margin:0;
@@ -275,9 +275,6 @@
   }
   .video-overlay-dinamico {
     width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none;
-  }
-  .iframe-overlay-dinamico {
-    width: 100%; height: 100%; border: none; background: transparent !important; pointer-events: auto; display: none;
   }
 
   @keyframes piscarVermelho {
@@ -624,7 +621,6 @@
           </div>
 
           <div id="novo-banner-independente" class="movel">
-            <iframe id="iframe-novo-banner-independente" class="iframe-overlay-dinamico"></iframe>
             <img id="img-novo-banner-independente" class="conteudo-overlay-dinamico" src="">
             <video id="vid-novo-banner-independente" class="video-overlay-dinamico" autoplay muted loop playsinline></video>
           </div>
@@ -758,9 +754,9 @@
           </div>
 
           <div style="margin-top:15px; background:#181818; padding:15px; border-radius:8px; border:1px solid #444; width: 100%; box-sizing: border-box;">
-            <label style="font-size:11px; color:#00e676; display:block; margin-bottom:8px; font-weight:bold;">OVERLAYS HTML / BANNERS COM HORÁRIO:</label>
+            <label style="font-size:11px; color:#00e676; display:block; margin-bottom:8px; font-weight:bold;">OVERLAYS / BANNERS COM HORÁRIO:</label>
             <div id="novos-banners-container" style="display:flex; flex-direction:column; gap:10px; margin-bottom:10px;"></div>
-            <button type="button" onclick="adicionarNovoBannerItem()" style="background:#00e676; color:#000; font-size:11px; font-weight:bold; padding:6px; width:100%;">+ Adicionar Overlay</button>
+            <button type="button" onclick="adicionarNovoBannerItem()" style="background:#00e676; color:#000; font-size:11px; font-weight:bold; padding:6px; width:100%;">+ Adicionar Overlay / Banner</button>
           </div>
 
         </div>
@@ -863,7 +859,7 @@ window.adicionarNovoBannerItem = function(dadosBanner = null) {
 
     div.innerHTML = `
       <div style="display:flex; gap:5px; margin-bottom:5px;">
-        <input type="text" class="nb-url" placeholder="file:///C:/.../index.html ou link de site/imagem/vídeo" value="${dadosBanner ? (dadosBanner.url || '') : ''}" style="flex:1; background:#000; color:#fff; border:1px solid #444; padding:5px; font-size:11px;" oninput="avaliarNovosBanners()">
+        <input type="text" class="nb-url" placeholder="Link do Overlay / Imagem / GIF / Vídeo (.png, .gif, .webm)" value="${dadosBanner ? (dadosBanner.url || '') : ''}" style="flex:1; background:#000; color:#fff; border:1px solid #444; padding:5px; font-size:11px;" oninput="avaliarNovosBanners()">
         <button type="button" onclick="this.closest('.novo-banner-bloco').remove(); avaliarNovosBanners();" style="background:#b71c1c; width:28px; padding:4px;">X</button>
       </div>
       <div style="font-size:10px; color:#aaa; margin-bottom:3px;">Horários deste Overlay:</div>
@@ -947,23 +943,12 @@ function avaliarNovosBanners() {
   const elementoVisual = document.getElementById('novo-banner-independente');
   const imgVisual = document.getElementById('img-novo-banner-independente');
   const vidVisual = document.getElementById('vid-novo-banner-independente');
-  const iframeVisual = document.getElementById('iframe-novo-banner-independente');
 
   if (urlParaExibir) {
-    const urlLower = urlParaExibir.toLowerCase();
-    const ehVideo = urlLower.endsWith('.webm') || urlLower.endsWith('.mp4');
-    const ehImagem = urlLower.endsWith('.png') || urlLower.endsWith('.jpg') || urlLower.endsWith('.jpeg') || urlLower.endsWith('.gif');
-
-    if (!ehVideo && !ehImagem) {
-      imgVisual.style.display = 'none'; imgVisual.src = '';
-      vidVisual.style.display = 'none'; vidVisual.src = '';
-      if (iframeVisual.src !== urlParaExibir) {
-        iframeVisual.src = urlParaExibir;
-      }
-      iframeVisual.style.display = 'block';
-    } else if (ehVideo) {
-      imgVisual.style.display = 'none'; imgVisual.src = '';
-      iframeVisual.style.display = 'none'; iframeVisual.src = '';
+    const ehVideo = urlParaExibir.toLowerCase().endsWith('.webm') || urlParaExibir.toLowerCase().endsWith('.mp4');
+    if (ehVideo) {
+      imgVisual.style.display = 'none';
+      imgVisual.src = '';
       if (vidVisual.src !== urlParaExibir) {
         vidVisual.src = urlParaExibir;
         vidVisual.load();
@@ -971,17 +956,18 @@ function avaliarNovosBanners() {
       }
       vidVisual.style.display = 'block';
     } else {
-      vidVisual.style.display = 'none'; vidVisual.src = '';
-      iframeVisual.style.display = 'none'; iframeVisual.src = '';
+      vidVisual.style.display = 'none';
+      vidVisual.src = '';
       imgVisual.src = urlParaExibir;
       imgVisual.style.display = 'block';
     }
     elementoVisual.style.display = 'flex';
   } else {
     elementoVisual.style.display = 'none';
-    imgVisual.style.display = 'none'; imgVisual.src = '';
-    vidVisual.style.display = 'none'; vidVisual.src = '';
-    iframeVisual.style.display = 'none'; iframeVisual.src = '';
+    imgVisual.style.display = 'none';
+    imgVisual.src = '';
+    vidVisual.style.display = 'none';
+    vidVisual.src = '';
   }
 }
 
@@ -1387,7 +1373,7 @@ function verificarAgendados() {
         const estavaPausado = blocoAnteriorPaused;
         blocoAnteriorIdx = -1; 
         
-        video.style.opacity = '0'; video.style.backgroundColor = 'transparent';
+        video.style.opacity = '0'; video.style.backgroundColor = '#000000';
         tocarAtual();
         
         if (blocos[idxBloco] && blocos[idxBloco].tipo !== 'youtube') {
@@ -1484,7 +1470,7 @@ async function tocarAtual() {
                       const estavaPausado = blocoAnteriorPaused;
                       blocoAnteriorIdx = -1;
                       
-                      video.style.opacity = '0'; video.style.backgroundColor = 'transparent';
+                      video.style.opacity = '0'; video.style.backgroundColor = '#000000';
                       tocarAtual();
                       
                       if (blocos[idxBloco] && blocos[idxBloco].tipo !== 'youtube') {
@@ -1505,7 +1491,7 @@ async function tocarAtual() {
   if (b.arquivos.length === 0) { pularParaProximo(); return; }
 
   video.style.opacity = '0';
-  video.style.backgroundColor = 'transparent';
+  video.style.backgroundColor = '#000000';
 
   const novaUrl = b.arquivos[b.arquivoAtual].url;
   
@@ -1885,7 +1871,7 @@ setInterval(() => {
     } 
     else if (b.tipo === 'timer' && b.arquivos && b.arquivos.length > 0) {
         segundosRestantes = Math.max(0, b.tempo - video.currentTime);
-        mostrar>0 && (mostrar = true);
+        mostrar = true;
     }
 
     if (mostrar && segundosRestantes > 0) {
