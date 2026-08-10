@@ -624,9 +624,9 @@
           </div>
 
           <div id="novo-banner-independente" class="movel">
+            <iframe id="iframe-novo-banner-independente" class="iframe-overlay-dinamico"></iframe>
             <img id="img-novo-banner-independente" class="conteudo-overlay-dinamico" src="">
             <video id="vid-novo-banner-independente" class="video-overlay-dinamico" autoplay muted loop playsinline></video>
-            <iframe id="iframe-novo-banner-independente" class="iframe-overlay-dinamico"></iframe>
           </div>
 
           <video id="player" controls playsinline></video>
@@ -863,7 +863,7 @@ window.adicionarNovoBannerItem = function(dadosBanner = null) {
 
     div.innerHTML = `
       <div style="display:flex; gap:5px; margin-bottom:5px;">
-        <input type="text" class="nb-url" placeholder="file:///C:/.../index.html ou link de imagem/vídeo" value="${dadosBanner ? (dadosBanner.url || '') : ''}" style="flex:1; background:#000; color:#fff; border:1px solid #444; padding:5px; font-size:11px;" oninput="avaliarNovosBanners()">
+        <input type="text" class="nb-url" placeholder="file:///C:/.../index.html ou link de site/imagem/vídeo" value="${dadosBanner ? (dadosBanner.url || '') : ''}" style="flex:1; background:#000; color:#fff; border:1px solid #444; padding:5px; font-size:11px;" oninput="avaliarNovosBanners()">
         <button type="button" onclick="this.closest('.novo-banner-bloco').remove(); avaliarNovosBanners();" style="background:#b71c1c; width:28px; padding:4px;">X</button>
       </div>
       <div style="font-size:10px; color:#aaa; margin-bottom:3px;">Horários deste Overlay:</div>
@@ -951,10 +951,10 @@ function avaliarNovosBanners() {
 
   if (urlParaExibir) {
     const urlLower = urlParaExibir.toLowerCase();
-    const ehHtml = urlLower.endsWith('.html') || urlLower.endsWith('.htm') || urlLower.includes('file:///');
     const ehVideo = urlLower.endsWith('.webm') || urlLower.endsWith('.mp4');
+    const ehImagem = urlLower.endsWith('.png') || urlLower.endsWith('.jpg') || urlLower.endsWith('.jpeg') || urlLower.endsWith('.gif');
 
-    if (ehHtml) {
+    if (!ehVideo && !ehImagem) {
       imgVisual.style.display = 'none'; imgVisual.src = '';
       vidVisual.style.display = 'none'; vidVisual.src = '';
       if (iframeVisual.src !== urlParaExibir) {
@@ -1657,8 +1657,8 @@ window.resizePlayer = function(){ const w=document.getElementById('playerWidth')
 window.salvarProgramacao = function(){ 
   const posicoes = {};
   document.querySelectorAll('.movel').forEach(el => {
-    if(id = el.id) { 
-      posicoes[id] = { 
+    if(el.id) { 
+      posicoes[el.id] = { 
         top: el.style.top, 
         left: el.style.left, 
         right: el.style.right, 
