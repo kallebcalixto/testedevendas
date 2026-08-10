@@ -469,7 +469,6 @@
               const blocoAntigo = blocos.find(b => b._firebaseIndex === i);
               
               let linksArr = [];
-              // COMPATIBILIDADE COM O NOVO SISTEMA DE MÚLTIPLOS LINKS (ARRAY 'storage')
               if (Array.isArray(d.storage)) {
                   linksArr = d.storage.filter(l => l && l.trim() !== "");
               } else if (Array.isArray(d.fbLinks)) {
@@ -647,8 +646,9 @@
             <label style="font-size:11px; color:#ffd700; display:block; margin-bottom:5px; font-weight:bold;">CONFIGURAÇÃO DE BANNERS:</label>
             
             <div style="margin-bottom:10px;">
-              <label style="font-size:10px; display:block; color:#aaa;">LINK DA LOGO (BANNER FIXO):</label>
-              <input type="text" id="logoUrl" oninput="atualizarLogos(this.value)" placeholder="Cole o link da imagem .png aqui" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:8px; border-radius:5px; box-sizing: border-box;">
+              <label style="font-size:10px; display:block; color:#aaa;">BANNERS MÚLTIPLOS COM HORÁRIOS (Link | Início | Fim):</label>
+              <div id="banners-container" style="margin-bottom: 5px;"></div>
+              <button type="button" onclick="adicionarCampoBanner()" style="background:#17a2b8; font-size:11px; padding:4px; width:100%;">+ Adicionar Banner Programado</button>
             </div>
 
             <div style="margin-bottom:10px; border-top: 1px solid #444; padding-top: 10px;">
@@ -819,6 +819,116 @@ window.atualizarEstiloAseguir = function() {
     }
 }
 
+window.adicionarCampoBanner = function(urlVal = "", inicioVal = "", fimVal = "") {
+    const container = document.getElementById('banners-container');
+    if (!container) return;
+
+    const div = document.createElement("div");
+    div.className = "banner-item";
+    div.style.display = "flex";
+    div.style.gap = "4px";
+    div.style.marginBottom = "5px";
+    div.style.alignItems = "center";
+
+    const inputUrl = document.createElement("input");
+    inputUrl.type = "text";
+    inputUrl.className = "banner-url-input";
+    inputUrl.value = urlVal;
+    inputUrl.placeholder = "Link imagem .png";
+    inputUrl.style.flex = "2";
+    inputUrl.style.background = "#000";
+    inputUrl.style.color = "#fff";
+    inputUrl.style.border = "1px solid #444";
+    inputUrl.style.padding = "5px";
+    inputUrl.style.fontSize = "11px";
+    inputUrl.oninput = atualizarBannersAtivos;
+
+    const inputInicio = document.createElement("input");
+    inputInicio.type = "time";
+    inputInicio.step = "1";
+    inputInicio.className = "banner-inicio-input";
+    inputInicio.value = inicioVal;
+    inputInicio.style.width = "75px";
+    inputInicio.style.background = "#000";
+    inputInicio.style.color = "#fff";
+    inputInicio.style.border = "1px solid #444";
+    inputInicio.style.padding = "5px";
+    inputInicio.style.fontSize = "11px";
+    inputInicio.onchange = atualizarBannersAtivos;
+
+    const inputFim = document.createElement("input");
+    inputFim.type = "time";
+    inputFim.step = "1";
+    inputFim.className = "banner-fim-input";
+    inputFim.value = fimVal;
+    inputFim.style.width = "75px";
+    inputFim.style.background = "#000";
+    inputFim.style.color = "#fff";
+    inputFim.style.border = "1px solid #444";
+    inputFim.style.padding = "5px";
+    inputFim.style.fontSize = "11px";
+    inputFim.onchange = atualizarBannersAtivos;
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.textContent = "X";
+    removeBtn.style.width = "28px";
+    removeBtn.style.background = "#b71c1c";
+    removeBtn.style.margin = "0";
+    removeBtn.style.padding = "4px";
+    removeBtn.onclick = function() {
+      div.remove();
+      atualizarBannersAtivos();
+    };
+
+    div.appendChild(inputUrl);
+    div.appendChild(inputInicio);
+    div.appendChild(inputFim);
+    div.appendChild(removeBtn);
+    container.appendChild(div);
+}
+
+function atualizarBannersAtivos() {
+  const urlItems = document.querySelectorAll('.banner-item');
+  const urlsValidas = [];
+  const agora = new Date();
+  const h = String(agora.getHours()).padStart(2, '0');
+  const m = String(agora.getMinutes()).padStart(2, '0');
+  const s = String(agora.getSeconds()).padStart(2, '0');
+  const horaAtual = `${h}:${m}:${s}`;
+
+  urlItems.forEach(item => {
+    const url = item.querySelector('.banner-url-input').value.trim();
+    const inicio = item.querySelector('.banner-inicio-input').value;
+    const fim = item.querySelector('.banner-fim-input').value;
+
+    if (url) {
+      if (!inicio || !fim || (horaAtual >= (inicio.length === 5 ? inicio + ":00" : inicio) && horaAtual <= (fim.length === 5 ? fim + ":00" : fim))) {
+        urlsValidas.push(url);
+      }
+    }
+  });
+
+  aplicarBannersGlobais(urlsValidas);
+}
+
+function aplicarBannersGlobais(listaUrls) {
+  const logo1 = document.getElementById('letreiro-logo-img');
+  const logo2 = document.getElementById('img-banner-fixo');
+  const logo3 = document.getElementById('letreiro-logo-aseguir');
+
+  if (listaUrls.length > 0) {
+    const urlEscolhida = listaUrls[0];
+    logo1.src = urlEscolhida; logo1.style.display = 'block';
+    logo2.src = urlEscolhida; logo2.style.display = 'block';
+    logo3.src = urlEscolhida; logo3.style.display = 'block';
+  } else {
+    logo1.style.display = 'none'; logo2.style.display = 'none'; logo3.style.display = 'none';
+  }
+}
+
+setInterval(atualizarBannersAtivos, 2000);
+
 window.addEventListener('DOMContentLoaded', () => {
     const horarioSalvo = localStorage.getItem('kbs_horario_reinicio');
     if (horarioSalvo) {
@@ -829,6 +939,20 @@ window.addEventListener('DOMContentLoaded', () => {
     const layoutSalvo = localStorage.getItem('kbs_layout');
     if (layoutSalvo) {
         window.aplicarLayout(JSON.parse(layoutSalvo));
+    }
+
+    const bannersSalvos = localStorage.getItem('kbs_banners_config');
+    if (bannersSalvos) {
+      try {
+        const arr = JSON.parse(bannersSalvos);
+        if (arr.length > 0) {
+          arr.forEach(b => adicionarCampoBanner(b.url, b.inicio, b.fim));
+        } else {
+          adicionarCampoBanner();
+        }
+      } catch(e) { adicionarCampoBanner(); }
+    } else {
+      adicionarCampoBanner();
     }
 
     reiniciarTimerBanner();
@@ -852,19 +976,6 @@ setInterval(() => {
         if (blocos.length > 0) { window.iniciar(); }
     }
 }, 1000);
-
-function atualizarLogos(url) {
-  const logo1 = document.getElementById('letreiro-logo-img');
-  const logo2 = document.getElementById('img-banner-fixo');
-  const logo3 = document.getElementById('letreiro-logo-aseguir');
-  if(url) {
-    logo1.src = url; logo1.style.display = 'block';
-    logo2.src = url; logo2.style.display = 'block';
-    logo3.src = url; logo3.style.display = 'block';
-  } else {
-    logo1.style.display = 'none'; logo2.style.display = 'none'; logo3.style.display = 'none';
-  }
-}
 
 window.reiniciarTimerBanner = function() {
     if (timerBannerAtivo) clearInterval(timerBannerAtivo);
@@ -1014,9 +1125,8 @@ function gerenciarBannerKBS() {
   if (b && b.arquivos && b.arquivos[b.arquivoAtual]) {
     let nomeLimpo = extrairNomeLimpo(b.arquivos[b.arquivoAtual].file.name);
     document.getElementById('letreiro-texto-arquivo').innerText = "EXIBINDO: " + nomeLimpo;
-    const urlLogo = document.getElementById('logoUrl').value;
-    atualizarLogos(urlLogo);
     
+    atualizarBannersAtivos();
     atualizarEstiloLetreiro();
     banner.style.display = 'flex';
 
@@ -1038,9 +1148,8 @@ function gerenciarAseguir() {
 
   if (nomeAseguir) {
     document.getElementById('letreiro-texto-aseguir').innerText = "A SEGUIR: " + nomeAseguir;
-    const urlLogo = document.getElementById('logoUrl').value;
-    atualizarLogos(urlLogo);
     
+    atualizarBannersAtivos();
     atualizarEstiloAseguir();
     banner.style.display = 'flex';
 
@@ -1487,9 +1596,18 @@ window.salvarProgramacao = function(){
   });
   posicoes['player-size'] = { width: document.getElementById('playerWidth').value, height: document.getElementById('playerHeight').value };
 
+  const bannersConfig = [];
+  document.querySelectorAll('.banner-item').forEach(item => {
+    bannersConfig.push({
+      url: item.querySelector('.banner-url-input').value,
+      inicio: item.querySelector('.banner-inicio-input').value,
+      fim: item.querySelector('.banner-fim-input').value
+    });
+  });
+  localStorage.setItem('kbs_banners_config', JSON.stringify(bannersConfig));
   localStorage.setItem('kbs_layout', JSON.stringify(posicoes));
 
-  const exportData = { blocos: blocos, layout: posicoes };
+  const exportData = { blocos: blocos, layout: posicoes, banners: bannersConfig };
   const blob = new Blob([JSON.stringify(exportData)], {type:"application/json"}); 
   const a = document.createElement('a'); 
   a.href = URL.createObjectURL(blob); 
@@ -1509,6 +1627,11 @@ window.carregarProgramacao = function(input){
         if (data.layout) {
             window.aplicarLayout(data.layout);
             localStorage.setItem('kbs_layout', JSON.stringify(data.layout));
+        }
+        if (data.banners) {
+            document.getElementById('banners-container').innerHTML = "";
+            data.banners.forEach(b => adicionarCampoBanner(b.url, b.inicio, b.fim));
+            localStorage.setItem('kbs_banners_config', JSON.stringify(data.banners));
         }
     }
     
