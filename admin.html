@@ -26,7 +26,6 @@
 
   let blocosRef = null;
 
-  // Garante que o login fique salvo no navegador para todas as abas
   setPersistence(auth, browserLocalPersistence)
     .then(() => {
       onAuthStateChanged(auth, (user) => {
@@ -56,7 +55,6 @@
       const card = document.createElement("div");
       card.className = "card";
       
-      // Criando a lista de dias com Checkboxes
       let diasHTML = '<div class="dias-check">';
       diasSemana.forEach(dia => {
         const checked = diasSelecionados.includes(dia) ? "checked" : "";
@@ -66,14 +64,6 @@
           </label>`;
       });
       diasHTML += '</div>';
-
-      // Tratamento para múltiplos links do Firebase Storage (salvos como texto separado por quebra de linha)
-      let storageLinksTexto = "";
-      if (Array.isArray(b.storage)) {
-        storageLinksTexto = b.storage.join("\n");
-      } else if (typeof b.storage === "string") {
-        storageLinksTexto = b.storage;
-      }
 
       card.innerHTML = `
         <h3>${b.nome ? b.nome : 'Bloco ' + i}</h3>
@@ -87,9 +77,12 @@
         <label>Link YouTube:</label>
         <input id="yt-${i}" value="${b.yt || ''}">
         
-        <label>Links Firebase Storage (Um link por linha):</label>
-        <textarea id="storage-${i}" rows="3" placeholder="Cole os links do Storage aqui, um por linha...">${storageLinksTexto}</textarea>
-        
+        <hr style="border-color:#444; margin: 12px 0;">
+        <label style="color: #4CAF50; font-weight: bold;">Vídeos do Firebase Storage (Ordem de Reprodução):</label>
+        <div id="storage-container-${i}" class="storage-container"></div>
+        <button type="button" class="addStorageBtn" onclick="adicionarCampoStorage(${i})">+ Adicionar Vídeo do Storage</button>
+        <hr style="border-color:#444; margin: 12px 0;">
+
         <label>Dias da semana:</label>
         ${diasHTML}
 
@@ -103,32 +96,70 @@
         <button class="deleteBtn" onclick="apagar(${i})">Apagar</button>
       `;
       lista.appendChild(card);
+
+      // Preenche os campos de storage já salvos
+      const storageArray = Array.isArray(b.storage) ? b.storage : [];
+      storageArray.forEach(link => {
+        adicionarCampoStorage(i, link);
+      });
     });
   }
+
+  // Função para adicionar um novo input de link do storage dinamicamente
+  window.adicionarCampoStorage = function(i, valor = "") {
+    const container = document.getElementById(`storage-container-${i}`);
+    if (!container) return;
+
+    const div = document.createElement("div");
+    div.className = "storage-item";
+    div.style.display = "flex";
+    div.style.gap = "5px";
+    div.style.marginBottom = "5px";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = `storage-input-${i}`;
+    input.value = valor;
+    input.placeholder = "Cole o link do Storage aqui...";
+    input.style.flex = "1";
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.textContent = "X";
+    removeBtn.style.width = "35px";
+    removeBtn.style.background = "#dc3545";
+    removeBtn.style.margin = "0";
+    removeBtn.onclick = function() {
+      div.remove();
+    };
+
+    div.appendChild(input);
+    div.appendChild(removeBtn);
+    container.appendChild(div);
+  };
 
   window.salvar = function(i) {
     if(!auth.currentUser) return;
     
-    // Captura todos os dias marcados
     const checkboxes = document.querySelectorAll(`.dia-${i}:checked`);
     const diasMarcados = Array.from(checkboxes).map(cb => cb.value);
 
-    // Pega o texto do textarea do storage e transforma em um array limpo (removendo linhas vazias)
-    const storageTexto = document.getElementById("storage-" + i).value;
-    const storageArray = storageTexto.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+    // Coleta todos os valores dos inputs dinâmicos do storage na ordem em que aparecem na tela
+    const storageInputs = document.querySelectorAll(`.storage-input-${i}`);
+    const storageArray = Array.from(storageInputs).map(input => input.value.trim()).filter(v => v !== "");
 
     const caminho = ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${i}`);
     set(caminho, {
       nome: document.getElementById("nome-" + i).value,
       m3u: document.getElementById("m3u-" + i).value,
       yt: document.getElementById("yt-" + i).value,
-      storage: storageArray, // Salva como array de links ordenados
+      storage: storageArray, // Salva a lista ordenada exatamente como o usuário organizou
       dias: diasMarcados,
       inicio: document.getElementById("inicio-" + i).value,
       fim: document.getElementById("fim-" + i).value,
       timestamp: Date.now()
     });
-    alert("✔ Salvo com sucesso, incluindo os vídeos do Storage!");
+    alert("✔ Salvo com sucesso!");
   };
 
   window.apagar = function(i) {
@@ -160,12 +191,13 @@ body { background:#111; color:#fff; font-family:Arial; padding: 20px; margin: 0;
   gap: 20px;
 }
 
-.card { background:#1b1b1b; padding:15px; border-radius:10px; border:1px solid #333; width:320px; box-sizing: border-box; }
+.card { background:#1b1b1b; padding:15px; border-radius:10px; border:1px solid #333; width:340px; box-sizing: border-box; }
 
-input, select, textarea { width:100%; margin-bottom:8px; padding:6px; background:#222; border:1px solid #555; color:white; box-sizing: border-box; resize: vertical;}
+input, select { width:100%; margin-bottom:8px; padding:6px; background:#222; border:1px solid #555; color:white; box-sizing: border-box;}
 button { width:100%; padding:8px; border:none; color:white; border-radius:6px; margin-top:6px; cursor:pointer; font-weight: bold; }
 .saveBtn { background:#007bff; }
 .deleteBtn { background:#dc3545; }
+.addStorageBtn { background: #17a2b8; margin-bottom: 8px; }
 h3 { margin-top: 0; color: #aaa; text-align: center; border-bottom: 1px solid #333; padding-bottom: 10px; }
 
 .dias-check { 
