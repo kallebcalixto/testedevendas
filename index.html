@@ -268,6 +268,18 @@
     image-rendering: high-quality;
   }
 
+  /* NOVO ELEMENTO EXCLUSIVO PARA OS BANNERS INDEPENDENTES NOVOS */
+  #novo-banner-independente {
+    position: absolute; top: 220px; left: 20px; z-index: 1002; cursor: move; display: none; align-items: center;
+    justify-content: center; overflow: hidden; resize: both; width: 250px; height: 120px; min-width: 40px; min-height: 40px;
+    background: transparent;
+  }
+  #img-novo-banner-independente {
+    width: 100%; height: 100%; object-fit: contain; pointer-events: none;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: high-quality;
+  }
+
   @keyframes piscarVermelho {
     0% { background-color: #d32f2f; box-shadow: 0 0 5px #ff0000; }
     50% { background-color: #ff1744; box-shadow: 0 0 20px #ff5252; transform: scale(1.02); }
@@ -603,6 +615,11 @@
             <img id="img-banner-fixo" src="">
           </div>
 
+          <!-- NOVO ELEMENTO MÓVEL PARA OS NOVOS BANNERS -->
+          <div id="novo-banner-independente" onmousedown="startDrag(event)">
+            <img id="img-novo-banner-independente" src="">
+          </div>
+
           <video id="player" controls playsinline></video>
           <iframe id="ytplayer" allow="autoplay; encrypted-media" frameborder="0"></iframe>
           
@@ -642,13 +659,13 @@
             <input type="file" id="fileInput" style="display:none" accept="application/json" onchange="carregarProgramacao(this)">
           </div>
 
+          <!-- SEÇÃO ANTIGA DE BANNERS (MANTIDA INTACTA) -->
           <div style="margin-top:15px; background:#222; padding:15px; border-radius:8px; border:1px solid #333; width: 100%; box-sizing: border-box;">
-            <label style="font-size:11px; color:#ffd700; display:block; margin-bottom:5px; font-weight:bold;">CONFIGURAÇÃO DE BANNERS:</label>
+            <label style="font-size:11px; color:#ffd700; display:block; margin-bottom:5px; font-weight:bold;">CONFIGURAÇÃO DE BANNERS (ANTIGOS):</label>
             
             <div style="margin-bottom:10px;">
-              <label style="font-size:10px; display:block; color:#aaa;">BANNERS MÚLTIPLOS COM HORÁRIOS (Link | Início | Fim):</label>
-              <div id="banners-container" style="margin-bottom: 5px;"></div>
-              <button type="button" onclick="adicionarCampoBanner()" style="background:#17a2b8; font-size:11px; padding:4px; width:100%;">+ Adicionar Banner Programado</button>
+              <label style="font-size:10px; display:block; color:#aaa;">LINK DA LOGO (BANNER FIXO):</label>
+              <input type="text" id="logoUrl" oninput="atualizarLogos(this.value)" placeholder="Cole o link da imagem .png aqui" style="width:100%; background:#000; border:1px solid #444; color:#fff; font-size:12px; padding:8px; border-radius:5px; box-sizing: border-box;">
             </div>
 
             <div style="margin-bottom:10px; border-top: 1px solid #444; padding-top: 10px;">
@@ -730,8 +747,15 @@
                 </div>
               </div>
             </div>
-
           </div>
+
+          <!-- NOVA SEÇÃO EXCLUSIVA PARA OS NOVOS BANNERS INDEPENDENTES COM MÚLTIPLOS HORÁRIOS -->
+          <div style="margin-top:15px; background:#181818; padding:15px; border-radius:8px; border:1px solid #444; width: 100%; box-sizing: border-box;">
+            <label style="font-size:11px; color:#00e676; display:block; margin-bottom:8px; font-weight:bold;">NOVIDADE: NOVOS BANNERS COM MÚLTIPLOS HORÁRIOS:</label>
+            <div id="novos-banners-container" style="display:flex; flex-direction:column; gap:10px; margin-bottom:10px;"></div>
+            <button type="button" onclick="adicionarNovoBannerItem()" style="background:#00e676; color:#000; font-size:11px; font-weight:bold; padding:6px; width:100%;">+ Adicionar Novo Banner</button>
+          </div>
+
         </div>
       </div>
       
@@ -819,115 +843,114 @@ window.atualizarEstiloAseguir = function() {
     }
 }
 
-window.adicionarCampoBanner = function(urlVal = "", inicioVal = "", fimVal = "") {
-    const container = document.getElementById('banners-container');
+// SISTEMA DOS NOVOS BANNERS INDEPENDENTES COM MÚLTIPLOS HORÁRIOS PRÓPRIOS
+window.adicionarNovoBannerItem = function(dadosBanner = null) {
+    const container = document.getElementById('novos-banners-container');
     if (!container) return;
 
     const div = document.createElement("div");
-    div.className = "banner-item";
-    div.style.display = "flex";
-    div.style.gap = "4px";
-    div.style.marginBottom = "5px";
-    div.style.alignItems = "center";
+    div.className = "novo-banner-bloco";
+    div.style.background = "#111";
+    div.style.padding = "8px";
+    div.style.borderRadius = "6px";
+    div.style.border = "1px solid #333";
 
-    const inputUrl = document.createElement("input");
-    inputUrl.type = "text";
-    inputUrl.className = "banner-url-input";
-    inputUrl.value = urlVal;
-    inputUrl.placeholder = "Link imagem .png";
-    inputUrl.style.flex = "2";
-    inputUrl.style.background = "#000";
-    inputUrl.style.color = "#fff";
-    inputUrl.style.border = "1px solid #444";
-    inputUrl.style.padding = "5px";
-    inputUrl.style.fontSize = "11px";
-    inputUrl.oninput = atualizarBannersAtivos;
+    div.innerHTML = `
+      <div style="display:flex; gap:5px; margin-bottom:5px;">
+        <input type="text" class="nb-url" placeholder="Link da imagem do banner (.png/.jpg)" value="${dadosBanner ? (dadosBanner.url || '') : ''}" style="flex:1; background:#000; color:#fff; border:1px solid #444; padding:5px; font-size:11px;" oninput="avaliarNovosBanners()">
+        <button type="button" onclick="this.closest('.novo-banner-bloco').remove(); avaliarNovosBanners();" style="background:#b71c1c; width:28px; padding:4px;">X</button>
+      </div>
+      <div style="font-size:10px; color:#aaa; margin-bottom:3px;">Horários deste banner:</div>
+      <div class="nb-horarios-container" style="display:flex; flex-direction:column; gap:4px; margin-bottom:5px;"></div>
+      <button type="button" onclick="adicionarHorarioNoBanner(this.closest('.novo-banner-bloco'))" style="background:#28a745; font-size:10px; padding:3px; width:100%;">+ Adicionar Horário</button>
+    `;
 
-    const inputInicio = document.createElement("input");
-    inputInicio.type = "time";
-    inputInicio.step = "1";
-    inputInicio.className = "banner-inicio-input";
-    inputInicio.value = inicioVal;
-    inputInicio.style.width = "75px";
-    inputInicio.style.background = "#000";
-    inputInicio.style.color = "#fff";
-    inputInicio.style.border = "1px solid #444";
-    inputInicio.style.padding = "5px";
-    inputInicio.style.fontSize = "11px";
-    inputInicio.onchange = atualizarBannersAtivos;
-
-    const inputFim = document.createElement("input");
-    inputFim.type = "time";
-    inputFim.step = "1";
-    inputFim.className = "banner-fim-input";
-    inputFim.value = fimVal;
-    inputFim.style.width = "75px";
-    inputFim.style.background = "#000";
-    inputFim.style.color = "#fff";
-    inputFim.style.border = "1px solid #444";
-    inputFim.style.padding = "5px";
-    inputFim.style.fontSize = "11px";
-    inputFim.onchange = atualizarBannersAtivos;
-
-    const removeBtn = document.createElement("button");
-    removeBtn.type = "button";
-    removeBtn.textContent = "X";
-    removeBtn.style.width = "28px";
-    removeBtn.style.background = "#b71c1c";
-    removeBtn.style.margin = "0";
-    removeBtn.style.padding = "4px";
-    removeBtn.onclick = function() {
-      div.remove();
-      atualizarBannersAtivos();
-    };
-
-    div.appendChild(inputUrl);
-    div.appendChild(inputInicio);
-    div.appendChild(inputFim);
-    div.appendChild(removeBtn);
     container.appendChild(div);
+
+    const horariosContainer = div.querySelector('.nb-horarios-container');
+    if (dadosBanner && Array.isArray(dadosBanner.horarios) && dadosBanner.horarios.length > 0) {
+      dadosBanner.horarios.forEach(h => criarLinhaHorarioBanner(horariosContainer, h.inicio, h.fim));
+    } else {
+      criarLinhaHorarioBanner(horariosContainer, "", "");
+    }
 }
 
-function atualizarBannersAtivos() {
-  const urlItems = document.querySelectorAll('.banner-item');
-  const urlsValidas = [];
+function criarLinhaHorarioBanner(container, inicioVal, fimVal) {
+  const linha = document.createElement("div");
+  linha.className = "nb-horario-linha";
+  linha.style.display = "flex";
+  linha.style.gap = "4px";
+  linha.style.alignItems = "center";
+
+  linha.innerHTML = `
+    <span style="font-size:10px;">De:</span>
+    <input type="time" class="nb-h-inicio" step="1" value="${inicioVal || ''}" style="width:80px; background:#000; color:#fff; border:1px solid #444; padding:3px; font-size:11px;" onchange="avaliarNovosBanners()">
+    <span style="font-size:10px;">Até:</span>
+    <input type="time" class="nb-h-fim" step="1" value="${fimVal || ''}" style="width:80px; background:#000; color:#fff; border:1px solid #444; padding:3px; font-size:11px;" onchange="avaliarNovosBanners()">
+    <button type="button" onclick="this.closest('.nb-horario-linha').remove(); avaliarNovosBanners();" style="background:#b71c1c; padding:2px 6px; font-size:10px;">X</button>
+  `;
+  container.appendChild(linha);
+}
+
+window.adicionarHorarioNoBanner = function(blocoElemento) {
+  const container = blocoElemento.querySelector('.nb-horarios-container');
+  criarLinhaHorarioBanner(container, "", "");
+}
+
+function avaliarNovosBanners() {
+  const blocosBanners = document.querySelectorAll('.novo-banner-bloco');
   const agora = new Date();
   const h = String(agora.getHours()).padStart(2, '0');
   const m = String(agora.getMinutes()).padStart(2, '0');
   const s = String(agora.getSeconds()).padStart(2, '0');
   const horaAtual = `${h}:${m}:${s}`;
 
-  urlItems.forEach(item => {
-    const url = item.querySelector('.banner-url-input').value.trim();
-    const inicio = item.querySelector('.banner-inicio-input').value;
-    const fim = item.querySelector('.banner-fim-input').value;
+  let urlParaExibir = "";
 
-    if (url) {
-      if (!inicio || !fim || (horaAtual >= (inicio.length === 5 ? inicio + ":00" : inicio) && horaAtual <= (fim.length === 5 ? fim + ":00" : fim))) {
-        urlsValidas.push(url);
-      }
+  blocosBanners.forEach(bloco => {
+    const url = bloco.querySelector('.nb-url').value.trim();
+    if (!url) return;
+
+    const linhasHorarios = bloco.querySelectorAll('.nb-horario-linha');
+    let atendeHorario = false;
+
+    if (linhasHorarios.length === 0) {
+      atendeHorario = true; // Se não houver horário restrito cadastrado, exibe sempre
+    } else {
+      linhasHorarios.forEach(linha => {
+        const inicio = linha.querySelector('.nb-h-inicio').value;
+        const fim = linha.querySelector('.nb-h-fim').value;
+
+        if (!inicio || !fim) {
+          atendeHorario = true;
+        } else {
+          let iniFormat = inicio.length === 5 ? inicio + ":00" : inicio;
+          let fimFormat = fim.length === 5 ? fim + ":00" : fim;
+          if (horaAtual >= iniFormat && horaAtual <= fimFormat) {
+            atendeHorario = true;
+          }
+        }
+      });
+    }
+
+    if (atendeHorario) {
+      urlParaExibir = url;
     }
   });
 
-  aplicarBannersGlobais(urlsValidas);
-}
+  const elementoVisual = document.getElementById('novo-banner-independente');
+  const imgVisual = document.getElementById('img-novo-banner-independente');
 
-function aplicarBannersGlobais(listaUrls) {
-  const logo1 = document.getElementById('letreiro-logo-img');
-  const logo2 = document.getElementById('img-banner-fixo');
-  const logo3 = document.getElementById('letreiro-logo-aseguir');
-
-  if (listaUrls.length > 0) {
-    const urlEscolhida = listaUrls[0];
-    logo1.src = urlEscolhida; logo1.style.display = 'block';
-    logo2.src = urlEscolhida; logo2.style.display = 'block';
-    logo3.src = urlEscolhida; logo3.style.display = 'block';
+  if (urlParaExibir) {
+    imgVisual.src = urlParaExibir;
+    elementoVisual.style.display = 'flex';
   } else {
-    logo1.style.display = 'none'; logo2.style.display = 'none'; logo3.style.display = 'none';
+    elementoVisual.style.display = 'none';
+    imgVisual.src = '';
   }
 }
 
-setInterval(atualizarBannersAtivos, 2000);
+setInterval(avaliarNovosBanners, 2000);
 
 window.addEventListener('DOMContentLoaded', () => {
     const horarioSalvo = localStorage.getItem('kbs_horario_reinicio');
@@ -941,24 +964,26 @@ window.addEventListener('DOMContentLoaded', () => {
         window.aplicarLayout(JSON.parse(layoutSalvo));
     }
 
-    const bannersSalvos = localStorage.getItem('kbs_banners_config');
-    if (bannersSalvos) {
+    // Carrega os novos banners salvos
+    const novosBannersSalvos = localStorage.getItem('kbs_novos_banners_data');
+    if (novosBannersSalvos) {
       try {
-        const arr = JSON.parse(bannersSalvos);
+        const arr = JSON.parse(novosBannersSalvos);
         if (arr.length > 0) {
-          arr.forEach(b => adicionarCampoBanner(b.url, b.inicio, b.fim));
+          arr.forEach(b => adicionarNovoBannerItem(b));
         } else {
-          adicionarCampoBanner();
+          adicionarNovoBannerItem();
         }
-      } catch(e) { adicionarCampoBanner(); }
+      } catch(e) { adicionarNovoBannerItem(); }
     } else {
-      adicionarCampoBanner();
+      adicionarNovoBannerItem();
     }
 
     reiniciarTimerBanner();
     reiniciarTimerAseguir();
     atualizarEstiloLetreiro(); 
     atualizarEstiloAseguir();
+    avaliarNovosBanners();
 });
 
 let ultimoReinicio = "";
@@ -976,6 +1001,19 @@ setInterval(() => {
         if (blocos.length > 0) { window.iniciar(); }
     }
 }, 1000);
+
+function atualizarLogos(url) {
+  const logo1 = document.getElementById('letreiro-logo-img');
+  const logo2 = document.getElementById('img-banner-fixo');
+  const logo3 = document.getElementById('letreiro-logo-aseguir');
+  if(url) {
+    logo1.src = url; logo1.style.display = 'block';
+    logo2.src = url; logo2.style.display = 'block';
+    logo3.src = url; logo3.style.display = 'block';
+  } else {
+    logo1.style.display = 'none'; logo2.style.display = 'none'; logo3.style.display = 'none';
+  }
+}
 
 window.reiniciarTimerBanner = function() {
     if (timerBannerAtivo) clearInterval(timerBannerAtivo);
@@ -1125,8 +1163,9 @@ function gerenciarBannerKBS() {
   if (b && b.arquivos && b.arquivos[b.arquivoAtual]) {
     let nomeLimpo = extrairNomeLimpo(b.arquivos[b.arquivoAtual].file.name);
     document.getElementById('letreiro-texto-arquivo').innerText = "EXIBINDO: " + nomeLimpo;
+    const urlLogo = document.getElementById('logoUrl').value;
+    atualizarLogos(urlLogo);
     
-    atualizarBannersAtivos();
     atualizarEstiloLetreiro();
     banner.style.display = 'flex';
 
@@ -1148,8 +1187,9 @@ function gerenciarAseguir() {
 
   if (nomeAseguir) {
     document.getElementById('letreiro-texto-aseguir').innerText = "A SEGUIR: " + nomeAseguir;
+    const urlLogo = document.getElementById('logoUrl').value;
+    atualizarLogos(urlLogo);
     
-    atualizarBannersAtivos();
     atualizarEstiloAseguir();
     banner.style.display = 'flex';
 
@@ -1582,7 +1622,7 @@ window.resizePlayer = function(){ const w=document.getElementById('playerWidth')
 
 window.salvarProgramacao = function(){ 
   const posicoes = {};
-  document.querySelectorAll('.movel, #letreiro-kbs-auto, #letreiro-aseguir, #banner-somente-logo').forEach(el => {
+  document.querySelectorAll('.movel, #letreiro-kbs-auto, #letreiro-aseguir, #banner-somente-logo, #novo-banner-independente').forEach(el => {
     if(el.id) { 
       posicoes[el.id] = { 
         top: el.style.top, 
@@ -1596,18 +1636,24 @@ window.salvarProgramacao = function(){
   });
   posicoes['player-size'] = { width: document.getElementById('playerWidth').value, height: document.getElementById('playerHeight').value };
 
-  const bannersConfig = [];
-  document.querySelectorAll('.banner-item').forEach(item => {
-    bannersConfig.push({
-      url: item.querySelector('.banner-url-input').value,
-      inicio: item.querySelector('.banner-inicio-input').value,
-      fim: item.querySelector('.banner-fim-input').value
+  // Coleta dados estruturados dos novos banners e seus múltiplos horários
+  const novosBannersData = [];
+  document.querySelectorAll('.novo-banner-bloco').forEach(bloco => {
+    const url = bloco.querySelector('.nb-url').value;
+    const horarios = [];
+    bloco.querySelectorAll('.nb-horario-linha').forEach(linha => {
+      horarios.push({
+        inicio: linha.querySelector('.nb-h-inicio').value,
+        fim: linha.querySelector('.nb-h-fim').value
+      });
     });
+    novosBannersData.push({ url, horarios });
   });
-  localStorage.setItem('kbs_banners_config', JSON.stringify(bannersConfig));
+
+  localStorage.setItem('kbs_novos_banners_data', JSON.stringify(novosBannersData));
   localStorage.setItem('kbs_layout', JSON.stringify(posicoes));
 
-  const exportData = { blocos: blocos, layout: posicoes, banners: bannersConfig };
+  const exportData = { blocos: blocos, layout: posicoes, novosBanners: novosBannersData };
   const blob = new Blob([JSON.stringify(exportData)], {type:"application/json"}); 
   const a = document.createElement('a'); 
   a.href = URL.createObjectURL(blob); 
@@ -1628,10 +1674,10 @@ window.carregarProgramacao = function(input){
             window.aplicarLayout(data.layout);
             localStorage.setItem('kbs_layout', JSON.stringify(data.layout));
         }
-        if (data.banners) {
-            document.getElementById('banners-container').innerHTML = "";
-            data.banners.forEach(b => adicionarCampoBanner(b.url, b.inicio, b.fim));
-            localStorage.setItem('kbs_banners_config', JSON.stringify(data.banners));
+        if (data.novosBanners) {
+            document.getElementById('novos-banners-container').innerHTML = "";
+            data.novosBanners.forEach(b => adicionarNovoBannerItem(b));
+            localStorage.setItem('kbs_novos_banners_data', JSON.stringify(data.novosBanners));
         }
     }
     
