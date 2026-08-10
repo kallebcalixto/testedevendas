@@ -23,23 +23,21 @@
     user-select: none;
   }
 
+  /* SISTEMA DE SELEÇÃO POR CLIQUE */
   .movel {
     position: absolute !important;
-    cursor: move;
     z-index: 10;
-    transition: outline 0.2s;
+    border: 2px dashed transparent;
+    resize: none;
+    overflow: hidden;
   }
   
-  .redimensionavel {
-    overflow: auto; 
-    box-sizing: border-box;
-  }
-  .modo-edicao .movel {
-    outline: 2px dashed var(--primary-color);
+  /* Quando o layout está destravado E o elemento está selecionado */
+  .modo-edicao .movel.selecionado {
+    border-color: var(--primary-color);
     background: rgba(46, 125, 50, 0.05);
-  }
-  .modo-edicao .redimensionavel {
-    resize: both; 
+    resize: both !important;
+    cursor: move;
   }
 
   #btn-trava-layout {
@@ -225,12 +223,11 @@
   .mini-btn:hover { background:#666; }
 
   #letreiro-kbs-auto {
-    position: absolute; top: 20px; left: 20px; z-index: 999;
+    position: absolute; top: 20px; left: 20px;
     background: transparent; color: #ffd700; border-left: 5px solid #ffd700;
     padding: 10px 20px; font-weight: bold; font-size: 14px;
     display: none; align-items: center; gap: 10px; border-radius: 0 8px 8px 0;
     text-shadow: 2px 2px 4px #000; 
-    cursor: move;
     user-select: none;
     transition: color 0.3s, border-color 0.3s;
   }
@@ -242,12 +239,11 @@
   #letreiro-texto-arquivo { pointer-events: none; }
 
   #letreiro-aseguir {
-    position: absolute; top: 70px; left: 20px; z-index: 998;
+    position: absolute; top: 70px; left: 20px;
     background: transparent; color: #ffffff; border-left: 5px solid #ffffff;
     padding: 10px 20px; font-weight: bold; font-size: 14px;
     display: none; align-items: center; gap: 10px; border-radius: 0 8px 8px 0;
     text-shadow: 2px 2px 4px #000; 
-    cursor: move;
     user-select: none;
     transition: color 0.3s, border-color 0.3s;
   }
@@ -259,8 +255,8 @@
   #letreiro-texto-aseguir { pointer-events: none; }
 
   #banner-somente-logo {
-    position: absolute; top: 120px; left: 20px; z-index: 1001; cursor: move; display: flex; align-items: center;
-    justify-content: center; overflow: hidden; resize: both; width: 80px; height: 80px; min-width: 20px; min-height: 20px;
+    position: absolute; top: 120px; left: 20px; display: flex; align-items: center;
+    justify-content: center; width: 80px; height: 80px; min-width: 20px; min-height: 20px;
   }
   #img-banner-fixo { 
     width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none; 
@@ -269,8 +265,8 @@
   }
 
   #novo-banner-independente {
-    position: absolute; top: 220px; left: 20px; z-index: 1002; cursor: move; display: flex; align-items: center;
-    justify-content: center; overflow: hidden; resize: both; width: 250px; height: 120px; min-width: 40px; min-height: 40px;
+    position: absolute; top: 220px; left: 20px; display: flex; align-items: center;
+    justify-content: center; width: 250px; height: 120px; min-width: 40px; min-height: 40px;
     background: transparent;
   }
   #img-novo-banner-independente {
@@ -608,21 +604,21 @@
       <div class="top">
         <div id="movel-area-player" class="movel" style="left: 20px; top: 100px; z-index: 5000 !important;">
           
-          <div id="letreiro-kbs-auto" onmousedown="startDrag(event)">
+          <div id="letreiro-kbs-auto" class="movel">
             <img id="letreiro-logo-img" src="">
             <span id="letreiro-texto-arquivo"></span>
           </div>
 
-          <div id="letreiro-aseguir" onmousedown="startDrag(event)">
+          <div id="letreiro-aseguir" class="movel">
             <img id="letreiro-logo-aseguir" src="">
             <span id="letreiro-texto-aseguir"></span>
           </div>
 
-          <div id="banner-somente-logo" onmousedown="startDrag(event)">
+          <div id="banner-somente-logo" class="movel">
             <img id="img-banner-fixo" src="">
           </div>
 
-          <div id="novo-banner-independente" onmousedown="startDrag(event)">
+          <div id="novo-banner-independente" class="movel">
             <img id="img-novo-banner-independente" src="">
           </div>
 
@@ -948,7 +944,7 @@ function avaliarNovosBanners() {
     imgVisual.src = urlParaExibir;
     imgVisual.style.display = 'block';
   } else {
-    imgVisual.style.display = 'none';
+    elementoVisual.style.display = 'none';
     imgVisual.src = '';
   }
 }
@@ -1059,7 +1055,6 @@ function horarioParaSegundos(strHora) {
     return h * 3600 + m * 60 + s;
 }
 
-// "A SEGUIR" INTELIGENTE: LÊ HORÁRIOS EXCLUSIVAMENTE DENTRO DO DIA DE HOJE (PRÓXIMAS 24H) OU SEQUÊNCIA LOCAL
 function obterNomeASeguir() {
     if (!blocos || blocos.length === 0) return "";
     
@@ -1098,7 +1093,6 @@ function obterNomeASeguir() {
                     const segundosInicio = horarioParaSegundos(hObj.inicio);
                     let diff = segundosInicio - segundosAgora;
                     
-                    // IMPORTANTE: Considera APENAS horários que ainda vão acontecer hoje (diff > 0). Ignora os que já passaram.
                     if (diff > 0 && diff < menorDiferenca) {
                         menorDiferenca = diff;
                         let nomeBloco = b.nome ? b.nome : (b.m3ulink ? "Transmissão M3U" : (b.ytlink ? "Transmissão YouTube" : "Bloco Programado"));
@@ -1114,7 +1108,6 @@ function obterNomeASeguir() {
         return proximoEvento;
     }
 
-    // Se não houver horário marcado para o resto de hoje, segue a sequência normal dos arquivos/blocos locais
     const b = blocos[idxBloco];
     if (!b || b.removido) return "";
 
@@ -1625,7 +1618,7 @@ window.resizePlayer = function(){ const w=document.getElementById('playerWidth')
 
 window.salvarProgramacao = function(){ 
   const posicoes = {};
-  document.querySelectorAll('.movel, #letreiro-kbs-auto, #letreiro-aseguir, #banner-somente-logo, #novo-banner-independente').forEach(el => {
+  document.querySelectorAll('.movel').forEach(el => {
     if(el.id) { 
       posicoes[el.id] = { 
         top: el.style.top, 
@@ -1724,28 +1717,6 @@ function renderizarListaHorarios(i) {
     `).join('');
 }
 
-let isDragging = false; let offsetX, offsetY; let activeElement = null;
-
-window.startDrag = function(e) { 
-    isDragging = true; activeElement = e.currentTarget;
-    offsetX = e.clientX - activeElement.getBoundingClientRect().left; 
-    offsetY = e.clientY - activeElement.getBoundingClientRect().top; 
-    document.addEventListener('mousemove', onDrag); 
-    document.addEventListener('mouseup', stopDrag); 
-};
-function onDrag(e) { 
-    if (!isDragging || !activeElement) return; 
-    const container = activeElement.parentElement.getBoundingClientRect(); 
-    let x = e.clientX - container.left - offsetX; let y = e.clientY - container.top - offsetY; 
-    activeElement.style.left = x + 'px'; activeElement.style.top = y + 'px'; 
-}
-function stopDrag() { 
-    isDragging = false; 
-    activeElement = null; 
-    document.removeEventListener('mousemove', onDrag); 
-    document.removeEventListener('mouseup', stopDrag);
-}
-
 let mediaRecorder; let socket;
 
 window.toggleStream = async function() {
@@ -1774,14 +1745,35 @@ const btnTrava = document.createElement('button'); btnTrava.id = 'btn-trava-layo
 
 btnTrava.onclick = () => {
   layoutTravado = !layoutTravado;
-  if (layoutTravado) { btnTrava.innerHTML = '🔒 Layout Travado'; btnTrava.className = 'layout-travado'; document.body.classList.remove('modo-edicao'); } 
-  else { btnTrava.innerHTML = '🔓 Layout Livre'; btnTrava.className = 'layout-destravado'; document.body.classList.add('modo-edicao'); }
+  if (layoutTravado) { 
+      btnTrava.innerHTML = '🔒 Layout Travado'; 
+      btnTrava.className = 'layout-travado'; 
+      document.body.classList.remove('modo-edicao'); 
+      document.querySelectorAll('.movel').forEach(el => el.classList.remove('selecionado'));
+  } else { 
+      btnTrava.innerHTML = '🔓 Layout Livre'; 
+      btnTrava.className = 'layout-destravado'; 
+      document.body.classList.add('modo-edicao'); 
+  }
 };
 
+// GERENCIAMENTO DE SELEÇÃO E ARRASTE POR CLIQUE
 document.addEventListener('mousedown', (e) => {
   if (layoutTravado) return;
+
   const target = e.target.closest('.movel');
-  if (!target || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  
+  if (!target) {
+    // Clicou fora: desmarca todos
+    document.querySelectorAll('.movel').forEach(el => el.classList.remove('selecionado'));
+    return;
+  }
+
+  // Clicou em um elemento móvel: marca apenas este como selecionado
+  document.querySelectorAll('.movel').forEach(el => el.classList.remove('selecionado'));
+  target.classList.add('selecionado');
+
+  if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
 
   const rect = target.getBoundingClientRect();
   const isBottomRight = (e.clientX > rect.right - 20) && (e.clientY > rect.bottom - 20);
@@ -1809,6 +1801,7 @@ document.addEventListener('mousedown', (e) => {
   document.addEventListener('mousemove', onMouseMove);
   document.addEventListener('mouseup', onMouseUp);
 });
+
 document.addEventListener('dragstart', (e) => { if (e.target.closest('.movel')) e.preventDefault(); });
 
 const player = document.getElementById('player');
