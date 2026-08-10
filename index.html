@@ -268,7 +268,6 @@
     image-rendering: high-quality;
   }
 
-  /* NOVO ELEMENTO EXCLUSIVO PARA OS BANNERS INDEPENDENTES NOVOS */
   #novo-banner-independente {
     position: absolute; top: 220px; left: 20px; z-index: 1002; cursor: move; display: none; align-items: center;
     justify-content: center; overflow: hidden; resize: both; width: 250px; height: 120px; min-width: 40px; min-height: 40px;
@@ -496,6 +495,14 @@
               const linksMudaram = blocoAntigoLinks !== blocoNovoLinks;
               const estavaRodando = (blocoAntigo && !ytMudou && !m3uMudou && !linksMudaram) ? blocoAntigo._agendadoRodando : false;
 
+              // Coleta horários múltiplos do Firebase (Admin)
+              let horariosAdminArr = [];
+              if (Array.isArray(d.horarios) && d.horarios.length > 0) {
+                  horariosAdminArr = d.horarios;
+              } else if (d.inicio || d.fim) {
+                  horariosAdminArr = [{ inicio: d.inicio || "00:00:00", fim: d.fim || "00:00:00" }];
+              }
+
               let timestampCache = Date.now();
               let listaArquivosFirebase = linksArr.map((linkUrl, indexUrl) => {
                   let urlComAntiCache = linkUrl;
@@ -526,6 +533,7 @@
                   diaSemana: d.dias || d.dia || [], 
                   horaInicio: d.inicio || '', 
                   horaFim: d.fim || '', 
+                  horariosAdmin: horariosAdminArr,
                   removido: false, 
                   _agendadoRodando: estavaRodando, 
                   _firebaseIndex: i 
@@ -615,7 +623,6 @@
             <img id="img-banner-fixo" src="">
           </div>
 
-          <!-- NOVO ELEMENTO MÓVEL PARA OS NOVOS BANNERS -->
           <div id="novo-banner-independente" onmousedown="startDrag(event)">
             <img id="img-novo-banner-independente" src="">
           </div>
@@ -659,7 +666,6 @@
             <input type="file" id="fileInput" style="display:none" accept="application/json" onchange="carregarProgramacao(this)">
           </div>
 
-          <!-- SEÇÃO ANTIGA DE BANNERS (MANTIDA INTACTA) -->
           <div style="margin-top:15px; background:#222; padding:15px; border-radius:8px; border:1px solid #333; width: 100%; box-sizing: border-box;">
             <label style="font-size:11px; color:#ffd700; display:block; margin-bottom:5px; font-weight:bold;">CONFIGURAÇÃO DE BANNERS (ANTIGOS):</label>
             
@@ -749,9 +755,8 @@
             </div>
           </div>
 
-          <!-- NOVA SEÇÃO EXCLUSIVA PARA OS NOVOS BANNERS INDEPENDENTES COM MÚLTIPLOS HORÁRIOS -->
           <div style="margin-top:15px; background:#181818; padding:15px; border-radius:8px; border:1px solid #444; width: 100%; box-sizing: border-box;">
-            <label style="font-size:11px; color:#00e676; display:block; margin-bottom:8px; font-weight:bold;">NOVIDADE: NOVOS BANNERS COM MÚLTIPLOS HORÁRIOS:</label>
+            <label style="font-size:11px; color:#00e676; display:block; margin-bottom:8px; font-weight:bold;">NOVOS BANNERS COM MÚLTIPLOS HORÁRIOS:</label>
             <div id="novos-banners-container" style="display:flex; flex-direction:column; gap:10px; margin-bottom:10px;"></div>
             <button type="button" onclick="adicionarNovoBannerItem()" style="background:#00e676; color:#000; font-size:11px; font-weight:bold; padding:6px; width:100%;">+ Adicionar Novo Banner</button>
           </div>
@@ -843,7 +848,6 @@ window.atualizarEstiloAseguir = function() {
     }
 }
 
-// SISTEMA DOS NOVOS BANNERS INDEPENDENTES COM MÚLTIPLOS HORÁRIOS PRÓPRIOS
 window.adicionarNovoBannerItem = function(dadosBanner = null) {
     const container = document.getElementById('novos-banners-container');
     if (!container) return;
@@ -915,7 +919,7 @@ function avaliarNovosBanners() {
     let atendeHorario = false;
 
     if (linhasHorarios.length === 0) {
-      atendeHorario = true; // Se não houver horário restrito cadastrado, exibe sempre
+      atendeHorario = true;
     } else {
       linhasHorarios.forEach(linha => {
         const inicio = linha.querySelector('.nb-h-inicio').value;
@@ -964,7 +968,6 @@ window.addEventListener('DOMContentLoaded', () => {
         window.aplicarLayout(JSON.parse(layoutSalvo));
     }
 
-    // Carrega os novos banners salvos
     const novosBannersSalvos = localStorage.getItem('kbs_novos_banners_data');
     if (novosBannersSalvos) {
       try {
@@ -1057,6 +1060,7 @@ function horarioParaSegundos(strHora) {
     return h * 3600 + m * 60 + s;
 }
 
+// NOVA FUNÇÃO INTELIGENTE: LÊ A PROGRAMAÇÃO POR HORÁRIO REAL PARA O "A SEGUIR"
 function obterNomeASeguir() {
     if (!blocos || blocos.length === 0) return "";
     
@@ -1064,85 +1068,81 @@ function obterNomeASeguir() {
     const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
     const segundosAgora = agora.getHours() * 3600 + agora.getMinutes() * 60 + agora.getSeconds();
 
+    let proximoEvento = null;
+    let menorDiferenca = Infinity;
+
+    // Varre todos os blocos (YouTube/M3U do Admin e Blocos com horários locais)
     for (let i = 0; i < blocos.length; i++) {
         const b = blocos[i];
-        if (b && !b.removido && b.tipo === 'youtube' && b.horaInicio) {
-            let diaMatch = false;
-            if (Array.isArray(b.diaSemana)) { 
-                diaMatch = b.diaSemana.length === 0 || b.diaSemana.includes(hoje); 
-            } else { 
-                diaMatch = (b.diaSemana === "" || (typeof b.diaSemana === 'string' && b.diaSemana.toLowerCase() === hoje)); 
+        if (!b || b.removido) continue;
+
+        // Junta todas as listas de horários possíveis (seja do admin ou de blocos locais)
+        let listaHorariosParaChecar = [];
+        if (b.tipo === 'youtube' && Array.isArray(b.horariosAdmin)) {
+            listaHorariosParaChecar = b.horariosAdmin;
+        } else if (b.tipo === 'timer' && Array.isArray(b.horarios)) {
+            listaHorariosParaChecar = b.horarios;
+        } else if (b.horaInicio) {
+            listaHorariosParaChecar = [{ inicio: b.horaInicio, fim: b.horaFim || "23:59:59" }];
+        }
+
+        // Verifica os dias da semana
+        let diaMatch = false;
+        if (b.tipo === 'youtube') {
+            if (Array.isArray(b.diaSemana)) {
+                diaMatch = b.diaSemana.length === 0 || b.diaSemana.includes(hoje);
+            } else {
+                diaMatch = (b.diaSemana === "" || (typeof b.diaSemana === 'string' && b.diaSemana.toLowerCase() === hoje));
             }
-            
-            if (diaMatch) {
-                const segundosInicio = horarioParaSegundos(b.horaInicio);
-                const diffSegundos = segundosInicio - segundosAgora;
-                
-                if (diffSegundos >= 0 && diffSegundos <= 600) {
-                    const minRestantes = Math.ceil(diffSegundos / 60);
-                    let nomeBloco = b.nome ? b.nome : (b.m3ulink ? "Transmissão M3U" : "Transmissão Ao Vivo");
-                    return `${nomeBloco} (Entra em ${minRestantes} min, às ${b.horaInicio})`;
+        } else {
+            diaMatch = (!b.diasSelecionados || b.diasSelecionados.length === 0 || b.diasSelecionados.includes(hoje));
+        }
+
+        if (diaMatch) {
+            listaHorariosParaChecar.forEach(hObj => {
+                if (hObj && hObj.inicio) {
+                    const segundosInicio = horarioParaSegundos(hObj.inicio);
+                    let diff = segundosInicio - segundosAgora;
+                    if (diff < 0) {
+                        // Se o horário já passou hoje, calcula para o mesmo horário amanhã (próxima ocorrência)
+                        diff += 24 * 3600;
+                    }
+
+                    if (diff > 0 && diff < menorDiferenca) {
+                        menorDiferenca = diff;
+                        let nomeBloco = b.nome ? b.nome : (b.m3ulink ? "Transmissão M3U" : (b.ytlink ? "Transmissão YouTube" : "Bloco Programado"));
+                        let minRestantes = Math.ceil(diff / 60);
+                        proximoEvento = `${nomeBloco} (Entra às ${hObj.inicio}, em ${minRestantes} min)`;
+                    }
                 }
-            }
+            });
         }
     }
 
+    if (proximoEvento) {
+        return proximoEvento;
+    }
+
+    // Fallback caso não ache nenhum horário programado rigoroso: segue a sequência normal de arquivos/blocos
     const b = blocos[idxBloco];
     if (!b || b.removido) return "";
 
-    let nextIsNextBlock = false;
-    let nomeASeguir = "";
-
-    if (b.tipo === 'movie') {
-        if (b.arquivos && b.arquivos.length > 0) {
-            if ((b._count || 0) + 1 >= (b.limitePorCiclo || 3)) {
-                nextIsNextBlock = true;
-            } else if (b.arquivoAtual + 1 >= b.arquivos.length) {
-                nextIsNextBlock = true;
-            } else {
-                nomeASeguir = extrairNomeLimpo(b.arquivos[b.arquivoAtual + 1].file.name);
-            }
-        } else {
-            nextIsNextBlock = true;
+    if (b.tipo === 'movie' && b.arquivos && b.arquivos.length > 0) {
+        if ((b._count || 0) + 1 < (b.limitePorCiclo || 3) && b.arquivoAtual + 1 < b.arquivos.length) {
+            return extrairNomeLimpo(b.arquivos[b.arquivoAtual + 1].file.name);
         }
-    } else if (b.tipo === 'timer') {
-         if (b.arquivos && b.arquivos.length > 0) {
-             let nextFileIdx = (b.arquivoAtual + 1) % b.arquivos.length;
-             nomeASeguir = extrairNomeLimpo(b.arquivos[nextFileIdx].file.name);
-         } else {
-             nextIsNextBlock = true;
-         }
-    } else {
-        nextIsNextBlock = true;
+    } else if (b.tipo === 'timer' && b.arquivos && b.arquivos.length > 0) {
+        let nextFileIdx = (b.arquivoAtual + 1) % b.arquivos.length;
+        return extrairNomeLimpo(b.arquivos[nextFileIdx].file.name);
     }
 
-    if (nextIsNextBlock) {
-        let nextIdx = (idxBloco + 1) % blocos.length;
-        let loops = 0;
-        while (blocos[nextIdx] && blocos[nextIdx].removido && loops < blocos.length) {
-            nextIdx = (nextIdx + 1) % blocos.length;
-            loops++;
-        }
-
-        let nextB = blocos[nextIdx];
-        if (nextB && !nextB.removido) {
-            if (nextB.tipo === 'youtube') {
-                let nomeBloco = nextB.nome ? nextB.nome : (nextB.m3ulink ? "Transmissão M3U" : "Transmissão Ao Vivo");
-                let horarioStr = nextB.horaInicio ? ` (às ${nextB.horaInicio})` : "";
-                nomeASeguir = `${nomeBloco}${horarioStr}`;
-            } else if (nextB.tipo === 'pause') {
-                nomeASeguir = nextB.nome ? `Pausa: ${nextB.nome}` : "Pausa Programada";
-            } else if (nextB.nome) {
-                nomeASeguir = nextB.nome;
-            } else if (nextB.arquivos && nextB.arquivos.length > 0) {
-                nomeASeguir = extrairNomeLimpo(nextB.arquivos[0].file.name);
-            } else {
-                nomeASeguir = "Próximo Bloco";
-            }
-        }
+    let nextIdx = (idxBloco + 1) % blocos.length;
+    let nextB = blocos[nextIdx];
+    if (nextB && !nextB.removido) {
+        return nextB.nome ? nextB.nome : (nextB.arquivos && nextB.arquivos[0] ? extrairNomeLimpo(nextB.arquivos[0].file.name) : "Próximo Bloco");
     }
 
-    return nomeASeguir;
+    return "";
 }
 
 function gerenciarBannerKBS() {
@@ -1319,9 +1319,15 @@ function verificarAgendados() {
         if (Array.isArray(b.diaSemana)) { diaMatch = b.diaSemana.length === 0 || b.diaSemana.includes(hoje); } 
         else { diaMatch = (b.diaSemana === "" || (typeof b.diaSemana === 'string' && b.diaSemana.toLowerCase() === hoje)); }
         
-        const inicioStr = (b.horaInicio || "00:00:00");
-        const fimStr = (b.horaFim || "23:59:59");
-        const dentroDoHorario = (b.horaInicio && b.horaFim && horaAtual >= inicioStr && horaAtual < fimStr);
+        // Verifica múltiplos horários do Admin ou horários únicos
+        let dentroDoHorario = false;
+        if (Array.isArray(b.horariosAdmin) && b.horariosAdmin.length > 0) {
+            dentroDoHorario = b.horariosAdmin.some(hObj => horaAtual >= (hObj.inicio || "00:00:00") && horaAtual < (hObj.fim || "23:59:59"));
+        } else {
+            const inicioStr = (b.horaInicio || "00:00:00");
+            const fimStr = (b.horaFim || "23:59:59");
+            dentroDoHorario = (b.horaInicio && b.horaFim && horaAtual >= inicioStr && horaAtual < fimStr);
+        }
 
         if (diaMatch && dentroDoHorario) { blocoEncontrado = true; indiceParaRodar = i; break; }
       }
@@ -1395,7 +1401,14 @@ async function tocarAtual() {
     let diaMatchAdmin = false;
     if (Array.isArray(b.diaSemana)) { diaMatchAdmin = b.diaSemana.length === 0 || b.diaSemana.includes(hoje); } 
     else { diaMatchAdmin = (b.diaSemana === "" || (typeof b.diaSemana === 'string' && b.diaSemana.toLowerCase() === hoje)); }
-    const dentroDoHorarioAdmin = (horaAgora >= b.horaInicio && horaAgora < b.horaFim);
+    
+    let dentroDoHorarioAdmin = false;
+    if (Array.isArray(b.horariosAdmin) && b.horariosAdmin.length > 0) {
+        dentroDoHorarioAdmin = b.horariosAdmin.some(hObj => horaAgora >= (hObj.inicio || "00:00:00") && horaAgora < (hObj.fim || "23:59:59"));
+    } else {
+        dentroDoHorarioAdmin = (horaAgora >= b.horaInicio && horaAgora < b.horaFim);
+    }
+
     if (!diaMatchAdmin || !dentroDoHorarioAdmin) { pularParaProximo(); return; }
   }
 
@@ -1636,7 +1649,6 @@ window.salvarProgramacao = function(){
   });
   posicoes['player-size'] = { width: document.getElementById('playerWidth').value, height: document.getElementById('playerHeight').value };
 
-  // Coleta dados estruturados dos novos banners e seus múltiplos horários
   const novosBannersData = [];
   document.querySelectorAll('.novo-banner-bloco').forEach(bloco => {
     const url = bloco.querySelector('.nb-url').value;
