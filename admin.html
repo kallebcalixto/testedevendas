@@ -105,7 +105,6 @@
     });
   }
 
-  // Função para adicionar um novo input de link do storage dinamicamente
   window.adicionarCampoStorage = function(i, valor = "") {
     const container = document.getElementById(`storage-container-${i}`);
     if (!container) return;
@@ -144,7 +143,6 @@
     const checkboxes = document.querySelectorAll(`.dia-${i}:checked`);
     const diasMarcados = Array.from(checkboxes).map(cb => cb.value);
 
-    // Coleta todos os valores dos inputs dinâmicos do storage na ordem em que aparecem na tela
     const storageInputs = document.querySelectorAll(`.storage-input-${i}`);
     const storageArray = Array.from(storageInputs).map(input => input.value.trim()).filter(v => v !== "");
 
@@ -153,7 +151,7 @@
       nome: document.getElementById("nome-" + i).value,
       m3u: document.getElementById("m3u-" + i).value,
       yt: document.getElementById("yt-" + i).value,
-      storage: storageArray, // Salva a lista ordenada exatamente como o usuário organizou
+      storage: storageArray,
       dias: diasMarcados,
       inicio: document.getElementById("inicio-" + i).value,
       fim: document.getElementById("fim-" + i).value,
