@@ -269,12 +269,12 @@
   }
 
   #novo-banner-independente {
-    position: absolute; top: 220px; left: 20px; z-index: 1002; cursor: move; display: none; align-items: center;
+    position: absolute; top: 220px; left: 20px; z-index: 1002; cursor: move; display: flex; align-items: center;
     justify-content: center; overflow: hidden; resize: both; width: 250px; height: 120px; min-width: 40px; min-height: 40px;
     background: transparent;
   }
   #img-novo-banner-independente {
-    width: 100%; height: 100%; object-fit: contain; pointer-events: none;
+    width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none;
     image-rendering: -webkit-optimize-contrast;
     image-rendering: high-quality;
   }
@@ -495,7 +495,6 @@
               const linksMudaram = blocoAntigoLinks !== blocoNovoLinks;
               const estavaRodando = (blocoAntigo && !ytMudou && !m3uMudou && !linksMudaram) ? blocoAntigo._agendadoRodando : false;
 
-              // Coleta horários múltiplos do Firebase (Admin)
               let horariosAdminArr = [];
               if (Array.isArray(d.horarios) && d.horarios.length > 0) {
                   horariosAdminArr = d.horarios;
@@ -947,9 +946,9 @@ function avaliarNovosBanners() {
 
   if (urlParaExibir) {
     imgVisual.src = urlParaExibir;
-    elementoVisual.style.display = 'flex';
+    imgVisual.style.display = 'block';
   } else {
-    elementoVisual.style.display = 'none';
+    imgVisual.style.display = 'none';
     imgVisual.src = '';
   }
 }
@@ -1060,7 +1059,7 @@ function horarioParaSegundos(strHora) {
     return h * 3600 + m * 60 + s;
 }
 
-// NOVA FUNÇÃO INTELIGENTE: LÊ A PROGRAMAÇÃO POR HORÁRIO REAL PARA O "A SEGUIR"
+// "A SEGUIR" INTELIGENTE: LÊ HORÁRIOS EXCLUSIVAMENTE DENTRO DO DIA DE HOJE (PRÓXIMAS 24H) OU SEQUÊNCIA LOCAL
 function obterNomeASeguir() {
     if (!blocos || blocos.length === 0) return "";
     
@@ -1071,22 +1070,17 @@ function obterNomeASeguir() {
     let proximoEvento = null;
     let menorDiferenca = Infinity;
 
-    // Varre todos os blocos (YouTube/M3U do Admin e Blocos com horários locais)
     for (let i = 0; i < blocos.length; i++) {
         const b = blocos[i];
         if (!b || b.removido) continue;
 
-        // Junta todas as listas de horários possíveis (seja do admin ou de blocos locais)
         let listaHorariosParaChecar = [];
         if (b.tipo === 'youtube' && Array.isArray(b.horariosAdmin)) {
             listaHorariosParaChecar = b.horariosAdmin;
         } else if (b.tipo === 'timer' && Array.isArray(b.horarios)) {
             listaHorariosParaChecar = b.horarios;
-        } else if (b.horaInicio) {
-            listaHorariosParaChecar = [{ inicio: b.horaInicio, fim: b.horaFim || "23:59:59" }];
         }
 
-        // Verifica os dias da semana
         let diaMatch = false;
         if (b.tipo === 'youtube') {
             if (Array.isArray(b.diaSemana)) {
@@ -1103,11 +1097,8 @@ function obterNomeASeguir() {
                 if (hObj && hObj.inicio) {
                     const segundosInicio = horarioParaSegundos(hObj.inicio);
                     let diff = segundosInicio - segundosAgora;
-                    if (diff < 0) {
-                        // Se o horário já passou hoje, calcula para o mesmo horário amanhã (próxima ocorrência)
-                        diff += 24 * 3600;
-                    }
-
+                    
+                    // IMPORTANTE: Considera APENAS horários que ainda vão acontecer hoje (diff > 0). Ignora os que já passaram.
                     if (diff > 0 && diff < menorDiferenca) {
                         menorDiferenca = diff;
                         let nomeBloco = b.nome ? b.nome : (b.m3ulink ? "Transmissão M3U" : (b.ytlink ? "Transmissão YouTube" : "Bloco Programado"));
@@ -1123,7 +1114,7 @@ function obterNomeASeguir() {
         return proximoEvento;
     }
 
-    // Fallback caso não ache nenhum horário programado rigoroso: segue a sequência normal de arquivos/blocos
+    // Se não houver horário marcado para o resto de hoje, segue a sequência normal dos arquivos/blocos locais
     const b = blocos[idxBloco];
     if (!b || b.removido) return "";
 
@@ -1319,7 +1310,6 @@ function verificarAgendados() {
         if (Array.isArray(b.diaSemana)) { diaMatch = b.diaSemana.length === 0 || b.diaSemana.includes(hoje); } 
         else { diaMatch = (b.diaSemana === "" || (typeof b.diaSemana === 'string' && b.diaSemana.toLowerCase() === hoje)); }
         
-        // Verifica múltiplos horários do Admin ou horários únicos
         let dentroDoHorario = false;
         if (Array.isArray(b.horariosAdmin) && b.horariosAdmin.length > 0) {
             dentroDoHorario = b.horariosAdmin.some(hObj => horaAtual >= (hObj.inicio || "00:00:00") && horaAtual < (hObj.fim || "23:59:59"));
