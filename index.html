@@ -46,7 +46,7 @@
     position: fixed;
     bottom: 20px;
     right: 20px;
-    z-index: 999999;
+    z-index: 99999;
     padding: 15px 25px;
     border-radius: 50px;
     font-weight: bold;
@@ -323,7 +323,7 @@
           const playerRef = ref(db, `usuarios/${user.uid}/player_m3u/0`);
           get(playerRef).then((snapshot) => {
             if (!snapshot.exists()) {
-              set(playerRef, { dias: ["segunda"], inicio: "12:00:00", fim: "13:00:00", m3u: "", fbLinks: [""], yt: "", timestamp: Date.now() });
+              set(playerRef, { dias: ["segunda"], inicio: "12:00:00", fim: "13:00:00", m3u: "", storage: [], yt: "", timestamp: Date.now() });
             }
           });
         }
@@ -469,24 +469,14 @@
               const blocoAntigo = blocos.find(b => b._firebaseIndex === i);
               
               let linksArr = [];
-              if (Array.isArray(d.fbLinks)) {
+              // COMPATIBILIDADE COM O NOVO SISTEMA DE MÚLTIPLOS LINKS (ARRAY 'storage')
+              if (Array.isArray(d.storage)) {
+                  linksArr = d.storage.filter(l => l && l.trim() !== "");
+              } else if (Array.isArray(d.fbLinks)) {
                   linksArr = d.fbLinks.filter(l => l && l.trim() !== "");
               } else if (d.fb) {
                   linksArr = [d.fb];
               }
-
-              // ORDENAÇÃO RIGOROSA: INTRO PRIMEIRO, FIM POR ÚLTIMO
-              linksArr.sort((a, b) => {
-                  let nomeA = decodeURIComponent(a).toLowerCase();
-                  let nomeB = decodeURIComponent(b).toLowerCase();
-                  let scoreA = 1, scoreB = 1;
-                  if (nomeA.includes('intro')) scoreA = 0;
-                  else if (nomeA.includes('fim')) scoreA = 2;
-                  if (nomeB.includes('intro')) scoreB = 0;
-                  else if (nomeB.includes('fim')) scoreB = 2;
-                  if (scoreA !== scoreB) return scoreA - scoreB;
-                  return nomeA.localeCompare(nomeB);
-              });
 
               const blocoAntigoLinks = blocoAntigo ? JSON.stringify(blocoAntigo.fbLinksArray || []) : "";
               const blocoNovoLinks = JSON.stringify(linksArr);
@@ -495,7 +485,6 @@
               const linksMudaram = blocoAntigoLinks !== blocoNovoLinks;
               const estavaRodando = (blocoAntigo && !ytMudou && !m3uMudou && !linksMudaram) ? blocoAntigo._agendadoRodando : false;
 
-              // ADICIONA ANTI-CACHE AUTOMÁTICO (?v=TIMESTAMP) EM CADA LINK DA NUVEM
               let timestampCache = Date.now();
               let listaArquivosFirebase = linksArr.map((linkUrl, indexUrl) => {
                   let urlComAntiCache = linkUrl;
@@ -1121,29 +1110,29 @@ function renderizarBloco(i, bloco){
     <h3 id="titulo-bloco-${i}">Bloco ${i+1}${nomeDisplay} <span class="badge">${bloco.tipo==='timer'?'Tempo Fixo':blocos[i].tipo==='movie'?'Filmes':blocos[i].tipo==='pause'?'Pausa':'YouTube / M3U'}</span></h3>
     <div class="row"><label>Nome:</label><input type="text" placeholder="Ex: Jaspion" value="${bloco.nome || ''}" onchange="definirNomeBloco(${i}, this.value)" style="width:145px; background:#222; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 6px;"></div>
     <div class="row">
-       ${(isTimer||bloco.tipo==='movie') ? `<label>Pasta:</label><input type="file" webkitdirectory directory multiple onchange="carregarArquivos(${i}, this.files)">`:''}
-       ${isTimer ? `
-        <label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempo(${i}, this.value)">
-        <div style="margin-top:10px; width:100%; background:#222; padding:8px; border-radius:5px;"><label>Dias da Semana:</label><br><div style="display:grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size:11px;">
+        ${(isTimer||bloco.tipo==='movie') ? `<label>Pasta:</label><input type="file" webkitdirectory directory multiple onchange="carregarArquivos(${i}, this.files)">`:''}
+        ${isTimer ? `
+         <label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempo(${i}, this.value)">
+         <div style="margin-top:10px; width:100%; background:#222; padding:8px; border-radius:5px;"><label>Dias da Semana:</label><br><div style="display:grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size:11px;">
             ${['domingo','segunda','terca','quarta','quinta','sexta','sabado'].map(d => `<label style="cursor:pointer;"><input type="checkbox" ${bloco.diasSelecionados && bloco.diasSelecionados.includes(d) ? 'checked' : ''} onchange="toggleDia(${i}, '${d}')"> ${d.charAt(0).toUpperCase() + d.slice(1)}</label>`).join('')}
          </div></div>
-        <div style="margin-top:10px; width:100%;">
-            <label style="display:block; margin-bottom:5px;">Horários Programados:</label>
-            <div id="lista-horarios-${i}">
-                ${(bloco.horarios).map((h, idx) => `
-                    <div style="display:flex; gap:5px; margin-bottom:5px;">
-                        <input type="time" step="1" value="${h.inicio}" oninput="editHora(${i}, ${idx}, 'inicio', this.value)" style="width:85px;">
-                        <input type="time" step="1" value="${h.fim}" oninput="editHora(${i}, ${idx}, 'fim', this.value)" style="width:85px;">
-                        <button onclick="removeHora(${i}, ${idx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px; cursor:pointer;">X</button>
-                    </div>
-                `).join('')}
-            </div>
-            <button onclick="addHora(${i})" style="font-size:11px; width:100%; margin-top:5px; background:#1976d2; color:white; border-radius:5px; padding:5px; cursor:pointer;">+ Adicionar Horário</button>
-        </div>
-     `:''}
-     ${bloco.tipo==='pause' ? `<label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempo(${i}, this.value)">`:''}
-     ${bloco.tipo==='movie' ? `<label>Limite:</label><input type="number" min="1" value="${bloco.limitePorCiclo||3}" onchange="definirLimite(${i}, this.value)"><div style="margin-top:8px; width:100%;"><button class="mini-btn" onclick="voltarArquivo(${i})">⏮ Voltar vídeo</button><button class="mini-btn" onclick="pularArquivo(${i})">⏭ Pular vídeo</button></div>`:''}
-     ${isYoutubeM3U ? `<label>Início:</label><input type="time" step="1" value="${bloco.horaInicio||''}" disabled><label>Fim:</label><input type="time" step="1" value="${bloco.horaFim||''}" disabled>`:''}
+         <div style="margin-top:10px; width:100%;">
+             <label style="display:block; margin-bottom:5px;">Horários Programados:</label>
+             <div id="lista-horarios-${i}">
+                 ${(bloco.horarios).map((h, idx) => `
+                     <div style="display:flex; gap:5px; margin-bottom:5px;">
+                         <input type="time" step="1" value="${h.inicio}" oninput="editHora(${i}, ${idx}, 'inicio', this.value)" style="width:85px;">
+                         <input type="time" step="1" value="${h.fim}" oninput="editHora(${i}, ${idx}, 'fim', this.value)" style="width:85px;">
+                         <button onclick="removeHora(${i}, ${idx})" style="background:#b71c1c; padding:2px 5px; border-radius:4px; cursor:pointer;">X</button>
+                     </div>
+                 `).join('')}
+             </div>
+             <button onclick="addHora(${i})" style="font-size:11px; width:100%; margin-top:5px; background:#1976d2; color:white; border-radius:5px; padding:5px; cursor:pointer;">+ Adicionar Horário</button>
+         </div>
+      `:''}
+      ${bloco.tipo==='pause' ? `<label>Tempo:</label><input type="time" step="1" value="${fmt(bloco.tempo||300)}" oninput="definirTempo(${i}, this.value)">`:''}
+      ${bloco.tipo==='movie' ? `<label>Limite:</label><input type="number" min="1" value="${bloco.limitePorCiclo||3}" onchange="definirLimite(${i}, this.value)"><div style="margin-top:8px; width:100%;"><button class="mini-btn" onclick="voltarArquivo(${i})">⏮ Voltar vídeo</button><button class="mini-btn" onclick="pularArquivo(${i})">⏭ Pular vídeo</button></div>`:''}
+      ${isYoutubeM3U ? `<label>Início:</label><input type="time" step="1" value="${bloco.horaInicio||''}" disabled><label>Fim:</label><input type="time" step="1" value="${bloco.horaFim||''}" disabled>`:''}
     </div>
     <div class="hint" id="info-${i}">${isYoutubeM3U?'Agendamento Admin':bloco.arquivos.length+' arquivos.'}</div>
     <div class="contador-regressivo" id="countdown-${i}" style="font-size:11px; margin-top:5px;"></div>
