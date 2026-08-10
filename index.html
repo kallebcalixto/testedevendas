@@ -943,8 +943,10 @@ function avaliarNovosBanners() {
   if (urlParaExibir) {
     imgVisual.src = urlParaExibir;
     imgVisual.style.display = 'block';
+    elementoVisual.style.display = 'flex';
   } else {
     elementoVisual.style.display = 'none';
+    imgVisual.style.display = 'none';
     imgVisual.src = '';
   }
 }
@@ -1004,12 +1006,14 @@ function atualizarLogos(url) {
   const logo1 = document.getElementById('letreiro-logo-img');
   const logo2 = document.getElementById('img-banner-fixo');
   const logo3 = document.getElementById('letreiro-logo-aseguir');
+  const containerLogo2 = document.getElementById('banner-somente-logo');
   if(url) {
     logo1.src = url; logo1.style.display = 'block';
     logo2.src = url; logo2.style.display = 'block';
+    containerLogo2.style.display = 'flex';
     logo3.src = url; logo3.style.display = 'block';
   } else {
-    logo1.style.display = 'none'; logo2.style.display = 'none'; logo3.style.display = 'none';
+    logo1.style.display = 'none'; logo2.style.display = 'none'; containerLogo2.style.display = 'none'; logo3.style.display = 'none';
   }
 }
 
@@ -1757,19 +1761,16 @@ btnTrava.onclick = () => {
   }
 };
 
-// GERENCIAMENTO DE SELEÇÃO E ARRASTE POR CLIQUE
 document.addEventListener('mousedown', (e) => {
   if (layoutTravado) return;
 
   const target = e.target.closest('.movel');
   
   if (!target) {
-    // Clicou fora: desmarca todos
     document.querySelectorAll('.movel').forEach(el => el.classList.remove('selecionado'));
     return;
   }
 
-  // Clicou em um elemento móvel: marca apenas este como selecionado
   document.querySelectorAll('.movel').forEach(el => el.classList.remove('selecionado'));
   target.classList.add('selecionado');
 
