@@ -32,7 +32,6 @@
     overflow: hidden;
   }
   
-  /* Quando o layout está destravado E o elemento está selecionado */
   .modo-edicao .movel.selecionado {
     border-color: var(--primary-color);
     background: rgba(46, 125, 50, 0.05);
@@ -266,13 +265,16 @@
 
   #novo-banner-independente {
     position: absolute; top: 220px; left: 20px; display: flex; align-items: center;
-    justify-content: center; width: 250px; height: 120px; min-width: 40px; min-height: 40px;
+    justify-content: center; width: 300px; height: 150px; min-width: 40px; min-height: 40px;
     background: transparent;
   }
-  #img-novo-banner-independente {
+  .conteudo-overlay-dinamico {
     width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none;
     image-rendering: -webkit-optimize-contrast;
     image-rendering: high-quality;
+  }
+  .video-overlay-dinamico {
+    width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none;
   }
 
   @keyframes piscarVermelho {
@@ -619,7 +621,8 @@
           </div>
 
           <div id="novo-banner-independente" class="movel">
-            <img id="img-novo-banner-independente" src="">
+            <img id="img-novo-banner-independente" class="conteudo-overlay-dinamico" src="">
+            <video id="vid-novo-banner-independente" class="video-overlay-dinamico" autoplay muted loop playsinline></video>
           </div>
 
           <video id="player" controls playsinline></video>
@@ -751,9 +754,9 @@
           </div>
 
           <div style="margin-top:15px; background:#181818; padding:15px; border-radius:8px; border:1px solid #444; width: 100%; box-sizing: border-box;">
-            <label style="font-size:11px; color:#00e676; display:block; margin-bottom:8px; font-weight:bold;">NOVOS BANNERS COM MÚLTIPLOS HORÁRIOS:</label>
+            <label style="font-size:11px; color:#00e676; display:block; margin-bottom:8px; font-weight:bold;">OVERLAYS / BANNERS COM HORÁRIO:</label>
             <div id="novos-banners-container" style="display:flex; flex-direction:column; gap:10px; margin-bottom:10px;"></div>
-            <button type="button" onclick="adicionarNovoBannerItem()" style="background:#00e676; color:#000; font-size:11px; font-weight:bold; padding:6px; width:100%;">+ Adicionar Novo Banner</button>
+            <button type="button" onclick="adicionarNovoBannerItem()" style="background:#00e676; color:#000; font-size:11px; font-weight:bold; padding:6px; width:100%;">+ Adicionar Overlay / Banner</button>
           </div>
 
         </div>
@@ -856,10 +859,10 @@ window.adicionarNovoBannerItem = function(dadosBanner = null) {
 
     div.innerHTML = `
       <div style="display:flex; gap:5px; margin-bottom:5px;">
-        <input type="text" class="nb-url" placeholder="Link da imagem do banner (.png/.jpg)" value="${dadosBanner ? (dadosBanner.url || '') : ''}" style="flex:1; background:#000; color:#fff; border:1px solid #444; padding:5px; font-size:11px;" oninput="avaliarNovosBanners()">
+        <input type="text" class="nb-url" placeholder="Link do Overlay / Imagem / GIF / Vídeo (.png, .gif, .webm)" value="${dadosBanner ? (dadosBanner.url || '') : ''}" style="flex:1; background:#000; color:#fff; border:1px solid #444; padding:5px; font-size:11px;" oninput="avaliarNovosBanners()">
         <button type="button" onclick="this.closest('.novo-banner-bloco').remove(); avaliarNovosBanners();" style="background:#b71c1c; width:28px; padding:4px;">X</button>
       </div>
-      <div style="font-size:10px; color:#aaa; margin-bottom:3px;">Horários deste banner:</div>
+      <div style="font-size:10px; color:#aaa; margin-bottom:3px;">Horários deste Overlay:</div>
       <div class="nb-horarios-container" style="display:flex; flex-direction:column; gap:4px; margin-bottom:5px;"></div>
       <button type="button" onclick="adicionarHorarioNoBanner(this.closest('.novo-banner-bloco'))" style="background:#28a745; font-size:10px; padding:3px; width:100%;">+ Adicionar Horário</button>
     `;
@@ -939,15 +942,32 @@ function avaliarNovosBanners() {
 
   const elementoVisual = document.getElementById('novo-banner-independente');
   const imgVisual = document.getElementById('img-novo-banner-independente');
+  const vidVisual = document.getElementById('vid-novo-banner-independente');
 
   if (urlParaExibir) {
-    imgVisual.src = urlParaExibir;
-    imgVisual.style.display = 'block';
+    const ehVideo = urlParaExibir.toLowerCase().endsWith('.webm') || urlParaExibir.toLowerCase().endsWith('.mp4');
+    if (ehVideo) {
+      imgVisual.style.display = 'none';
+      imgVisual.src = '';
+      if (vidVisual.src !== urlParaExibir) {
+        vidVisual.src = urlParaExibir;
+        vidVisual.load();
+        vidVisual.play().catch(()=>{});
+      }
+      vidVisual.style.display = 'block';
+    } else {
+      vidVisual.style.display = 'none';
+      vidVisual.src = '';
+      imgVisual.src = urlParaExibir;
+      imgVisual.style.display = 'block';
+    }
     elementoVisual.style.display = 'flex';
   } else {
     elementoVisual.style.display = 'none';
     imgVisual.style.display = 'none';
     imgVisual.src = '';
+    vidVisual.style.display = 'none';
+    vidVisual.src = '';
   }
 }
 
