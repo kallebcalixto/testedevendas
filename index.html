@@ -276,6 +276,9 @@
   .video-overlay-dinamico {
     width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none;
   }
+  .iframe-overlay-dinamico {
+    width: 100%; height: 100%; border: none; background: transparent; pointer-events: none; display: none;
+  }
 
   @keyframes piscarVermelho {
     0% { background-color: #d32f2f; box-shadow: 0 0 5px #ff0000; }
@@ -623,6 +626,7 @@
           <div id="novo-banner-independente" class="movel">
             <img id="img-novo-banner-independente" class="conteudo-overlay-dinamico" src="">
             <video id="vid-novo-banner-independente" class="video-overlay-dinamico" autoplay muted loop playsinline></video>
+            <iframe id="iframe-novo-banner-independente" class="iframe-overlay-dinamico"></iframe>
           </div>
 
           <video id="player" controls playsinline></video>
@@ -754,9 +758,9 @@
           </div>
 
           <div style="margin-top:15px; background:#181818; padding:15px; border-radius:8px; border:1px solid #444; width: 100%; box-sizing: border-box;">
-            <label style="font-size:11px; color:#00e676; display:block; margin-bottom:8px; font-weight:bold;">OVERLAYS / BANNERS COM HORÁRIO:</label>
+            <label style="font-size:11px; color:#00e676; display:block; margin-bottom:8px; font-weight:bold;">OVERLAYS HTML / BANNERS COM HORÁRIO:</label>
             <div id="novos-banners-container" style="display:flex; flex-direction:column; gap:10px; margin-bottom:10px;"></div>
-            <button type="button" onclick="adicionarNovoBannerItem()" style="background:#00e676; color:#000; font-size:11px; font-weight:bold; padding:6px; width:100%;">+ Adicionar Overlay / Banner</button>
+            <button type="button" onclick="adicionarNovoBannerItem()" style="background:#00e676; color:#000; font-size:11px; font-weight:bold; padding:6px; width:100%;">+ Adicionar Overlay</button>
           </div>
 
         </div>
@@ -859,7 +863,7 @@ window.adicionarNovoBannerItem = function(dadosBanner = null) {
 
     div.innerHTML = `
       <div style="display:flex; gap:5px; margin-bottom:5px;">
-        <input type="text" class="nb-url" placeholder="Link do Overlay / Imagem / GIF / Vídeo (.png, .gif, .webm)" value="${dadosBanner ? (dadosBanner.url || '') : ''}" style="flex:1; background:#000; color:#fff; border:1px solid #444; padding:5px; font-size:11px;" oninput="avaliarNovosBanners()">
+        <input type="text" class="nb-url" placeholder="file:///C:/.../index.html ou link de imagem/vídeo" value="${dadosBanner ? (dadosBanner.url || '') : ''}" style="flex:1; background:#000; color:#fff; border:1px solid #444; padding:5px; font-size:11px;" oninput="avaliarNovosBanners()">
         <button type="button" onclick="this.closest('.novo-banner-bloco').remove(); avaliarNovosBanners();" style="background:#b71c1c; width:28px; padding:4px;">X</button>
       </div>
       <div style="font-size:10px; color:#aaa; margin-bottom:3px;">Horários deste Overlay:</div>
@@ -943,12 +947,23 @@ function avaliarNovosBanners() {
   const elementoVisual = document.getElementById('novo-banner-independente');
   const imgVisual = document.getElementById('img-novo-banner-independente');
   const vidVisual = document.getElementById('vid-novo-banner-independente');
+  const iframeVisual = document.getElementById('iframe-novo-banner-independente');
 
   if (urlParaExibir) {
-    const ehVideo = urlParaExibir.toLowerCase().endsWith('.webm') || urlParaExibir.toLowerCase().endsWith('.mp4');
-    if (ehVideo) {
-      imgVisual.style.display = 'none';
-      imgVisual.src = '';
+    const urlLower = urlParaExibir.toLowerCase();
+    const ehHtml = urlLower.endsWith('.html') || urlLower.endsWith('.htm') || urlLower.includes('file:///');
+    const ehVideo = urlLower.endsWith('.webm') || urlLower.endsWith('.mp4');
+
+    if (ehHtml) {
+      imgVisual.style.display = 'none'; imgVisual.src = '';
+      vidVisual.style.display = 'none'; vidVisual.src = '';
+      if (iframeVisual.src !== urlParaExibir) {
+        iframeVisual.src = urlParaExibir;
+      }
+      iframeVisual.style.display = 'block';
+    } else if (ehVideo) {
+      imgVisual.style.display = 'none'; imgVisual.src = '';
+      iframeVisual.style.display = 'none'; iframeVisual.src = '';
       if (vidVisual.src !== urlParaExibir) {
         vidVisual.src = urlParaExibir;
         vidVisual.load();
@@ -956,18 +971,17 @@ function avaliarNovosBanners() {
       }
       vidVisual.style.display = 'block';
     } else {
-      vidVisual.style.display = 'none';
-      vidVisual.src = '';
+      vidVisual.style.display = 'none'; vidVisual.src = '';
+      iframeVisual.style.display = 'none'; iframeVisual.src = '';
       imgVisual.src = urlParaExibir;
       imgVisual.style.display = 'block';
     }
     elementoVisual.style.display = 'flex';
   } else {
     elementoVisual.style.display = 'none';
-    imgVisual.style.display = 'none';
-    imgVisual.src = '';
-    vidVisual.style.display = 'none';
-    vidVisual.src = '';
+    imgVisual.style.display = 'none'; imgVisual.src = '';
+    vidVisual.style.display = 'none'; vidVisual.src = '';
+    iframeVisual.style.display = 'none'; iframeVisual.src = '';
   }
 }
 
@@ -1643,8 +1657,8 @@ window.resizePlayer = function(){ const w=document.getElementById('playerWidth')
 window.salvarProgramacao = function(){ 
   const posicoes = {};
   document.querySelectorAll('.movel').forEach(el => {
-    if(el.id) { 
-      posicoes[el.id] = { 
+    if(id = el.id) { 
+      posicoes[id] = { 
         top: el.style.top, 
         left: el.style.left, 
         right: el.style.right, 
