@@ -86,25 +86,40 @@
         <label>Dias da semana:</label>
         ${diasHTML}
 
-        <label>Hora início (com segundos):</label>
-        <input id="inicio-${i}" type="time" step="1" value="${b.inicio || '00:00:00'}">
-        
-        <label>Hora fim (com segundos):</label>
-        <input id="fim-${i}" type="time" step="1" value="${b.fim || '00:00:00'}">
+        <hr style="border-color:#444; margin: 12px 0;">
+        <label style="color: #17a2b8; font-weight: bold;">Horários Programados (Múltiplos):</label>
+        <div id="horarios-container-${i}" class="horarios-container"></div>
+        <button type="button" class="addHorarioBtn" onclick="adicionarCampoHorario(${i})">+ Adicionar Horário</button>
+        <hr style="border-color:#444; margin: 12px 0;">
         
         <button class="saveBtn" onclick="salvar(${i})">Salvar</button>
         <button class="deleteBtn" onclick="apagar(${i})">Apagar</button>
       `;
       lista.appendChild(card);
 
-      // Preenche os campos de storage já salvos
+      // Preenche os storages já salvos
       const storageArray = Array.isArray(b.storage) ? b.storage : [];
       storageArray.forEach(link => {
         adicionarCampoStorage(i, link);
       });
+
+      // Preenche os horários já salvos (compatibilidade com formato antigo `inicio`/`fim` e novo array `horarios`)
+      let horariosArray = [];
+      if (Array.isArray(b.horarios) && b.horarios.length > 0) {
+        horariosArray = b.horarios;
+      } else if (b.inicio || b.fim) {
+        horariosArray = [{ inicio: b.inicio || "00:00:00", fim: b.fim || "00:00:00" }];
+      } else {
+        horariosArray = [{ inicio: "00:00:00", fim: "00:00:00" }];
+      }
+
+      horariosArray.forEach(h => {
+        adicionarCampoHorario(i, h.inicio, h.fim);
+      });
     });
   }
 
+  // Função para gerenciar os inputs dinâmicos de Storage
   window.adicionarCampoStorage = function(i, valor = "") {
     const container = document.getElementById(`storage-container-${i}`);
     if (!container) return;
@@ -137,14 +152,78 @@
     container.appendChild(div);
   };
 
+  // Função para gerenciar os inputs dinâmicos de Horários (Início e Fim)
+  window.adicionarCampoHorario = function(i, inicioVal = "00:00:00", fimVal = "00:00:00") {
+    const container = document.getElementById(`horarios-container-${i}`);
+    if (!container) return;
+
+    const div = document.createElement("div");
+    div.className = "horario-item";
+    div.style.display = "flex";
+    div.style.gap = "5px";
+    div.style.marginBottom = "5px";
+    div.style.alignItems = "center";
+
+    const spanInicio = document.createElement("span");
+    spanInicio.textContent = "De:";
+    spanInicio.style.fontSize = "11px";
+
+    const inputInicio = document.createElement("input");
+    inputInicio.type = "time";
+    inputInicio.step = "1";
+    inputInicio.className = `horario-inicio-${i}`;
+    inputInicio.value = inicioVal;
+    inputInicio.style.width = "110px";
+
+    const spanFim = document.createElement("span");
+    spanFim.textContent = "Até:";
+    spanFim.style.fontSize = "11px";
+
+    const inputFim = document.createElement("input");
+    inputFim.type = "time";
+    inputFim.step = "1";
+    inputFim.className = `horario-fim-${i}`;
+    inputFim.value = fimVal;
+    inputFim.style.width = "110px";
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.textContent = "X";
+    removeBtn.style.width = "35px";
+    removeBtn.style.background = "#dc3545";
+    removeBtn.style.margin = "0";
+    removeBtn.onclick = function() {
+      div.remove();
+    };
+
+    div.appendChild(spanInicio);
+    div.appendChild(inputInicio);
+    div.appendChild(spanFim);
+    div.appendChild(inputFim);
+    div.appendChild(removeBtn);
+    container.appendChild(div);
+  };
+
   window.salvar = function(i) {
     if(!auth.currentUser) return;
     
     const checkboxes = document.querySelectorAll(`.dia-${i}:checked`);
     const diasMarcados = Array.from(checkboxes).map(cb => cb.value);
 
+    // Coleta todos os storages
     const storageInputs = document.querySelectorAll(`.storage-input-${i}`);
     const storageArray = Array.from(storageInputs).map(input => input.value.trim()).filter(v => v !== "");
+
+    // Coleta todos os pares de horários (Início e Fim)
+    const inicioInputs = document.querySelectorAll(`.horario-inicio-${i}`);
+    const fimInputs = document.querySelectorAll(`.horario-fim-${i}`);
+    let horariosArray = [];
+    for (let j = 0; j < inicioInputs.length; j++) {
+      horariosArray.push({
+        inicio: inicioInputs[j].value || "00:00:00",
+        fim: fimInputs[j].value || "00:00:00"
+      });
+    }
 
     const caminho = ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${i}`);
     set(caminho, {
@@ -153,11 +232,12 @@
       yt: document.getElementById("yt-" + i).value,
       storage: storageArray,
       dias: diasMarcados,
-      inicio: document.getElementById("inicio-" + i).value,
-      fim: document.getElementById("fim-" + i).value,
+      horarios: horariosArray, // Salvando a lista de horários múltiplos
+      inicio: horariosArray.length > 0 ? horariosArray[0].inicio : "00:00:00", // Retrocompatibilidade
+      fim: horariosArray.length > 0 ? horariosArray[0].fim : "00:00:00", // Retrocompatibilidade
       timestamp: Date.now()
     });
-    alert("✔ Salvo com sucesso!");
+    alert("✔ Salvo com múltiplos horários e vídeos do Storage!");
   };
 
   window.apagar = function(i) {
@@ -172,7 +252,7 @@
       const novoID = chaves.length > 0 ? Math.max(...chaves) + 1 : 0;
       
       set(ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${novoID}`), {
-        nome: "", m3u: "", yt: "", storage: [], dias: [], inicio: "00:00:00", fim: "00:00:00", timestamp: Date.now()
+        nome: "", m3u: "", yt: "", storage: [], dias: [], horarios: [{inicio: "00:00:00", fim: "00:00:00"}], inicio: "00:00:00", fim: "00:00:00", timestamp: Date.now()
       });
     }, { onlyOnce: true });
   };
@@ -189,13 +269,14 @@ body { background:#111; color:#fff; font-family:Arial; padding: 20px; margin: 0;
   gap: 20px;
 }
 
-.card { background:#1b1b1b; padding:15px; border-radius:10px; border:1px solid #333; width:340px; box-sizing: border-box; }
+.card { background:#1b1b1b; padding:15px; border-radius:10px; border:1px solid #333; width:360px; box-sizing: border-box; }
 
 input, select { width:100%; margin-bottom:8px; padding:6px; background:#222; border:1px solid #555; color:white; box-sizing: border-box;}
 button { width:100%; padding:8px; border:none; color:white; border-radius:6px; margin-top:6px; cursor:pointer; font-weight: bold; }
 .saveBtn { background:#007bff; }
 .deleteBtn { background:#dc3545; }
 .addStorageBtn { background: #17a2b8; margin-bottom: 8px; }
+.addHorarioBtn { background: #28a745; margin-bottom: 8px; }
 h3 { margin-top: 0; color: #aaa; text-align: center; border-bottom: 1px solid #333; padding-bottom: 10px; }
 
 .dias-check { 
