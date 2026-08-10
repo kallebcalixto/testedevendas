@@ -1,73 +1,13 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<title>Admin Individual — KBS TV</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<style>
-  :root { color-scheme: dark; --primary: #2e7d32; --bg: #121212; --card: #191919; --danger: #d32f2f; --info: #1976d2; }
-  body { background: var(--bg); color: #eee; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; }
-  .wrap { max-width: 1400px; margin: 0 auto; }
-  
-  header { display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; }
-  header h1 { margin: 0; font-size: 24px; color: #fff; font-weight: 700; }
-  
-  .btn-novo { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; text-align: center; width: 100%; transition: opacity 0.2s; }
-  .btn-novo:hover { opacity: 0.9; }
-
-  .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
-  
-  .card-bloco { background: var(--card); border: 1px solid #2a2a2a; border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
-  .card-bloco h3 { margin: 0 0 5px 0; font-size: 16px; color: #fff; border-bottom: 1px solid #333; padding-bottom: 8px; text-align: center; }
-
-  label { font-size: 11px; color: #aaa; display: block; margin-bottom: 3px; font-weight: 600; text-transform: uppercase; }
-  input[type="text"], input[type="time"] { width: 100%; background: #000; border: 1px solid #333; color: #fff; padding: 8px; border-radius: 4px; font-size: 13px; box-sizing: border-box; }
-  input[type="text"]:focus, input[type="time"]:focus { border-color: var(--primary); outline: none; }
-
-  .dias-box { background: #111; border: 1px solid #2a2a2a; border-radius: 4px; padding: 8px; }
-  .dias-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .dias-grid-2 label { font-size: 11px; color: #ddd; display: flex; align-items: center; gap: 6px; text-transform: none; cursor: pointer; }
-  .dias-grid-2 input[type="checkbox"] { accent-color: var(--primary); cursor: pointer; }
-
-  .card-acoes { display: flex; flex-direction: column; gap: 8px; margin-top: 5px; }
-  .btn-salvar { background: var(--info); color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; }
-  .btn-salvar:hover { background: #1565c0; }
-  .btn-apagar { background: var(--danger); color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; }
-  .btn-apagar:hover { background: #b71c1c; }
-
-  #telaLoginAdmin {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999;
-  }
-  .card-login { background: var(--card); padding: 30px; border-radius: 12px; border: 1px solid #333; width: 300px; text-align: center; }
-  .card-login input { width: 100%; padding: 10px; margin: 15px 0; background: #000; border: 1px solid #444; color: #fff; border-radius: 6px; box-sizing: border-box; text-align: center; }
-</style>
-</head>
-<body>
-
-  <!-- Tela de Senha Admin -->
-  <div id="telaLoginAdmin">
-    <div class="card-login">
-      <h2>Admin Individual</h2>
-      <p style="font-size: 12px; color: #888;">Digite a senha de acesso</p>
-      <input type="password" id="senhaAdminInput" placeholder="Senha">
-      <button class="btn-salvar" style="width:100%;" onclick="verificarSenhaAdmin()">Entrar</button>
-    </div>
-  </div>
-
-  <div class="wrap" id="conteudoAdmin" style="display:none;">
-    <header>
-      <h1>Admin Individual</h1>
-      <button class="btn-novo" onclick="adicionarBlocoAdmin()">+ Novo Bloco Individual</button>
-    </header>
-
-    <div id="listaBlocosAdmin" class="grid-cards">Carregando blocos do Firebase...</div>
-  </div>
+<meta charset="UTF-8">
+<title>Admin – Programação Individual</title>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-  import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+  import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBzzQg4fMWQm82aOu2xM2huVPvHeyitFxQ",
@@ -83,164 +23,168 @@
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
   const auth = getAuth(app);
-  const provider = new GoogleAuthProvider();
 
-  let usuarioAtualUid = null;
-  let dadosBlocos = [];
+  let blocosRef = null;
 
-  window.verificarSenhaAdmin = () => {
-    const senha = document.getElementById('senhaAdminInput').value;
-    if (senha === "kbstvcolombo") {
-      document.getElementById('telaLoginAdmin').style.display = 'none';
-      document.getElementById('conteudoAdmin').style.display = 'block';
-      autenticarAdminNoFirebase();
-    } else {
-      alert("Senha incorreta!");
-      document.getElementById('senhaAdminInput').value = "";
-    }
-  };
-
-  function autenticarAdminNoFirebase() {
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        usuarioAtualUid = user.uid;
-        carregarDoFirebase();
-      } else {
-        signInWithPopup(auth, provider).then((result) => {
-          usuarioAtualUid = result.user.uid;
-          carregarDoFirebase();
-        }).catch(err => alert("Erro ao autenticar no Firebase: " + err.message));
-      }
+  // Garante que o login fique salvo no navegador para todas as abas
+  setPersistence(auth, browserLocalPersistence)
+    .then(() => {
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          blocosRef = ref(db, `usuarios/${user.uid}/player_m3u`);
+          onValue(blocosRef, snap => atualizarLista(snap.val()));
+          console.log("Admin conectado à pasta: " + user.uid);
+        } else {
+          alert("Acesso negado. Faça login no Player primeiro.");
+          window.location.href = "cara.html"; 
+        }
+      });
+    })
+    .catch((error) => {
+      console.error("Erro ao configurar persistência de login:", error);
     });
-  }
 
-  function carregarDoFirebase() {
-    const refBlocos = ref(db, `usuarios/${usuarioAtualUid}/player_m3u`);
-    get(refBlocos).then((snapshot) => {
-      if (snapshot.exists()) {
-        const val = snapshot.val();
-        dadosBlocos = Array.isArray(val) ? val : Object.values(val);
-      } else {
-        dadosBlocos = [];
+  function atualizarLista(dados) {
+    const lista = document.getElementById("lista");
+    lista.innerHTML = "";
+    const diasSemana = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"];
+
+    Object.keys(dados || {}).forEach(i => {
+      const b = dados[i];
+      const diasSelecionados = b.dias || []; 
+      
+      const card = document.createElement("div");
+      card.className = "card";
+      
+      // Criando a lista de dias com Checkboxes
+      let diasHTML = '<div class="dias-check">';
+      diasSemana.forEach(dia => {
+        const checked = diasSelecionados.includes(dia) ? "checked" : "";
+        diasHTML += `
+          <label style="display:block; font-size:12px;">
+            <input type="checkbox" class="dia-${i}" value="${dia}" ${checked}> ${dia.charAt(0).toUpperCase() + dia.slice(1)}
+          </label>`;
+      });
+      diasHTML += '</div>';
+
+      // Tratamento para múltiplos links do Firebase Storage (salvos como texto separado por quebra de linha)
+      let storageLinksTexto = "";
+      if (Array.isArray(b.storage)) {
+        storageLinksTexto = b.storage.join("\n");
+      } else if (typeof b.storage === "string") {
+        storageLinksTexto = b.storage;
       }
-      renderizarAdmin();
-    });
-  }
 
-  window.renderizarAdmin = function() {
-    const container = document.getElementById('listaBlocosAdmin');
-    container.innerHTML = "";
-
-    if (dadosBlocos.length === 0) {
-      container.innerHTML = "<p style='color:#888;'>Nenhum bloco cadastrado. Clique em '+ Novo Bloco Individual'.</p>";
-      return;
-    }
-
-    dadosBlocos.forEach((b, index) => {
-      let diasArr = Array.isArray(b.dias) ? b.dias : [];
-
-      const card = document.createElement('div');
-      card.className = 'card-bloco';
       card.innerHTML = `
-        <h3>${b.nome ? b.nome.toUpperCase() : 'NOVO BLOCO'}</h3>
+        <h3>${b.nome ? b.nome : 'Bloco ' + i}</h3>
         
-        <div>
-          <label>Nome de identificação:</label>
-          <input type="text" id="nome_${index}" value="${b.nome || ''}" placeholder="Ex: JORNAL DO MEIO DIA">
-        </div>
+        <label>Nome de identificação:</label>
+        <input id="nome-${i}" value="${b.nome || ''}" placeholder="Ex: Programação da Manhã">
 
-        <div>
-          <label>Link M3U:</label>
-          <input type="text" id="m3u_${index}" value="${b.m3u || ''}" placeholder="https://...">
-        </div>
+        <label>Link M3U:</label>
+        <input id="m3u-${i}" value="${b.m3u || ''}">
+        
+        <label>Link YouTube:</label>
+        <input id="yt-${i}" value="${b.yt || ''}">
+        
+        <label>Links Firebase Storage (Um link por linha):</label>
+        <textarea id="storage-${i}" rows="3" placeholder="Cole os links do Storage aqui, um por linha...">${storageLinksTexto}</textarea>
+        
+        <label>Dias da semana:</label>
+        ${diasHTML}
 
-        <div>
-          <label>Link YouTube:</label>
-          <input type="text" id="yt_${index}" value="${b.yt || ''}" placeholder="https://youtube.com/...">
-        </div>
-
-        <div>
-          <label>Dias da semana:</label>
-          <div class="dias-box">
-            <div class="dias-grid-2">
-              ${['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo'].map(d => `
-                <label><input type="checkbox" class="dia_chk_${index}" value="${d}" ${diasArr.includes(d) ? 'checked' : ''}> ${d.charAt(0).toUpperCase() + d.slice(1)}</label>
-              `).join('')}
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <label>Hora início (com segundos):</label>
-          <input type="time" step="1" id="inicio_${index}" value="${b.inicio || '00:00:00'}">
-        </div>
-
-        <div>
-          <label>Hora fim (com segundos):</label>
-          <input type="time" step="1" id="fim_${index}" value="${b.fim || '00:00:00'}">
-        </div>
-
-        <div class="card-acoes">
-          <button class="btn-salvar" onclick="salvarBlocoIndividual(${index})">Salvar</button>
-          <button class="btn-apagar" onclick="removerBlocoAdmin(${index})">Apagar</button>
-        </div>
+        <label>Hora início (com segundos):</label>
+        <input id="inicio-${i}" type="time" step="1" value="${b.inicio || '00:00:00'}">
+        
+        <label>Hora fim (com segundos):</label>
+        <input id="fim-${i}" type="time" step="1" value="${b.fim || '00:00:00'}">
+        
+        <button class="saveBtn" onclick="salvar(${i})">Salvar</button>
+        <button class="deleteBtn" onclick="apagar(${i})">Apagar</button>
       `;
-      container.appendChild(card);
-    });
-  };
-
-  window.adicionarBlocoAdmin = () => {
-    coletarDadosTela();
-    dadosBlocos.push({ nome: "NOVO BLOCO", inicio: "00:00:00", fim: "00:00:00", dias: ["segunda"], yt: "", m3u: "", fbLinks: [""] });
-    renderizarAdmin();
-  };
-
-  window.removerBlocoAdmin = (index) => {
-    coletarDadosTela();
-    dadosBlocos.splice(index, 1);
-    sincronizarFirebase();
-  };
-
-  window.salvarBlocoIndividual = (index) => {
-    coletarDadosTela();
-    sincronizarFirebase();
-    alert("Bloco salvo com sucesso na nuvem!");
-  };
-
-  function coletarDadosTela() {
-    dadosBlocos.forEach((b, index) => {
-      const nomeInput = document.getElementById(`nome_${index}`);
-      if (nomeInput) b.nome = nomeInput.value;
-      
-      const inicioInput = document.getElementById(`inicio_${index}`);
-      if (inicioInput) b.inicio = inicioInput.value;
-      
-      const fimInput = document.getElementById(`fim_${index}`);
-      if (fimInput) b.fim = fimInput.value;
-      
-      const ytInput = document.getElementById(`yt_${index}`);
-      if (ytInput) b.yt = ytInput.value;
-      
-      const m3uInput = document.getElementById(`m3u_${index}`);
-      if (m3uInput) b.m3u = m3uInput.value;
-
-      const chks = document.querySelectorAll(`.dia_chk_${index}:checked`);
-      b.dias = Array.from(chks).map(c => c.value);
+      lista.appendChild(card);
     });
   }
 
-  function sincronizarFirebase() {
-    if (!usuarioAtualUid) return;
+  window.salvar = function(i) {
+    if(!auth.currentUser) return;
     
-    const dadosParaSalvar = dadosBlocos.map(b => ({
-      ...b,
-      timestamp: Date.now()
-    }));
+    // Captura todos os dias marcados
+    const checkboxes = document.querySelectorAll(`.dia-${i}:checked`);
+    const diasMarcados = Array.from(checkboxes).map(cb => cb.value);
 
-    const refBlocos = ref(db, `usuarios/${usuarioAtualUid}/player_m3u`);
-    set(refBlocos, dadosParaSalvar).catch(err => alert("Erro ao salvar no Firebase: " + err.message));
-  }
+    // Pega o texto do textarea do storage e transforma em um array limpo (removendo linhas vazias)
+    const storageTexto = document.getElementById("storage-" + i).value;
+    const storageArray = storageTexto.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+
+    const caminho = ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${i}`);
+    set(caminho, {
+      nome: document.getElementById("nome-" + i).value,
+      m3u: document.getElementById("m3u-" + i).value,
+      yt: document.getElementById("yt-" + i).value,
+      storage: storageArray, // Salva como array de links ordenados
+      dias: diasMarcados,
+      inicio: document.getElementById("inicio-" + i).value,
+      fim: document.getElementById("fim-" + i).value,
+      timestamp: Date.now()
+    });
+    alert("✔ Salvo com sucesso, incluindo os vídeos do Storage!");
+  };
+
+  window.apagar = function(i) {
+    if (!confirm("Apagar bloco?")) return;
+    remove(ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${i}`));
+  };
+
+  window.adicionarBloco = function() {
+    onValue(blocosRef, snap => {
+      const dados = snap.val() || {};
+      const chaves = Object.keys(dados).map(Number);
+      const novoID = chaves.length > 0 ? Math.max(...chaves) + 1 : 0;
+      
+      set(ref(db, `usuarios/${auth.currentUser.uid}/player_m3u/${novoID}`), {
+        nome: "", m3u: "", yt: "", storage: [], dias: [], inicio: "00:00:00", fim: "00:00:00", timestamp: Date.now()
+      });
+    }, { onlyOnce: true });
+  };
 </script>
 
+<style>
+body { background:#111; color:#fff; font-family:Arial; padding: 20px; margin: 0; }
+#topBar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+#addBtn { background:#28a745; padding:10px 18px; border:none; color:white; border-radius:8px; cursor:pointer; font-weight: bold; }
+
+#lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.card { background:#1b1b1b; padding:15px; border-radius:10px; border:1px solid #333; width:320px; box-sizing: border-box; }
+
+input, select, textarea { width:100%; margin-bottom:8px; padding:6px; background:#222; border:1px solid #555; color:white; box-sizing: border-box; resize: vertical;}
+button { width:100%; padding:8px; border:none; color:white; border-radius:6px; margin-top:6px; cursor:pointer; font-weight: bold; }
+.saveBtn { background:#007bff; }
+.deleteBtn { background:#dc3545; }
+h3 { margin-top: 0; color: #aaa; text-align: center; border-bottom: 1px solid #333; padding-bottom: 10px; }
+
+.dias-check { 
+  background: #222; 
+  padding: 10px; 
+  border-radius: 5px; 
+  margin-bottom: 10px; 
+  border: 1px solid #444;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.dias-check input { width: auto; margin-right: 5px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="topBar">
+  <h1>Admin Individual</h1>
+  <button id="addBtn" onclick="adicionarBloco()">+ Novo Bloco Individual</button>
+</div>
+<div id="lista">Carregando seus blocos…</div>
 </body>
 </html>
