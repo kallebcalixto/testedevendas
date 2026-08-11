@@ -23,6 +23,7 @@
     user-select: none;
   }
 
+  /* SISTEMA DE SELEÇÃO POR CLIQUE */
   .movel {
     position: absolute !important;
     z-index: 10;
@@ -61,42 +62,97 @@
   .layout-travado { background: #2e7d32 !important; color: #fff; }
 
   #tela-pagamento {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    position: fixed; 
+    top: 0; left: 0; 
+    width: 100%; height: 100%; 
     background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
-    display: none; justify-content: center; align-items: center; z-index: 100000;
+    display: none; 
+    justify-content: center; 
+    align-items: center; 
+    z-index: 100000;
     backdrop-filter: blur(10px);
   }
 
   .painel-premium {
-    background: #161616; padding: 40px; border-radius: 24px; border: 1px solid #333;
-    width: 100%; max-width: 450px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-    position: relative; overflow: hidden;
+    background: #161616;
+    padding: 40px;
+    border-radius: 24px;
+    border: 1px solid #333;
+    width: 100%;
+    max-width: 450px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    position: relative;
+    overflow: hidden;
   }
 
   .painel-premium::before {
-    content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 4px;
+    content: "";
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 4px;
     background: linear-gradient(90deg, transparent, var(--error-color), transparent);
   }
 
   .status-badge {
-    background: var(--error-color); color: white; padding: 5px 15px;
-    border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase;
-    display: inline-block; margin-bottom: 20px;
+    background: var(--error-color);
+    color: white;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    display: inline-block;
+    margin-bottom: 20px;
   }
 
-  .painel-premium h2 { font-size: 32px; margin: 10px 0; font-weight: 900; color: #fff; letter-spacing: -1px; }
-  .painel-premium p { color: #aaa; margin-bottom: 30px; font-size: 15px; }
+  .painel-premium h2 {
+    font-size: 32px;
+    margin: 10px 0;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: -1px;
+  }
+
+  .painel-premium p {
+    color: #aaa;
+    margin-bottom: 30px;
+    font-size: 15px;
+  }
 
   .btn-plano-premium {
-    width: 100%; padding: 20px; margin: 12px 0;
+    width: 100%;
+    padding: 20px;
+    margin: 12px 0;
     background: linear-gradient(145deg, #1e1e1e, #141414);
-    border: 1px solid #333; color: #fff; border-radius: 16px; cursor: pointer;
-    display: flex; justify-content: space-between; align-items: center;
+    border: 1px solid #333;
+    color: #fff;
+    border-radius: 16px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .btn-plano-premium:hover { border-color: var(--primary-color); transform: translateY(-2px); background: #1f1f1f; box-shadow: 0 5px 15px rgba(46, 125, 50, 0.2); }
-  .btn-plano-premium .nome { font-weight: bold; font-size: 16px; text-transform: uppercase; }
-  .btn-plano-premium .preco { color: var(--primary-color); font-weight: 900; font-size: 18px; }
+
+  .btn-plano-premium:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    background: #1f1f1f;
+    box-shadow: 0 5px 15px rgba(46, 125, 50, 0.2);
+  }
+
+  .btn-plano-premium .nome {
+    font-weight: bold;
+    font-size: 16px;
+    text-transform: uppercase;
+  }
+
+  .btn-plano-premium .preco {
+    color: var(--primary-color);
+    font-weight: 900;
+    font-size: 18px;
+  }
+
   .btn-plano-premium.destaque { border-color: var(--gold); }
   .btn-plano-premium.destaque .preco { color: var(--gold); }
 
@@ -124,8 +180,10 @@
   .top { display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; justify-content:center; }
 
   #player, #ytplayer { 
-    width:500px; height:280px; background:#000 !important;
-    border:1px solid #333; border-radius:8px; transition: opacity 0.15s ease-in-out; 
+    width:500px; height:280px; 
+    background:#000 !important;
+    border:1px solid #333; border-radius:8px; 
+    transition: opacity 0.15s ease-in-out; 
   }
 
   video::-webkit-media-controls-start-playback-button { display: none !important; }
@@ -142,9 +200,15 @@
   .btn-admin { background:#6200ee; font-weight: bold; } .btn-admin:hover { background:#7c4dff; }
   
   .grid { 
-    display:flex; flex-wrap: wrap; gap:12px; margin-top:18px; 
-    overflow-y: scroll !important; overflow-x: scroll !important; 
-    padding-bottom: 25px; padding-right: 25px; box-sizing: border-box;
+    display:flex; 
+    flex-wrap: wrap; 
+    gap:12px; 
+    margin-top:18px; 
+    overflow-y: scroll !important; 
+    overflow-x: scroll !important; 
+    padding-bottom: 25px; 
+    padding-right: 25px;
+    box-sizing: border-box;
   }
   
   .bloco { position:relative; flex:0 0 260px; border:1px solid #2b2b2b; background:#171717; border-radius:10px; padding:12px; }
@@ -166,9 +230,15 @@
     background: transparent; color: #ffd700; border-left: 5px solid #ffd700;
     padding: 10px 20px; font-weight: bold; font-size: 14px;
     display: none; align-items: center; gap: 10px; border-radius: 0 8px 8px 0;
-    text-shadow: 2px 2px 4px #000; user-select: none;
+    text-shadow: 2px 2px 4px #000; 
+    user-select: none;
+    transition: color 0.3s, border-color 0.3s;
   }
-  #letreiro-logo-img { height: 28px; width: auto; max-height: 35px; display: none; pointer-events: none; }
+  #letreiro-logo-img { 
+    height: 28px; width: auto; max-height: 35px; display: none; pointer-events: none; 
+    image-rendering: -webkit-optimize-contrast; 
+    image-rendering: high-quality;
+  }
   #letreiro-texto-arquivo { pointer-events: none; }
 
   #letreiro-aseguir {
@@ -176,55 +246,40 @@
     background: transparent; color: #ffffff; border-left: 5px solid #ffffff;
     padding: 10px 20px; font-weight: bold; font-size: 14px;
     display: none; align-items: center; gap: 10px; border-radius: 0 8px 8px 0;
-    text-shadow: 2px 2px 4px #000; user-select: none;
+    text-shadow: 2px 2px 4px #000; 
+    user-select: none;
+    transition: color 0.3s, border-color 0.3s;
   }
-  #letreiro-logo-aseguir { height: 28px; width: auto; max-height: 35px; display: none; pointer-events: none; }
+  #letreiro-logo-aseguir { 
+    height: 28px; width: auto; max-height: 35px; display: none; pointer-events: none; 
+    image-rendering: -webkit-optimize-contrast; 
+    image-rendering: high-quality;
+  }
   #letreiro-texto-aseguir { pointer-events: none; }
 
   #banner-somente-logo {
     position: absolute; top: 120px; left: 20px; display: flex; align-items: center;
     justify-content: center; width: 80px; height: 80px; min-width: 20px; min-height: 20px;
   }
-  #img-banner-fixo { width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none; }
+  #img-banner-fixo { 
+    width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none; 
+    image-rendering: -webkit-optimize-contrast; 
+    image-rendering: high-quality;
+  }
 
-  /* BANNER INDEPENDENTE COM CAIXA DE CORTE VISUAL */
   #novo-banner-independente {
     position: absolute; top: 220px; left: 20px; display: flex; align-items: center;
     justify-content: center; width: 300px; height: 150px; min-width: 40px; min-height: 40px;
     background: transparent;
   }
-  
-  .conteudo-overlay-dinamico, .video-overlay-dinamico {
+  .conteudo-overlay-dinamico {
+    width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: high-quality;
+  }
+  .video-overlay-dinamico {
     width: 100%; height: 100%; object-fit: contain; pointer-events: none; display: none;
   }
-
-  /* CAIXA PONTILHADA DE CORTE (Igualzinha à sua imagem) */
-  #caixa-recorte-visual {
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    border: 2px dashed #00e676;
-    display: none;
-    pointer-events: none;
-    z-index: 999;
-  }
-  .modo-edicao #novo-banner-independente:hover #caixa-recorte-visual {
-    display: block;
-  }
-  
-  /* Alças de corte (bolinhas nas pontas) */
-  .alca-corte {
-    position: absolute;
-    width: 10px; height: 10px;
-    background: #00e676;
-    border: 2px solid #fff;
-    border-radius: 50%;
-    pointer-events: auto;
-    z-index: 1000;
-  }
-  .alca-topo { top: -6px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
-  .alca-baixo { bottom: -6px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
-  .alca-esquerda { left: -6px; top: 50%; transform: translateY(-50%); cursor: w-resize; }
-  .alca-direita { right: -6px; top: 50%; transform: translateY(-50%); cursor: e-resize; }
 
   @keyframes piscarVermelho {
     0% { background-color: #d32f2f; box-shadow: 0 0 5px #ff0000; }
@@ -569,14 +624,7 @@
             <img id="img-banner-fixo" src="">
           </div>
 
-          <!-- BANNER INDEPENDENTE COM ALÇAS DE CORTE VISUAIS -->
           <div id="novo-banner-independente" class="movel">
-            <div id="caixa-recorte-visual">
-              <div class="alca-corte alca-topo" data-direcao="topo"></div>
-              <div class="alca-corte alca-baixo" data-direcao="baixo"></div>
-              <div class="alca-corte alca-esquerda" data-direcao="esquerda"></div>
-              <div class="alca-corte alca-direita" data-direcao="direita"></div>
-            </div>
             <img id="img-novo-banner-independente" class="conteudo-overlay-dinamico" src="">
             <video id="vid-novo-banner-independente" class="video-overlay-dinamico" autoplay muted loop playsinline></video>
           </div>
@@ -751,6 +799,10 @@ let timerOcultarBanner = null;
 
 let timerAseguirAtivo = null;
 let timerOcultarAseguir = null;
+
+let altPressionado = false;
+document.addEventListener('keydown', (e) => { if (e.key === 'Alt') altPressionado = true; });
+document.addEventListener('keyup', (e) => { if (e.key === 'Alt') altPressionado = false; });
 
 window.aplicarLayout = function(posicoes) {
   if (!posicoes) return;
@@ -1760,18 +1812,45 @@ btnTrava.onclick = () => {
   }
 };
 
-// --- LÓGICA DE CORTE POR ALÇAS NAS BORDAS ---
+// --- CORREÇÃO DO RECORTE AO SEGURAR ALT E PUXAR NAS EXTREMIDADES ---
 document.addEventListener('mousedown', (e) => {
   if (layoutTravado) return;
 
-  // Se clicou em uma alça de corte
-  if (e.target.classList.contains('alca-corte')) {
-    e.stopPropagation();
-    const direcao = e.target.getAttribute('data-direcao');
-    const containerBanner = document.getElementById('novo-banner-independente');
-    const conteudo = containerBanner.querySelector('img, video');
+  const target = e.target.closest('.movel');
+  if (!target) {
+    document.querySelectorAll('.movel').forEach(el => el.classList.remove('selecionado'));
+    return;
+  }
+
+  document.querySelectorAll('.movel').forEach(el => el.classList.remove('selecionado'));
+  target.classList.add('selecionado');
+
+  if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+  const rect = target.getBoundingClientRect();
+  const isBottomRight = (e.clientX > rect.right - 20) && (e.clientY > rect.bottom - 20);
+  if (target.classList.contains('redimensionavel') && isBottomRight) return;
+
+  // SE SEGURAR ALT NO BANNER INDEPENDENTE, FAZ O RECORTE DAS EXTREMIDADES
+  if (altPressionado && target.id === 'novo-banner-independente') {
+    const conteudo = target.querySelector('img, video');
     if (!conteudo) return;
 
+    const bannerRect = target.getBoundingClientRect();
+    
+    // Descobre em qual borda o clique foi efetuado (considerando as margens externas)
+    const distEsquerda = e.clientX - bannerRect.left;
+    const distDireita = bannerRect.right - e.clientX;
+    const distTopo = e.clientY - bannerRect.top;
+    const distBaixo = bannerRect.bottom - e.clientY;
+
+    const margemSensibilidade = 30; // pixels de sensibilidade nas bordas
+    const pertoTopo = distTopo < margemSensibilidade;
+    const pertoBaixo = distBaixo < margemSensibilidade;
+    const pertoEsquerda = distEsquerda < margemSensibilidade;
+    const pertoDireita = distDireita < margemSensibilidade;
+
+    // Pega o recorte atual (inset: topo, direita, baixo, esquerda)
     let estiloAtual = window.getComputedStyle(conteudo).clipPath;
     let topo = 0, direita = 0, baixo = 0, esquerda = 0;
     if (estiloAtual && estiloAtual.startsWith('inset(')) {
@@ -1796,10 +1875,10 @@ document.addEventListener('mousedown', (e) => {
       let novoBaixo = baixo;
       let novaEsquerda = esquerda;
 
-      if (direcao === 'topo') novoTopo = Math.max(0, topo + deltaY);
-      if (direcao === 'baixo') novoBaixo = Math.max(0, baixo - deltaY);
-      if (direcao === 'esquerda') novaEsquerda = Math.max(0, esquerda + deltaX);
-      if (direcao === 'direita') novaDireita = Math.max(0, direita - deltaX);
+      if (pertoTopo) novoTopo = Math.max(0, topo + deltaY);
+      if (pertoBaixo) novoBaixo = Math.max(0, baixo - deltaY);
+      if (pertoEsquerda) novaEsquerda = Math.max(0, esquerda + deltaX);
+      if (pertoDireita) novaDireita = Math.max(0, direita - deltaX);
 
       conteudo.style.clipPath = `inset(${novoTopo}px ${novaDireita}px ${novoBaixo}px ${novaEsquerda}px)`;
     }
@@ -1813,21 +1892,6 @@ document.addEventListener('mousedown', (e) => {
     document.addEventListener('mouseup', onMouseUp);
     return;
   }
-
-  const target = e.target.closest('.movel');
-  if (!target) {
-    document.querySelectorAll('.movel').forEach(el => el.classList.remove('selecionado'));
-    return;
-  }
-
-  document.querySelectorAll('.movel').forEach(el => el.classList.remove('selecionado'));
-  target.classList.add('selecionado');
-
-  if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-
-  const rect = target.getBoundingClientRect();
-  const isBottomRight = (e.clientX > rect.right - 20) && (e.clientY > rect.bottom - 20);
-  if (target.classList.contains('redimensionavel') && isBottomRight) return;
 
   let shiftX = e.clientX - target.getBoundingClientRect().left; 
   let shiftY = e.clientY - target.getBoundingClientRect().top;
