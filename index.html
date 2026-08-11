@@ -1519,9 +1519,7 @@ function attachHandlersFor(b){
   video.onseeked = () => { video.style.opacity = '1'; };
   video.onplaying = () => { if (video.currentTime > 0) { video.style.opacity = '1'; } };
 
-  // Correção definitiva: Removemos qualquer interferência de timeupdate forçado 
-  // para que arquivos de qualquer tipo (incluindo GIFs convertidos) toquem até o fim natural (onended).
-
+  // CORREÇÃO: Garante que NENHUM timer curto force a parada e que o vídeo/gif toque 100% até o final real (onended)
   video.onended = () => {
     b.arquivoAtual = (b.arquivoAtual + 1) % b.arquivos.length;
     if (b.tipo === 'movie') { 
