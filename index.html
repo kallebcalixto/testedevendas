@@ -39,6 +39,10 @@
     cursor: move;
   }
 
+  .modo-edicao .movel:hover {
+    outline: 2px solid var(--gold);
+  }
+
   #btn-trava-layout {
     position: fixed;
     bottom: 20px;
@@ -796,6 +800,10 @@ let timerOcultarBanner = null;
 let timerAseguirAtivo = null;
 let timerOcultarAseguir = null;
 
+let altPressionado = false;
+document.addEventListener('keydown', (e) => { if (e.key === 'Alt') altPressionado = true; });
+document.addEventListener('keyup', (e) => { if (e.key === 'Alt') altPressionado = false; });
+
 window.aplicarLayout = function(posicoes) {
   if (!posicoes) return;
   Object.keys(posicoes).forEach(id => {
@@ -990,7 +998,18 @@ window.addEventListener('DOMContentLoaded', () => {
       try {
         const arr = JSON.parse(novosBannersSalvos);
         if (arr.length > 0) {
-          arr.forEach(b => adicionarNovoBannerItem(b));
+          arr.forEach(b => {
+            adicionarNovoBannerItem(b);
+            // Aplicar clipPath salvo se houver
+            if (b.clipPath) {
+              const containers = document.querySelectorAll('#novo-banner-independente');
+              const ultimoContainer = containers[containers.length - 1];
+              if (ultimoContainer) {
+                const imgVid = ultimoContainer.querySelector('img, video');
+                if (imgVid) imgVid.style.clipPath = b.clipPath;
+              }
+            }
+          });
         } else {
           adicionarNovoBannerItem();
         }
@@ -1669,6 +1688,15 @@ window.salvarProgramacao = function(){
     novosBannersData.push({ url, horarios });
   });
 
+  // Salvar clipPath atual do banner independente caso exista
+  const bannerIndep = document.getElementById('novo-banner-independente');
+  if (bannerIndep && novosBannersData.length > 0) {
+    const imgVid = bannerIndep.querySelector('img, video');
+    if (imgVid && imgVid.style.clipPath) {
+      novosBannersData[0].clipPath = imgVid.style.clipPath;
+    }
+  }
+
   localStorage.setItem('kbs_novos_banners_data', JSON.stringify(novosBannersData));
   localStorage.setItem('kbs_layout', JSON.stringify(posicoes));
 
@@ -1695,7 +1723,17 @@ window.carregarProgramacao = function(input){
         }
         if (data.novosBanners) {
             document.getElementById('novos-banners-container').innerHTML = "";
-            data.novosBanners.forEach(b => adicionarNovoBannerItem(b));
+            data.novosBanners.forEach(b => {
+              adicionarNovoBannerItem(b);
+              if (b.clipPath) {
+                const containers = document.querySelectorAll('#novo-banner-independente');
+                const ultimoContainer = containers[containers.length - 1];
+                if (ultimoContainer) {
+                  const imgVid = ultimoContainer.querySelector('img, video');
+                  if (imgVid) imgVid.style.clipPath = b.clipPath;
+                }
+              }
+            });
             localStorage.setItem('kbs_novos_banners_data', JSON.stringify(data.novosBanners));
         }
     }
@@ -1801,6 +1839,32 @@ document.addEventListener('mousedown', (e) => {
   if (target.classList.contains('redimensionavel') && isBottomRight) {
      return; 
   }
+
+  // --- NOVA FUNCIONALIDADE: RECORTE COM A TECLA ALT ---
+  if (altPressionado && target.id === 'novo-banner-independente') {
+    const conteudo = target.querySelector('img, video');
+    if (!conteudo) return;
+
+    let startX = e.clientX;
+    let startY = e.clientY;
+
+    function onMouseMove(event) {
+      let diffX = event.clientX - startX;
+      let diffY = event.clientY - startY;
+      // Aplica o recorte dinamicamente ao segurar ALT e arrastar
+      conteudo.style.clipPath = `inset(0px ${Math.max(0, -diffX)}px ${Math.max(0, -diffY)}px 0px)`;
+    }
+
+    function onMouseUp() {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    }
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    return;
+  }
+  // ----------------------------------------------------
 
   let shiftX = e.clientX - target.getBoundingClientRect().left; 
   let shiftY = e.clientY - target.getBoundingClientRect().top;
