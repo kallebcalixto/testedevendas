@@ -1838,15 +1838,26 @@ document.addEventListener('mousedown', (e) => {
      return; 
   }
 
-  // --- RECORTE INTELIGENTE COM A TECLA ALT (DIREÇÃO DO MOUSE) ---
+  // --- RECORTE INTELIGENTE POR EXTREMIDADE COM A TECLA ALT ---
   if (altPressionado && target.id === 'novo-banner-independente') {
     const conteudo = target.querySelector('img, video');
     if (!conteudo) return;
 
-    let startX = e.clientX;
-    let startY = e.clientY;
+    const bannerRect = target.getBoundingClientRect();
     
-    // Captura os valores de recorte atuais ou inicia zerados
+    // Descobre em qual extremidade o usuário clicou (topo, direita, baixo, esquerda)
+    const distEsquerda = e.clientX - bannerRect.left;
+    const distDireita = bannerRect.right - e.clientX;
+    const distTopo = e.clientY - bannerRect.top;
+    const distBaixo = bannerRect.bottom - e.clientY;
+
+    const margemSensibilidade = Math.min(bannerRect.width, bannerRect.height) * 0.35; // 35% das bordas externas
+    const clicaEsquerda = distEsquerda < margemSensibilidade;
+    const clicaDireita = distDireita < margemSensibilidade;
+    const clicaTopo = distTopo < margemSensibilidade;
+    const clicaBaixo = distBaixo < margemSensibilidade;
+
+    // Pega o recorte atual (clip-path inset: topo direita baixo esquerda)
     let estiloAtual = window.getComputedStyle(conteudo).clipPath;
     let topo = 0, direita = 0, baixo = 0, esquerda = 0;
     
@@ -1860,6 +1871,9 @@ document.addEventListener('mousedown', (e) => {
       }
     }
 
+    let startX = e.clientX;
+    let startY = e.clientY;
+
     function onMouseMove(event) {
       let deltaX = event.clientX - startX;
       let deltaY = event.clientY - startY;
@@ -1869,14 +1883,13 @@ document.addEventListener('mousedown', (e) => {
       let novoBaixo = baixo;
       let novaEsquerda = esquerda;
 
-      // Dependendo de para onde você arrasta o mouse, corta o respectivo lado
-      if (deltaY > 0) novoBaixo = baixo + deltaY;        // Arrastando para baixo corta a base
-      else if (deltaY < 0) novoTopo = topo - deltaY;     // Arrastando para cima corta o topo
-      
-      if (deltaX > 0) novaDireita = direita - deltaX;    // Arrastando para direita corta a direita
-      else if (deltaX < 0) novaEsquerda = esquerda + deltaX; // Arrastando para esquerda corta a esquerda
+      // Se puxar a borda correspondente, o corte acompanha o movimento do mouse
+      if (clicaTopo) novoTopo = Math.max(0, topo + deltaY);
+      if (clicaBaixo) novoBaixo = Math.max(0, baixo - deltaY);
+      if (clicaEsquerda) novaEsquerda = Math.max(0, esquerda + deltaX);
+      if (clicaDireita) novaDireita = Math.max(0, direita - deltaX);
 
-      conteudo.style.clipPath = `inset(${Math.max(0, novoTopo)}px ${Math.max(0, novaDireita)}px ${Math.max(0, novoBaixo)}px ${Math.max(0, novaEsquerda)}px)`;
+      conteudo.style.clipPath = `inset(${novoTopo}px ${novaDireita}px ${novoBaixo}px ${novaEsquerda}px)`;
     }
 
     function onMouseUp() {
