@@ -1519,12 +1519,9 @@ function attachHandlersFor(b){
   video.onseeked = () => { video.style.opacity = '1'; };
   video.onplaying = () => { if (video.currentTime > 0) { video.style.opacity = '1'; } };
 
-  if (b.tipo === 'timer') {
-    let start = video.currentTime;
-    timeupdateHandler = () => { if (video.currentTime - start >= b.tempo) { proximoArquivoMesmoBloco(); } };
-    video.addEventListener('timeupdate', timeupdateHandler);
-  }
-  
+  // Correção definitiva: Removemos qualquer interferência de timeupdate forçado 
+  // para que arquivos de qualquer tipo (incluindo GIFs convertidos) toquem até o fim natural (onended).
+
   video.onended = () => {
     b.arquivoAtual = (b.arquivoAtual + 1) % b.arquivos.length;
     if (b.tipo === 'movie') { 
@@ -1544,7 +1541,7 @@ window.atualizarInfoTempo = function(i) {
 }
 
 window.carregarArquivos = async function(i, fileList){
-  const validExtensions = ['.mp4', '.webm', '.ogg', '.mkv', '.mov'];
+  const validExtensions = ['.mp4', '.webm', '.ogg', '.mkv', '.mov', '.gif'];
   const files = Array.from(fileList).filter(f => validExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
   
   if (blocos[i] && blocos[i].arquivos) {
