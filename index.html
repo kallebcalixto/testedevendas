@@ -1000,7 +1000,6 @@ window.addEventListener('DOMContentLoaded', () => {
         if (arr.length > 0) {
           arr.forEach(b => {
             adicionarNovoBannerItem(b);
-            // Aplicar clipPath salvo se houver
             if (b.clipPath) {
               const containers = document.querySelectorAll('#novo-banner-independente');
               const ultimoContainer = containers[containers.length - 1];
@@ -1688,7 +1687,6 @@ window.salvarProgramacao = function(){
     novosBannersData.push({ url, horarios });
   });
 
-  // Salvar clipPath atual do banner independente caso exista
   const bannerIndep = document.getElementById('novo-banner-independente');
   if (bannerIndep && novosBannersData.length > 0) {
     const imgVid = bannerIndep.querySelector('img, video');
@@ -1840,19 +1838,45 @@ document.addEventListener('mousedown', (e) => {
      return; 
   }
 
-  // --- NOVA FUNCIONALIDADE: RECORTE COM A TECLA ALT ---
+  // --- RECORTE INTELIGENTE COM A TECLA ALT (DIREÇÃO DO MOUSE) ---
   if (altPressionado && target.id === 'novo-banner-independente') {
     const conteudo = target.querySelector('img, video');
     if (!conteudo) return;
 
     let startX = e.clientX;
     let startY = e.clientY;
+    
+    // Captura os valores de recorte atuais ou inicia zerados
+    let estiloAtual = window.getComputedStyle(conteudo).clipPath;
+    let topo = 0, direita = 0, baixo = 0, esquerda = 0;
+    
+    if (estiloAtual && estiloAtual.startsWith('inset(')) {
+      let valores = estiloAtual.match(/[\d.]+/g);
+      if (valores && valores.length >= 4) {
+        topo = parseFloat(valores[0]) || 0;
+        direita = parseFloat(valores[1]) || 0;
+        baixo = parseFloat(valores[2]) || 0;
+        esquerda = parseFloat(valores[3]) || 0;
+      }
+    }
 
     function onMouseMove(event) {
-      let diffX = event.clientX - startX;
-      let diffY = event.clientY - startY;
-      // Aplica o recorte dinamicamente ao segurar ALT e arrastar
-      conteudo.style.clipPath = `inset(0px ${Math.max(0, -diffX)}px ${Math.max(0, -diffY)}px 0px)`;
+      let deltaX = event.clientX - startX;
+      let deltaY = event.clientY - startY;
+
+      let novoTopo = topo;
+      let novaDireita = direita;
+      let novoBaixo = baixo;
+      let novaEsquerda = esquerda;
+
+      // Dependendo de para onde você arrasta o mouse, corta o respectivo lado
+      if (deltaY > 0) novoBaixo = baixo + deltaY;        // Arrastando para baixo corta a base
+      else if (deltaY < 0) novoTopo = topo - deltaY;     // Arrastando para cima corta o topo
+      
+      if (deltaX > 0) novaDireita = direita - deltaX;    // Arrastando para direita corta a direita
+      else if (deltaX < 0) novaEsquerda = esquerda + deltaX; // Arrastando para esquerda corta a esquerda
+
+      conteudo.style.clipPath = `inset(${Math.max(0, novoTopo)}px ${Math.max(0, novaDireita)}px ${Math.max(0, novoBaixo)}px ${Math.max(0, novaEsquerda)}px)`;
     }
 
     function onMouseUp() {
@@ -1864,7 +1888,7 @@ document.addEventListener('mousedown', (e) => {
     document.addEventListener('mouseup', onMouseUp);
     return;
   }
-  // ----------------------------------------------------
+  // -------------------------------------------------------------
 
   let shiftX = e.clientX - target.getBoundingClientRect().left; 
   let shiftY = e.clientY - target.getBoundingClientRect().top;
