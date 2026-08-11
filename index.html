@@ -1253,30 +1253,73 @@ window.definirNomeBloco = function(i, valor) {
     atualizarGrade();
 }
 
-window.carregarArquivosNuvem = function(i, textoLinks) {
-    blocos[i].cloudLinksInput = textoLinks;
-    const linhas = textoLinks.split('\n').map(l => l.trim()).filter(l => l !== '');
+// ATUALIZADO: Suporte a Links Individuais OU Leitura Automática de Pasta do Dropbox via Link Compartilhado
+window.carregarArquivosNuvem = async function(i, textoInput) {
+    blocos[i].cloudLinksInput = textoInput;
+    const linhas = textoInput.split('\n').map(l => l.trim()).filter(l => l !== '');
     
-    let listaCloud = linhas.map((linkUrl, indexUrl) => {
-        let urlFinal = linkUrl;
-        // Conversão automática básica de links do Google Drive para visualização direta se necessário
-        if (linkUrl.includes('drive.google.com')) {
-            const match = linkUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-            if (match && match[1]) {
-                urlFinal = `https://docs.google.com/uc?export=download&id=${match[1]}`;
+    let listaCloud = [];
+
+    for (let linkUrl of linhas) {
+        // Se for um link de PASTA do Dropbox (ex: /scl/fo/... ou /sh/...)
+        if (linkUrl.includes('dropbox.com') && (linkUrl.includes('/fo/') || linkUrl.includes('/sh/'))) {
+            try {
+                const infoEl = document.getElementById(`info-${i}`);
+                if (infoEl) infoEl.innerHTML = "Buscando arquivos da pasta do Dropbox...";
+                
+                // Converte o link de compartilhamento da pasta do Dropbox para JSON de listagem pública
+                let apiFolderUrl = linkUrl.split('?')[0];
+                if (!apiFolderUrl.endsWith('/')) apiFolderUrl += '/';
+                
+                // Requisição para extrair os arquivos listados na pasta pública do Dropbox
+                const res = await fetch(apiFolderUrl, { headers: { 'Accept': 'application/json' } });
+                const htmlText = await res.text();
+                
+                // Tenta extrair os links de download direto dos arquivos de vídeo encontrados na página da pasta
+                const matches = htmlText.match(/href="(https:\/\/www\.dropbox\.com\/scl\/fi\/[^"]+?\?rlkey=[^"]+?)"/g);
+                if (matches) {
+                    matches.forEach((m, idx) => {
+                        let cleanLink = m.match(/href="([^"]+)"/)[1];
+                        // Modifica para download direto (?dl=1)
+                        if (cleanLink.includes('?')) cleanLink = cleanLink.split('?')[0] + '?dl=1';
+                        else cleanLink += '?dl=1';
+
+                        listaCloud.push({
+                            url: cleanLink,
+                            file: { name: (blocos[i].nome || "pasta_dropbox") + "_" + (idx + 1) + ".mp4" },
+                            duration: 0
+                        });
+                    });
+                }
+            } catch (err) {
+                console.error("Erro ao ler pasta do Dropbox:", err);
             }
+        } else {
+            // Caso seja um link direto individual (Dropbox com ?dl=1 ou link direto comum)
+            let urlFinal = linkUrl;
+            if (linkUrl.includes('dropbox.com')) {
+                urlFinal = linkUrl.replace(/\?dl=0$/, '').replace(/&dl=0$/, '');
+                if (!urlFinal.includes('?')) urlFinal += '?dl=1';
+                else if (!urlFinal.includes('dl=1')) urlFinal += '&dl=1';
+            } else if (linkUrl.includes('drive.google.com')) {
+                const match = linkUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                if (match && match[1]) {
+                    urlFinal = `https://docs.google.com/uc?export=download&id=${match[1]}`;
+                }
+            }
+            
+            listaCloud.push({
+                url: urlFinal,
+                file: { name: (blocos[i].nome || "nuvem") + "_" + (listaCloud.length + 1) + ".mp4" },
+                duration: 0
+            });
         }
-        return {
-            url: urlFinal,
-            file: { name: (blocos[i].nome || "nuvem") + "_" + (indexUrl + 1) + ".mp4" },
-            duration: 0
-        };
-    });
+    }
 
     blocos[i].arquivos = listaCloud;
     blocos[i].progresso = new Array(listaCloud.length).fill(0);
     const infoEl = document.getElementById(`info-${i}`);
-    if (infoEl) infoEl.innerHTML = listaCloud.length + " arquivos da nuvem.";
+    if (infoEl) infoEl.innerHTML = listaCloud.length + " arquivos carregados da nuvem.";
     atualizarGrade();
 }
 
@@ -1302,8 +1345,9 @@ function renderizarBloco(i, bloco){
             <input type="file" webkitdirectory directory multiple onchange="carregarArquivos(${i}, this.files)" style="font-size:11px; margin-top:3px;">
           </div>
           <div style="width:100%; margin-bottom:8px;">
-            <label style="font-size:11px; color:#ffd700;">☁️ Links Nuvem / Google Drive (Um link por linha):</label>
-            <textarea rows="3" placeholder="Cole os links aqui..." oninput="carregarArquivosNuvem(${i}, this.value)" style="width:100%; background:#000; color:#fff; border:1px solid #444; font-size:11px; box-sizing:border-box; margin-top:3px; resize:vertical;">${bloco.cloudLinksInput || ''}</textarea>
+            <label style="font-size:11px; color:#ffd700;">☁️ Link da Pasta ou Links Individuais (Dropbox / Drive):</label>
+            <textarea rows="3" placeholder="Cole o link da pasta do Dropbox aqui..." onchange="carregarArquivosNuvem(${i}, this.value)" style="width:100%; background:#000; color:#fff; border:1px solid #444; font-size:11px; box-sizing:border-box; margin-top:3px; resize:vertical;">${bloco.cloudLinksInput || ''}</textarea>
+            <div style="font-size:9px; color:#aaa; margin-top:2px;">* Cole o link da pasta compartilhada do Dropbox ou um link por linha.</div>
           </div>
         `:''}
         ${isTimer ? `
