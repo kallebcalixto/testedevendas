@@ -1594,23 +1594,34 @@ setInterval(() => {
     }
 }, 1000);
 
-// SISTEMA DE WATCHDOG PARA RECONEXÃO AUTOMÁTICA EM CASO DE QUEDA DE INTERNET
+// WATCHDOG INTELIGENTE: SE CAIR A NET, SALVA O SEGUNDO EXATO E RETOMA DE ONDE PAROU AO VOLTAR
 setInterval(() => {
     if (!sistemaIniciado || blocos.length === 0) return;
     
     const b = blocos[idxBloco];
     if (b && b.tipo !== 'youtube' && !b.removido) {
-        // Se travou/pausou sozinho por falta de internet, força o play
+        
+        // Se a internet caiu e travou no carregamento ou pausou por falta de sinal
         if (video.paused && !video.ended && video.src !== "") {
-            console.log("Detectada pausa por instabilidade. Forçando play...");
-            video.play().catch(e => console.log("Aguardando buffer..."));
+            // Salva o ponto exato atual antes de tentar recuperar
+            if (video.currentTime > 0) {
+                b.progresso[b.arquivoAtual] = video.currentTime;
+                localStorage.setItem('kbs_estado_reconexao', JSON.stringify({
+                    idxBloco: idxBloco,
+                    arquivoAtual: b.arquivoAtual,
+                    currentTime: video.currentTime
+                }));
+            }
+            video.play().catch(e => console.log("Aguardando estabilização da internet..."));
         }
 
-        // Se o player está rodando mas o buffer travou (tempo estagnado)
+        // Se o player travou no buffer (o tempo estagnou por mais de 3 segundos com o vídeo rodando)
         if (!video.paused && video.readyState >= 2) {
             if (window._ultimoTime === video.currentTime) {
-                console.log("Buffer travado. Forçando reload do arquivo...");
+                console.log("Queda/Travamento de buffer detectada. Forçando reconexão no segundo exato...");
+                let tempoSalvo = video.currentTime;
                 video.load();
+                video.currentTime = tempoSalvo;
                 video.play().catch(()=>{});
             }
             window._ultimoTime = video.currentTime;
