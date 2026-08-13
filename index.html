@@ -1557,7 +1557,6 @@ async function tocarAtual() {
   video.src = novaUrl; 
   video.load();
   
-  // RECUPERAÇÃO INTELIGENTE DE QUEDAS (LÊ O SEGUNDO SALVO ANTERIORMENTE)
   let tempoAlvo = b.progresso[b.arquivoAtual] || 0;
   const recuperacaoSalva = localStorage.getItem('kbs_estado_reconexao');
   if (recuperacaoSalva) {
@@ -1565,7 +1564,6 @@ async function tocarAtual() {
           const estado = JSON.parse(recuperacaoSalva);
           if (estado.idxBloco === idxBloco && estado.arquivoAtual === b.arquivoAtual && estado.currentTime > 0) {
               tempoAlvo = estado.currentTime;
-              // Limpa para usar apenas na primeira carga após a queda
               localStorage.removeItem('kbs_estado_reconexao');
           }
       } catch(e) {}
@@ -1580,7 +1578,6 @@ async function tocarAtual() {
   gerenciarAseguir();
 }
 
-// SALVA O PROGRESSO EM TEMPO REAL NA MEMÓRIA DO NAVEGADOR
 setInterval(() => {
     if (!sistemaIniciado || blocos.length === 0) return;
     const b = blocos[idxBloco];
@@ -1596,6 +1593,30 @@ setInterval(() => {
         }
     }
 }, 1000);
+
+// SISTEMA DE WATCHDOG PARA RECONEXÃO AUTOMÁTICA EM CASO DE QUEDA DE INTERNET
+setInterval(() => {
+    if (!sistemaIniciado || blocos.length === 0) return;
+    
+    const b = blocos[idxBloco];
+    if (b && b.tipo !== 'youtube' && !b.removido) {
+        // Se travou/pausou sozinho por falta de internet, força o play
+        if (video.paused && !video.ended && video.src !== "") {
+            console.log("Detectada pausa por instabilidade. Forçando play...");
+            video.play().catch(e => console.log("Aguardando buffer..."));
+        }
+
+        // Se o player está rodando mas o buffer travou (tempo estagnado)
+        if (!video.paused && video.readyState >= 2) {
+            if (window._ultimoTime === video.currentTime) {
+                console.log("Buffer travado. Forçando reload do arquivo...");
+                video.load();
+                video.play().catch(()=>{});
+            }
+            window._ultimoTime = video.currentTime;
+        }
+    }
+}, 3000);
 
 function pularParaProximo() { idxBloco = (idxBloco + 1) % blocos.length; setTimeout(() => { tocarAtual(); }, 0); }
 
@@ -1668,7 +1689,6 @@ window.removerBloco = function(i){
 window.iniciar = function(){ 
     sistemaIniciado = true; 
     
-    // RECUPERAÇÃO AUTOMÁTICA AO CLICAR EM INICIAR OU APÓS QUEDA
     const recuperacaoSalva = localStorage.getItem('kbs_estado_reconexao');
     if (recuperacaoSalva) {
         try {
