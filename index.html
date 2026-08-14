@@ -182,12 +182,38 @@
     transition: opacity 0.15s ease-in-out; 
   }
 
-  video::-webkit-media-controls-start-playback-button { display: none !important; }
-  video::-internal-media-controls-loading-indicator { display: none !important; }
-  video::-webkit-media-controls-panel { background-color: rgba(0,0,0,0.5) !important; }
-
   #player { object-fit: contain; display:block; }
   #ytplayer { display:none; }
+  
+  /* ESTILOS DA BARRA DE PROGRESSO CUSTOMIZADA FORA DO PLAYER */
+  #container-progresso {
+    width: 500px;
+    margin-top: 6px;
+    box-sizing: border-box;
+  }
+  #barra-progresso {
+    width: 100%;
+    background: #222;
+    height: 6px;
+    border-radius: 5px;
+    appearance: none;
+    cursor: pointer;
+    outline: none;
+    border: 1px solid #333;
+  }
+  #barra-progresso::-webkit-slider-thumb {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  #barra-progresso::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+
   .controls { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
   button { padding:8px 12px; border:none; border-radius:8px; cursor:pointer; background:#2f2f2f; color:#fff; }
   button:hover { background:#454545; }
@@ -625,8 +651,18 @@
             <video id="vid-novo-banner-independente" class="video-overlay-dinamico" autoplay muted loop playsinline></video>
           </div>
 
-          <video id="player" controls playsinline></video>
+          <!-- PLAYER SEM CONTROLES NATIVOS -->
+          <video id="player" playsinline></video>
           <iframe id="ytplayer" allow="autoplay; encrypted-media" frameborder="0"></iframe>
+
+          <!-- BARRA DE AVANÇO PERSONALIZADA FORA DO PLAYER (LOGO ABAIXO) -->
+          <div id="container-progresso">
+            <input type="range" id="barra-progresso" value="0" step="0.1">
+            <div style="display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-top: 2px;">
+              <span id="tempo-atual">00:00</span>
+              <span id="tempo-total">00:00</span>
+            </div>
+          </div>
           
           <div class="controls">
             <button class="btn-pri" onclick="iniciar()">▶ Iniciar</button>
@@ -1594,16 +1630,13 @@ setInterval(() => {
     }
 }, 1000);
 
-// WATCHDOG INTELIGENTE: SE CAIR A NET, SALVA O SEGUNDO EXATO E RETOMA DE ONDE PAROU AO VOLTAR
 setInterval(() => {
     if (!sistemaIniciado || blocos.length === 0) return;
     
     const b = blocos[idxBloco];
     if (b && b.tipo !== 'youtube' && !b.removido) {
         
-        // Se a internet caiu e travou no carregamento ou pausou por falta de sinal
         if (video.paused && !video.ended && video.src !== "") {
-            // Salva o ponto exato atual antes de tentar recuperar
             if (video.currentTime > 0) {
                 b.progresso[b.arquivoAtual] = video.currentTime;
                 localStorage.setItem('kbs_estado_reconexao', JSON.stringify({
@@ -1615,7 +1648,6 @@ setInterval(() => {
             video.play().catch(e => console.log("Aguardando estabilização da internet..."));
         }
 
-        // Se o player travou no buffer (o tempo estagnou por mais de 3 segundos com o vídeo rodando)
         if (!video.paused && video.readyState >= 2) {
             if (window._ultimoTime === video.currentTime) {
                 console.log("Queda/Travamento de buffer detectada. Forçando reconexão no segundo exato...");
@@ -1772,7 +1804,15 @@ function proximoArquivoMesmoBloco(){
   tocarAtual(); 
 }
 
-window.resizePlayer = function(){ const w=document.getElementById('playerWidth').value, h=document.getElementById('playerHeight').value; video.style.width=w+'px'; video.style.height=h+'px'; ytplayer.style.width=w+'px'; ytplayer.style.height=h+'px'; }
+window.resizePlayer = function(){ 
+  const w = document.getElementById('playerWidth').value;
+  const h = document.getElementById('playerHeight').value;
+  video.style.width = w + 'px';
+  video.style.height = h + 'px';
+  ytplayer.style.width = w + 'px';
+  ytplayer.style.height = h + 'px';
+  document.getElementById('container-progresso').style.width = w + 'px';
+}
 
 window.salvarProgramacao = function(){ 
   const posicoes = {};
@@ -1959,9 +1999,31 @@ document.addEventListener('mousedown', (e) => {
 
 document.addEventListener('dragstart', (e) => { if (e.target.closest('.movel')) e.preventDefault(); });
 
-const player = document.getElementById('player');
-function limparPlayer() { if (player) { player.controls = false; const shadow = player.shadowRoot; if (shadow) { const loading = shadow.querySelector('.media-loading-indicator'); if (loading) loading.style.display = 'none'; } } }
-setInterval(limparPlayer, 500);
+// SCRIPTS DA BARRA DE PROGRESSO CUSTOMIZADA FORA DO PLAYER
+const barraProgresso = document.getElementById('barra-progresso');
+const tempoAtualEl = document.getElementById('tempo-atual');
+const tempoTotalEl = document.getElementById('tempo-total');
+
+function formatarTempo(segundos) {
+    const mins = Math.floor(segundos / 60);
+    const secs = Math.floor(segundos % 60);
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+video.addEventListener('timeupdate', () => {
+    if (!isNaN(video.duration) && video.duration > 0) {
+        barraProgresso.value = (video.currentTime / video.duration) * 100;
+        tempoAtualEl.textContent = formatarTempo(video.currentTime);
+        tempoTotalEl.textContent = formatarTempo(video.duration);
+    }
+});
+
+barraProgresso.addEventListener('input', () => {
+    if (!isNaN(video.duration) && video.duration > 0) {
+        const tempo = (barraProgresso.value / 100) * video.duration;
+        video.currentTime = tempo;
+    }
+});
 
 let _ultimoBlocoAtivo = -1;
 let _tempoFimPausa = 0;
