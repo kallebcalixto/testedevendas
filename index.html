@@ -23,6 +23,34 @@
     user-select: none;
   }
 
+  /* ESTILOS NOVOS: Relógio e Barra de Progresso */
+  #relogio-digital {
+    font-family: monospace;
+    font-size: 14px;
+    color: #fff;
+    font-weight: bold;
+    background: rgba(0,0,0,0.5);
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #333;
+  }
+  
+  #barra-progresso-container {
+    width: 100%;
+    height: 8px;
+    background: #222;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #444;
+  }
+  #barra-progresso-fill {
+    height: 100%;
+    background: var(--primary-color);
+    width: 0%;
+    transition: width 0.2s linear;
+  }
+
   /* SISTEMA DE SELEÇÃO POR CLIQUE */
   .movel {
     position: absolute !important;
@@ -590,7 +618,10 @@
   <div id="conteudo-player" style="display:none;">
     <div class="wrap">
       
-      <div id="movel-topo-direito" class="movel redimensionavel" style="top: 20px; right: 20px; width: 420px; display: flex; gap: 10px; z-index: 10000; align-items: center; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 8px; border: 1px solid #333;">
+      <div id="movel-topo-direito" class="movel redimensionavel" style="top: 20px; right: 20px; width: 450px; display: flex; gap: 10px; z-index: 10000; align-items: center; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 8px; border: 1px solid #333;">
+          <!-- Relógio Digital inserido aqui perto do Admin -->
+          <div id="relogio-digital">00:00:00</div>
+
           <div style="display: flex; flex-direction: column; align-items: center; margin-right: 5px;">
               <label style="font-size: 10px; color: #ffd700; font-weight: bold; margin-bottom: 2px;">REINÍCIO DIÁRIO:</label>
               <input type="time" id="horarioReinicio" onchange="salvarHorarioReinicio(this.value)" style="background:#000; color:#fff; border:1px solid #444; border-radius:4px; padding:4px 6px; font-size: 12px; cursor: pointer;">
@@ -628,6 +659,11 @@
           <video id="player" controls playsinline></video>
           <iframe id="ytplayer" allow="autoplay; encrypted-media" frameborder="0"></iframe>
           
+          <!-- BARRA DE PROGRESSO ADICIONADA AQUI (Fora do player, logo acima do iniciar) -->
+          <div id="barra-progresso-container" style="margin-top: 10px;">
+             <div id="barra-progresso-fill"></div>
+          </div>
+
           <div class="controls">
             <button class="btn-pri" onclick="iniciar()">▶ Iniciar</button>
             <button onclick="pausar()">⏸ Pausar</button>
@@ -1063,15 +1099,11 @@ window.reiniciarTimerAseguir = function() {
     timerAseguirAtivo = setInterval(gerenciarAseguir, intervaloMinutos * 60 * 1000);
 }
 
-// EXTRATOR EXATO: Pega diretamente o nome do arquivo de dentro do link do Dropbox
 function extrairNomeLimpo(nomeBruto) {
     if (!nomeBruto) return "Vídeo";
     let nomeLimpo = decodeURIComponent(nomeBruto);
-    // Remove a extensão (.mp4, .mkv, etc)
     nomeLimpo = nomeLimpo.split(/\.(mp4|mkv|avi|webm|ogg|mov)$/i)[0];
-    // Troca traços e underscores por espaços para ficar legível
     nomeLimpo = nomeLimpo.replace(/[-_]/g, ' ');
-    // Remove termos desnecessários comuns
     nomeLimpo = nomeLimpo.split(/DUBLADO|convertido|DVDRip|XviD|_00|1080p|720p/i)[0].replace(/^[\s.]+/, "").trim();
     if(nomeLimpo.endsWith('.')) nomeLimpo = nomeLimpo.slice(0, -1);
     return nomeLimpo || "Vídeo";
@@ -1260,7 +1292,6 @@ window.definirNomeBloco = function(i, valor) {
     atualizarGrade();
 }
 
-// CAPTURA DO NOME DIRETO DA URL DO LINK
 window.carregarArquivosNuvem = function(i, textoLinks) {
     blocos[i].cloudLinksInput = textoLinks;
     const linhas = textoLinks.split('\n').map(l => l.trim()).filter(l => l !== '');
@@ -1935,13 +1966,30 @@ setInterval(() => {
     _ultimoBlocoAtivo = idxBloco;
 }, 1000);
 
+// ATUALIZAÇÃO DO RELÓGIO E BARRA DE PROGRESSO EM TEMPO REAL
 setInterval(() => {
     if (!sistemaIniciado || blocos.length === 0) return;
     const b = blocos[idxBloco];
     if (b && (b.tipo === 'movie' || b.tipo === 'timer') && b.arquivos && b.arquivos.length > 0) {
         atualizarInfoTempo(idxBloco);
     }
-}, 60000);
+
+    // Relógio Digital
+    const agora = new Date();
+    const relogioEl = document.getElementById('relogio-digital');
+    if (relogioEl) {
+        relogioEl.innerText = agora.toLocaleTimeString('pt-BR');
+    }
+
+    // Barra de Progresso
+    const barraFill = document.getElementById('barra-progresso-fill');
+    if (barraFill && video.duration > 0) {
+        const prog = (video.currentTime / video.duration) * 100;
+        barraFill.style.width = prog + '%';
+    } else if (barraFill) {
+        barraFill.style.width = '0%';
+    }
+}, 500);
 </script>
 </body>
 </html>
