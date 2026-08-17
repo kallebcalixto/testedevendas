@@ -36,7 +36,7 @@
   }
   
   #barra-progresso-container {
-    width: 500px; /* Será atualizado dinamicamente pelo JS para acompanhar o player */
+    width: 500px;
     height: 8px;
     background: #222;
     margin-top: 6px;
@@ -662,7 +662,7 @@
           <video id="player" controls playsinline></video>
           <iframe id="ytplayer" allow="autoplay; encrypted-media" frameborder="0"></iframe>
           
-          <!-- BARRA DE PROGRESSO LOGO ABAIXO DO PLAYER (Com o tamanho exato do player e clicável para avançar/retroceder) -->
+          <!-- BARRA DE PROGRESSO LOGO ABAIXO DO PLAYER -->
           <div id="barra-progresso-container" onclick="pularTempoVideo(event)">
              <div id="barra-progresso-fill"></div>
           </div>
@@ -1043,7 +1043,7 @@ window.addEventListener('DOMContentLoaded', () => {
     atualizarEstiloLetreiro(); 
     atualizarEstiloAseguir();
     avaliarNovosBanners();
-    resizePlayer(); // Atualiza a largura da barra no início
+    resizePlayer();
 });
 
 let ultimoReinicio = "";
@@ -1122,6 +1122,7 @@ function horarioParaSegundos(strHora) {
     return h * 3600 + m * 60 + s;
 }
 
+// LOGICA APRIMORADA: PRIORIDADE TOTAL AO PRÓXIMO EVENTO DE HOJE (ADMIN, FIXO, FILMES E ARQUIVOS)
 function obterNomeASeguir() {
     if (!blocos || blocos.length === 0) return "";
     
@@ -1132,6 +1133,7 @@ function obterNomeASeguir() {
     let proximoEvento = null;
     let menorDiferenca = Infinity;
 
+    // 1. Varredura rigorosa em todos os blocos programados para hoje (Admin, Fixo, Filmes com horário)
     for (let i = 0; i < blocos.length; i++) {
         const b = blocos[i];
         if (!b || b.removido) continue;
@@ -1140,6 +1142,8 @@ function obterNomeASeguir() {
         if (b.tipo === 'youtube' && Array.isArray(b.horariosAdmin)) {
             listaHorariosParaChecar = b.horariosAdmin;
         } else if (b.tipo === 'timer' && Array.isArray(b.horarios)) {
+            listaHorariosParaChecar = b.horarios;
+        } else if (b.tipo === 'movie' && Array.isArray(b.horarios)) {
             listaHorariosParaChecar = b.horarios;
         }
 
@@ -1160,11 +1164,12 @@ function obterNomeASeguir() {
                     const segundosInicio = horarioParaSegundos(hObj.inicio);
                     let diff = segundosInicio - segundosAgora;
                     
+                    // Prioriza estritamente o evento que vai acontecer hoje mais próximo de agora
                     if (diff > 0 && diff < menorDiferenca) {
                         menorDiferenca = diff;
                         let nomeBloco = b.nome ? b.nome : (b.m3ulink ? "Transmissão M3U" : (b.ytlink ? "Transmissão YouTube" : "Bloco Programado"));
                         let minRestantes = Math.ceil(diff / 60);
-                        proximoEvento = `${nomeBloco} (Entra às ${hObj.inicio}, em ${minRestantes} min)`;
+                        proximoEvento = `${nomeBloco} (às ${hObj.inicio}, em ${minRestantes} min)`;
                     }
                 }
             });
@@ -1175,16 +1180,21 @@ function obterNomeASeguir() {
         return proximoEvento;
     }
 
+    // 2. Se não houver horário específico iminente, busca o próximo arquivo da playlist do bloco atual ou do próximo bloco
     const b = blocos[idxBloco];
-    if (!b || b.removido) return "";
-
-    if (b.tipo === 'movie' && b.arquivos && b.arquivos.length > 0) {
-        if ((b._count || 0) + 1 < (b.limitePorCiclo || 3) && b.arquivoAtual + 1 < b.arquivos.length) {
-            return extrairNomeLimpo(b.arquivos[b.arquivoAtual + 1].file.name);
+    if (b && !b.removido) {
+        if (b.arquivos && b.arquivos.length > 0) {
+            let nextFileIdx = (b.arquivoAtual + 1) % b.arquivos.length;
+            if (b.tipo === 'movie' && ((b._count || 0) + 1 >= (b.limitePorCiclo || 3))) {
+                // Se o bloco de filmes vai atingir o limite, pula pro próximo bloco geral
+                let nextIdx = (idxBloco + 1) % blocos.length;
+                let nextB = blocos[nextIdx];
+                if (nextB && !nextB.removido) {
+                    return nextB.nome ? nextB.nome : (nextB.arquivos && nextB.arquivos[0] ? extrairNomeLimpo(nextB.arquivos[0].file.name) : "Próximo Bloco");
+                }
+            }
+            return extrairNomeLimpo(b.arquivos[nextFileIdx].file.name);
         }
-    } else if (b.tipo === 'timer' && b.arquivos && b.arquivos.length > 0) {
-        let nextFileIdx = (b.arquivoAtual + 1) % b.arquivos.length;
-        return extrairNomeLimpo(b.arquivos[nextFileIdx].file.name);
     }
 
     let nextIdx = (idxBloco + 1) % blocos.length;
@@ -1727,7 +1737,6 @@ function proximoArquivoMesmoBloco(){
   tocarAtual(); 
 }
 
-// FUNÇÃO PARA REDIMENSIONAR O PLAYER E ACOMPANHAR A LARGURA DA BARRA DE PROGRESSO
 window.resizePlayer = function(){ 
     const w = document.getElementById('playerWidth').value; 
     const h = document.getElementById('playerHeight').value; 
@@ -1736,14 +1745,12 @@ window.resizePlayer = function(){
     ytplayer.style.width = w + 'px'; 
     ytplayer.style.height = h + 'px'; 
 
-    // Ajusta a barra de progresso para ter exatamente a largura do player
     const barraContainer = document.getElementById('barra-progresso-container');
     if (barraContainer) {
         barraContainer.style.width = w + 'px';
     }
 }
 
-// FUNÇÃO PARA AVANÇAR OU RETROCEDER AO CLICAR NA BARRA DE PROGRESSO
 window.pularTempoVideo = function(event) {
     const barraContainer = document.getElementById('barra-progresso-container');
     if (!barraContainer || video.duration <= 0) return;
@@ -1997,7 +2004,6 @@ setInterval(() => {
     _ultimoBlocoAtivo = idxBloco;
 }, 1000);
 
-// ATUALIZAÇÃO DO RELÓGIO E DA BARRA DE PROGRESSO EM TEMPO REAL
 setInterval(() => {
     if (!sistemaIniciado || blocos.length === 0) return;
     const b = blocos[idxBloco];
@@ -2005,14 +2011,12 @@ setInterval(() => {
         atualizarInfoTempo(idxBloco);
     }
 
-    // Relógio Digital
     const agora = new Date();
     const relogioEl = document.getElementById('relogio-digital');
     if (relogioEl) {
         relogioEl.innerText = agora.toLocaleTimeString('pt-BR');
     }
 
-    // Barra de Progresso
     const barraFill = document.getElementById('barra-progresso-fill');
     if (barraFill && video.duration > 0) {
         const prog = (video.currentTime / video.duration) * 100;
