@@ -23,7 +23,7 @@
     user-select: none;
   }
 
-  /* ESTILOS NOVOS: Relógio e Barra de Progresso */
+  /* ESTILOS DO RELÓGIO E DA BARRA DE PROGRESSO INTERATIVA */
   #relogio-digital {
     font-family: monospace;
     font-size: 14px;
@@ -36,19 +36,22 @@
   }
   
   #barra-progresso-container {
-    width: 100%;
+    width: 500px; /* Será atualizado dinamicamente pelo JS para acompanhar o player */
     height: 8px;
     background: #222;
+    margin-top: 6px;
     margin-bottom: 8px;
     border-radius: 4px;
     overflow: hidden;
     border: 1px solid #444;
+    cursor: pointer;
+    position: relative;
   }
   #barra-progresso-fill {
     height: 100%;
     background: var(--primary-color);
     width: 0%;
-    transition: width 0.2s linear;
+    pointer-events: none;
   }
 
   /* SISTEMA DE SELEÇÃO POR CLIQUE */
@@ -659,8 +662,8 @@
           <video id="player" controls playsinline></video>
           <iframe id="ytplayer" allow="autoplay; encrypted-media" frameborder="0"></iframe>
           
-          <!-- BARRA DE PROGRESSO ADICIONADA AQUI (Fora do player, logo acima do iniciar) -->
-          <div id="barra-progresso-container" style="margin-top: 10px;">
+          <!-- BARRA DE PROGRESSO LOGO ABAIXO DO PLAYER (Com o tamanho exato do player e clicável para avançar/retroceder) -->
+          <div id="barra-progresso-container" onclick="pularTempoVideo(event)">
              <div id="barra-progresso-fill"></div>
           </div>
 
@@ -1040,6 +1043,7 @@ window.addEventListener('DOMContentLoaded', () => {
     atualizarEstiloLetreiro(); 
     atualizarEstiloAseguir();
     avaliarNovosBanners();
+    resizePlayer(); // Atualiza a largura da barra no início
 });
 
 let ultimoReinicio = "";
@@ -1723,7 +1727,34 @@ function proximoArquivoMesmoBloco(){
   tocarAtual(); 
 }
 
-window.resizePlayer = function(){ const w=document.getElementById('playerWidth').value, h=document.getElementById('playerHeight').value; video.style.width=w+'px'; video.style.height=h+'px'; ytplayer.style.width=w+'px'; ytplayer.style.height=h+'px'; }
+// FUNÇÃO PARA REDIMENSIONAR O PLAYER E ACOMPANHAR A LARGURA DA BARRA DE PROGRESSO
+window.resizePlayer = function(){ 
+    const w = document.getElementById('playerWidth').value; 
+    const h = document.getElementById('playerHeight').value; 
+    video.style.width = w + 'px'; 
+    video.style.height = h + 'px'; 
+    ytplayer.style.width = w + 'px'; 
+    ytplayer.style.height = h + 'px'; 
+
+    // Ajusta a barra de progresso para ter exatamente a largura do player
+    const barraContainer = document.getElementById('barra-progresso-container');
+    if (barraContainer) {
+        barraContainer.style.width = w + 'px';
+    }
+}
+
+// FUNÇÃO PARA AVANÇAR OU RETROCEDER AO CLICAR NA BARRA DE PROGRESSO
+window.pularTempoVideo = function(event) {
+    const barraContainer = document.getElementById('barra-progresso-container');
+    if (!barraContainer || video.duration <= 0) return;
+    
+    const rect = barraContainer.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const larguraTotal = rect.width;
+    
+    const porcentagem = Math.max(0, Math.min(1, clickX / larguraTotal));
+    video.currentTime = porcentagem * video.duration;
+}
 
 window.salvarProgramacao = function(){ 
   const posicoes = {};
@@ -1966,7 +1997,7 @@ setInterval(() => {
     _ultimoBlocoAtivo = idxBloco;
 }, 1000);
 
-// ATUALIZAÇÃO DO RELÓGIO E BARRA DE PROGRESSO EM TEMPO REAL
+// ATUALIZAÇÃO DO RELÓGIO E DA BARRA DE PROGRESSO EM TEMPO REAL
 setInterval(() => {
     if (!sistemaIniciado || blocos.length === 0) return;
     const b = blocos[idxBloco];
