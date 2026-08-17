@@ -1070,7 +1070,16 @@ setInterval(() => {
 
     if (horaAtual === inputReinicio.value && ultimoReinicio !== chaveReinicio) {
         ultimoReinicio = chaveReinicio;
-        if (blocos.length > 0) { window.iniciar(); }
+        if (blocos.length > 0) { 
+            // REINICIA DO ABSOLUTO COMEÇO (BLOCO 0, VÍDEO 0, SEGUNDO 0)
+            localStorage.removeItem('kbs_estado_reconexao');
+            idxBloco = 0;
+            if(blocos[0]) {
+                blocos[0].arquivoAtual = 0;
+                if(blocos[0].progresso) blocos[0].progresso.fill(0);
+            }
+            window.iniciar(); 
+        }
     }
 }, 1000);
 
@@ -1118,7 +1127,7 @@ window.reiniciarTimerAseguir = function() {
 function extrairNomeLimpo(nomeBruto) {
     if (!nomeBruto) return "Vídeo";
     let nomeLimpo = decodeURIComponent(nomeBruto);
-    nomeLimpo = nomeLimpo.split(/\.(mp4|mkv|avi|webm|ogg|mov)$/i)[0];
+    nomeLimpo = nomeLimpo.split(/\.(mp4|mkv|avi|webm|ogg|mov|rm|rmvb)$/i)[0];
     nomeLimpo = nomeLimpo.replace(/[-_]/g, ' ');
     nomeLimpo = nomeLimpo.split(/DUBLADO|convertido|DVDRip|XviD|_00|1080p|720p/i)[0].replace(/^[\s.]+/, "").trim();
     if(nomeLimpo.endsWith('.')) nomeLimpo = nomeLimpo.slice(0, -1);
@@ -1609,20 +1618,9 @@ async function tocarAtual() {
   video.src = novaUrl; 
   video.load();
   
-  let tempoAlvo = b.progresso[b.arquivoAtual] || 0;
-  const recuperacaoSalva = localStorage.getItem('kbs_estado_reconexao');
-  if (recuperacaoSalva) {
-      try {
-          const estado = JSON.parse(recuperacaoSalva);
-          if (estado.idxBloco === idxBloco && estado.arquivoAtual === b.arquivoAtual && estado.currentTime > 0) {
-              tempoAlvo = estado.currentTime;
-              localStorage.removeItem('kbs_estado_reconexao');
-          }
-      } catch(e) {}
-  }
-
-  video.currentTime = tempoAlvo;
-  if (tempoAlvo === 0) { video.style.opacity = '1'; }
+  // REMOVIDA A FUNÇÃO DE VOLTAR DE ONDE PAROU: O VÍDEO COMEÇA SEMPRE DO ZERO (0)
+  video.currentTime = 0;
+  video.style.opacity = '1';
   video.play().catch(() => {});
   attachHandlersFor(b); 
   
@@ -1632,41 +1630,17 @@ async function tocarAtual() {
 
 setInterval(() => {
     if (!sistemaIniciado || blocos.length === 0) return;
-    const b = blocos[idxBloco];
-    if (b && b.tipo !== 'youtube' && b.arquivos && b.arquivos[b.arquivoAtual]) {
-        if (video && video.currentTime > 0 && !video.paused) {
-            b.progresso[b.arquivoAtual] = video.currentTime;
-            const estadoAtual = {
-                idxBloco: idxBloco,
-                arquivoAtual: b.arquivoAtual,
-                currentTime: video.currentTime
-            };
-            localStorage.setItem('kbs_estado_reconexao', JSON.stringify(estadoAtual));
-        }
-    }
-}, 1000);
-
-setInterval(() => {
-    if (!sistemaIniciado || blocos.length === 0) return;
     
     const b = blocos[idxBloco];
     if (b && b.tipo !== 'youtube' && !b.removido) {
         
         if (video.paused && !video.ended && video.src !== "") {
-            if (video.currentTime > 0) {
-                b.progresso[b.arquivoAtual] = video.currentTime;
-                localStorage.setItem('kbs_estado_reconexao', JSON.stringify({
-                    idxBloco: idxBloco,
-                    arquivoAtual: b.arquivoAtual,
-                    currentTime: video.currentTime
-                }));
-            }
             video.play().catch(e => console.log("Aguardando estabilização da internet..."));
         }
 
         if (!video.paused && video.readyState >= 2) {
             if (window._ultimoTime === video.currentTime) {
-                console.log("Queda/Travamento de buffer detectada. Forçando reconexão no segundo exato...");
+                console.log("Queda/Travamento de buffer detectada. Reconectando...");
                 let tempoSalvo = video.currentTime;
                 video.load();
                 video.currentTime = tempoSalvo;
@@ -1686,7 +1660,6 @@ function attachHandlersFor(b){
 
   video.onended = () => {
     b.arquivoAtual = (b.arquivoAtual + 1) % b.arquivos.length;
-    b.progresso[b.arquivoAtual - 1 < 0 ? 0 : b.arquivoAtual - 1] = 0;
     if (b.tipo === 'movie') { 
       b._count = (b._count || 0) + 1; atualizarInfoTempo(idxBloco); 
       if (b._count >= b.limitePorCiclo) { b._count = 0; window.proximoBloco(); return; } 
@@ -1704,7 +1677,7 @@ window.atualizarInfoTempo = function(i) {
 }
 
 window.carregarArquivos = async function(i, fileList){
-  const validExtensions = ['.mp4', '.webm', '.ogg', '.mkv', '.mov', '.gif'];
+  const validExtensions = ['.mp4', '.webm', '.ogg', '.mkv', '.mov', '.gif', '.rm', '.rmvb'];
   const files = Array.from(fileList).filter(f => validExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
   
   if (blocos[i] && blocos[i].arquivos) {
@@ -1717,7 +1690,6 @@ window.carregarArquivos = async function(i, fileList){
 
   blocos[i].lastFileListRef = fileList;
   blocos[i].arquivos = files.map(f => ({ url: URL.createObjectURL(f), file: f, duration: 0 }));
-  blocos[i].progresso = blocos[i].arquivos.map(()=>0);
   document.getElementById(`info-${i}`).innerHTML = files.length + " arquivos.";
   atualizarGrade();
 }
@@ -1747,22 +1719,7 @@ window.removerBloco = function(i){
 
 window.iniciar = function(){ 
     sistemaIniciado = true; 
-    
-    const recuperacaoSalva = localStorage.getItem('kbs_estado_reconexao');
-    if (recuperacaoSalva) {
-        try {
-            const estado = JSON.parse(recuperacaoSalva);
-            if (estado.idxBloco !== undefined && blocos[estado.idxBloco]) {
-                idxBloco = estado.idxBloco;
-                if (blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[estado.arquivoAtual]) {
-                    blocos[idxBloco].arquivoAtual = estado.arquivoAtual;
-                }
-            }
-        } catch(e) {}
-    } else {
-        idxBloco = 0; 
-    }
-
+    idxBloco = 0; 
     ytTempoSalvo = 0; 
     ytUltimoPlayTimestamp = 0; 
     tocarAtual(); 
@@ -1777,8 +1734,7 @@ function startYouTubeNow(b) {
     ytplayer.style.display = 'block'; video.style.display = 'none'; 
     const id = b.ytlink.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-z0-9_-]{11})/); 
     if(id) {
-       let startParam = ytTempoSalvo > 0 ? `&start=${Math.floor(ytTempoSalvo)}` : '';
-       ytplayer.src = `https://www.youtube.com/embed/${id[1]}?autoplay=1${startParam}`;
+       ytplayer.src = `https://www.youtube.com/embed/${id[1]}?autoplay=1`;
        ytUltimoPlayTimestamp = Date.now();
     }
 }
