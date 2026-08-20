@@ -1113,94 +1113,37 @@ function extrairNomeLimpo(nomeBruto) {
     return nomeLimpo || "Vídeo";
 }
 
-function horarioParaSegundos(strHora) {
-    if (!strHora) return 0;
-    const partes = strHora.split(':').map(Number);
-    const h = partes[0] || 0;
-    const m = partes[1] || 0;
-    const s = partes[2] || 0;
-    return h * 3600 + m * 60 + s;
-}
-
-// LOGICA APRIMORADA: PRIORIDADE TOTAL AO PRÓXIMO EVENTO DE HOJE (ADMIN, FIXO, FILMES E ARQUIVOS)
+// LOGICA RIGOROSA: LE FIELMENTE O QUE VEM A SEGUIR SEGUINDO A ORDEM DA PROGRAMAÇÃO ATUAL
 function obterNomeASeguir() {
     if (!blocos || blocos.length === 0) return "";
+
+    const bAtual = blocos[idxBloco];
+    if (!bAtual) return "";
+
+    // 1. Se o bloco atual possui arquivos (Ex: Bloco de Filmes, Tempo Fixo, etc.), verifica se há próximo arquivo dentro do próprio bloco
+    if (bAtual.arquivos && bAtual.arquivos.length > 0) {
+        const nextFileIdx = bAtual.arquivoAtual + 1;
+        if (nextFileIdx < bAtual.arquivos.length) {
+            return extrairNomeLimpo(bAtual.arquivos[nextFileIdx].file.name);
+        }
+    }
+
+    // 2. Se acabou os arquivos do bloco atual (ou se for YouTube / M3U / Pausa), pega estritamente o próximo bloco da sequência geral (grade)
+    const nextIdx = (idxBloco + 1) % blocos.length;
+    const bNext = blocos[nextIdx];
     
-    const agora = new Date();
-    const hoje = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"][agora.getDay()];
-    const segundosAgora = agora.getHours() * 3600 + agora.getMinutes() * 60 + agora.getSeconds();
-
-    let proximoEvento = null;
-    let menorDiferenca = Infinity;
-
-    // 1. Varredura rigorosa em todos os blocos programados para hoje (Admin, Fixo, Filmes com horário)
-    for (let i = 0; i < blocos.length; i++) {
-        const b = blocos[i];
-        if (!b || b.removido) continue;
-
-        let listaHorariosParaChecar = [];
-        if (b.tipo === 'youtube' && Array.isArray(b.horariosAdmin)) {
-            listaHorariosParaChecar = b.horariosAdmin;
-        } else if (b.tipo === 'timer' && Array.isArray(b.horarios)) {
-            listaHorariosParaChecar = b.horarios;
-        } else if (b.tipo === 'movie' && Array.isArray(b.horarios)) {
-            listaHorariosParaChecar = b.horarios;
-        }
-
-        let diaMatch = false;
-        if (b.tipo === 'youtube') {
-            if (Array.isArray(b.diaSemana)) {
-                diaMatch = b.diaSemana.length === 0 || b.diaSemana.includes(hoje);
-            } else {
-                diaMatch = (b.diaSemana === "" || (typeof b.diaSemana === 'string' && b.diaSemana.toLowerCase() === hoje));
-            }
+    if (bNext && !bNext.removido) {
+        if (bNext.nome && bNext.nome.trim() !== "") {
+            return bNext.nome;
+        } else if (bNext.arquivos && bNext.arquivos.length > 0 && bNext.arquivos[0]) {
+            return extrairNomeLimpo(bNext.arquivos[0].file.name);
+        } else if (bNext.m3ulink) {
+            return "Transmissão M3U";
+        } else if (bNext.ytlink) {
+            return "Transmissão YouTube";
         } else {
-            diaMatch = (!b.diasSelecionados || b.diasSelecionados.length === 0 || b.diasSelecionados.includes(hoje));
+            return `Bloco ${nextIdx + 1}`;
         }
-
-        if (diaMatch) {
-            listaHorariosParaChecar.forEach(hObj => {
-                if (hObj && hObj.inicio) {
-                    const segundosInicio = horarioParaSegundos(hObj.inicio);
-                    let diff = segundosInicio - segundosAgora;
-                    
-                    // Prioriza estritamente o evento que vai acontecer hoje mais próximo de agora
-                    if (diff > 0 && diff < menorDiferenca) {
-                        menorDiferenca = diff;
-                        let nomeBloco = b.nome ? b.nome : (b.m3ulink ? "Transmissão M3U" : (b.ytlink ? "Transmissão YouTube" : "Bloco Programado"));
-                        let minRestantes = Math.ceil(diff / 60);
-                        proximoEvento = `${nomeBloco} (às ${hObj.inicio}, em ${minRestantes} min)`;
-                    }
-                }
-            });
-        }
-    }
-
-    if (proximoEvento) {
-        return proximoEvento;
-    }
-
-    // 2. Se não houver horário específico iminente, busca o próximo arquivo da playlist do bloco atual ou do próximo bloco
-    const b = blocos[idxBloco];
-    if (b && !b.removido) {
-        if (b.arquivos && b.arquivos.length > 0) {
-            let nextFileIdx = (b.arquivoAtual + 1) % b.arquivos.length;
-            if (b.tipo === 'movie' && ((b._count || 0) + 1 >= (b.limitePorCiclo || 3))) {
-                // Se o bloco de filmes vai atingir o limite, pula pro próximo bloco geral
-                let nextIdx = (idxBloco + 1) % blocos.length;
-                let nextB = blocos[nextIdx];
-                if (nextB && !nextB.removido) {
-                    return nextB.nome ? nextB.nome : (nextB.arquivos && nextB.arquivos[0] ? extrairNomeLimpo(nextB.arquivos[0].file.name) : "Próximo Bloco");
-                }
-            }
-            return extrairNomeLimpo(b.arquivos[nextFileIdx].file.name);
-        }
-    }
-
-    let nextIdx = (idxBloco + 1) % blocos.length;
-    let nextB = blocos[nextIdx];
-    if (nextB && !nextB.removido) {
-        return nextB.nome ? nextB.nome : (nextB.arquivos && nextB.arquivos[0] ? extrairNomeLimpo(nextB.arquivos[0].file.name) : "Próximo Bloco");
     }
 
     return "";
@@ -1482,10 +1425,10 @@ function verificarAgendados() {
         tocarAtual();
         
         if (blocos[idxBloco] && blocos[idxBloco].tipo !== 'youtube') {
-          if (blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
-            video.currentTime = progressoSalvo;
-            if (estavaPausado) video.pause();
-          }
+            if (blocos[idxBloco].arquivos && blocos[idxBloco].arquivos[blocos[idxBloco].arquivoAtual]) {
+                video.currentTime = progressoSalvo;
+                if (estavaPausado) video.pause();
+            }
         }
       } else { window.proximoBloco(); }
     }
