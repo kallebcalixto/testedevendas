@@ -525,11 +525,9 @@
           let listaArquivosFirebase = linksArr.map((linkUrl, indexUrl) => {
             let urlFinal = linkUrl;
             if (linkUrl && linkUrl.includes('dropbox.com')) {
-                urlFinal = linkUrl.replace(/\?dl=0$/, '').replace(/&dl=0$/, '').replace(/\?dl=1$/, '').replace(/&dl=1$/, '');
-                if (!urlFinal.includes('raw=1')) {
-                    urlFinal += (urlFinal.includes('?') ? '&' : '?') + 'raw=1';
-                }
+                urlFinal = `https://kbs-backend-k3d0.onrender.com/proxy-video?url=${encodeURIComponent(linkUrl)}`;
             }
+
             let nomeExtraido = (d.nome || "video_nuvem") + "_" + (indexUrl + 1) + ".mp4";
             try {
                 let urlObj = new URL(linkUrl);
@@ -1308,10 +1306,8 @@ window.carregarArquivosNuvem = function(i, textoLinks) {
         let nomeExtraido = "";
 
         if (linkUrl.includes('dropbox.com')) {
-            urlFinal = linkUrl.replace(/\?dl=0$/, '').replace(/&dl=0$/, '').replace(/\?dl=1$/, '').replace(/&dl=1$/, '');
-            if (!urlFinal.includes('raw=1')) {
-                urlFinal += (urlFinal.includes('?') ? '&' : '?') + 'raw=1';
-            }
+            // Roteia através da API Proxy na Render para evitar bloqueios de streaming
+            urlFinal = `https://kbs-backend-k3d0.onrender.com/proxy-video?url=${encodeURIComponent(linkUrl)}`;
 
             try {
                 let urlObj = new URL(linkUrl);
