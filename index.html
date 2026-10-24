@@ -1306,7 +1306,6 @@ window.carregarArquivosNuvem = function(i, textoLinks) {
         let nomeExtraido = "";
 
         if (linkUrl.includes('dropbox.com')) {
-            // Roteia através da API Proxy na Render para evitar bloqueios de streaming
             urlFinal = `https://kbs-backend-k3d0.onrender.com/proxy-video?url=${encodeURIComponent(linkUrl)}`;
 
             try {
